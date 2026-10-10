@@ -83,26 +83,39 @@ struct RootView: View {
         VStack(spacing: 0) {
             TopBar()
             Divider()
-            Group {
-                switch ui.module {
-                case .terminal:
-                    TerminalModuleView()
-                case .notes:
-                    NotesView()
-                case .snippets:
-                    SnippetsView()
-                case .targets:
-                    TargetsView()
-                case .findings:
-                    FindingsView()
-                case .knowledgeBase:
-                    KnowledgeBaseView()
-                case .exploits:
-                    ExploitsView()
-                case .chef:
-                    ChefView()
-                case .activity:
-                    ActivityView()
+            ZStack {
+                // The terminal is never unmounted: detaching SwiftTerm's view and attaching it again
+                // resized the shell to a zero-size frame on the way (losing the scrollback and
+                // redrawing the prompt) and dropped the scroll position. It is only hidden.
+                TerminalModuleView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .opacity(ui.module == .terminal ? 1 : 0)
+                    .allowsHitTesting(ui.module == .terminal)
+                    .accessibilityHidden(ui.module != .terminal)
+                if ui.module != .terminal {
+                    Group {
+                        switch ui.module {
+                        case .terminal:
+                            EmptyView()
+                        case .notes:
+                            NotesView()
+                        case .snippets:
+                            SnippetsView()
+                        case .targets:
+                            TargetsView()
+                        case .findings:
+                            FindingsView()
+                        case .knowledgeBase:
+                            KnowledgeBaseView()
+                        case .exploits:
+                            ExploitsView()
+                        case .chef:
+                            ChefView()
+                        case .activity:
+                            ActivityView()
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

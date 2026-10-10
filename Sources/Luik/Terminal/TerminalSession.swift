@@ -184,6 +184,7 @@ final class TerminalSession: Identifiable {
     init(shell: String, fontSize: CGFloat, opacity: CGFloat) {
         view = LoggingTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 400))
         applyAppearance(fontSize: fontSize, opacity: opacity)
+        view.getTerminal().changeHistorySize(5000)   // SwiftTerm's default of 500 lines is short for scan output
         view.optionAsMetaKey = true
         view.processDelegate = self
         view.onTypedLine = { [weak self] line in
@@ -336,6 +337,16 @@ final class TerminalStore {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.08, execute: work)
         } else {
             work()
+        }
+    }
+
+    /// The terminal stays in the view hierarchy while another tab is shown (see RootView), so it
+    /// must give up the keyboard, or keystrokes meant for Notes would still reach the shell.
+    func resignFocus() {
+        for session in sessions {
+            if let window = session.view.window, window.firstResponder === session.view {
+                window.makeFirstResponder(nil)
+            }
         }
     }
 
