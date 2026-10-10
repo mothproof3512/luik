@@ -67,8 +67,27 @@ if command -v iconutil >/dev/null 2>&1 && [ -d "Resources/AppIcon.iconset" ]; th
     || echo "  (icon skipped: iconutil reported an error)"
 fi
 
-# Ad-hoc signing: required on Apple Silicon for the app to launch.
-codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || echo "  (codesign skipped)"
+# Code signing. macOS ties permissions such as Screen Recording (used for evidence screenshots)
+# to the app's signing identity. An ad-hoc signature ("-") changes with every build, so the
+# permission has to be granted again after each rebuild. A certificate with a stable identity
+# fixes that: run ./scripts/make-signing-identity.sh once to create a local "Luik Local"
+# certificate, or set LUIK_CODESIGN_IDENTITY to the name of any code-signing identity you have.
+IDENTITY="${LUIK_CODESIGN_IDENTITY:-}"
+if [ -z "$IDENTITY" ] && security find-identity -v -p codesigning 2>/dev/null | grep -q '"Luik Local"'; then
+  IDENTITY="Luik Local"
+fi
+if [ -n "$IDENTITY" ]; then
+  if codesign --force --deep --sign "$IDENTITY" "$APP" >/dev/null 2>&1; then
+    echo "▶ Signed with \"$IDENTITY\" (permissions survive rebuilds)"
+  else
+    echo "  (signing with \"$IDENTITY\" failed; falling back to an ad-hoc signature)"
+    codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || echo "  (codesign skipped)"
+  fi
+else
+  codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || echo "  (codesign skipped)"
+  echo "  (ad-hoc signature: macOS will ask for Screen Recording again after every rebuild;"
+  echo "   run ./scripts/make-signing-identity.sh once to avoid that)"
+fi
 
 echo "✔ Done: $APP"
 

@@ -315,7 +315,8 @@ decode** reverse those two obfuscations (the magic bar spots them too).
 
 ```
 Package.swift              SwiftPM manifest (macOS 14+, Swift 5.9+)
-build.sh                   builds and bundles Luik.app
+build.sh                   builds and bundles Luik.app (signs with "Luik Local" when present)
+scripts/make-signing-identity.sh  one-time local signing certificate, so macOS permissions survive rebuilds
 Sources/Luik/
   main.swift               starts NSApplication
   AppDelegate.swift        menu bar item, main menu, hotkey, wiring of all modules
@@ -365,6 +366,14 @@ app would get mouse input but no keyboard input.
   macOS often get no keyboard input at all.
 - **The panel does not appear over a full-screen app**: Luik uses a floating panel that is allowed
   over full-screen apps; if that fails, switch Spaces briefly.
+- **macOS keeps asking for Screen Recording (evidence screenshots) although you granted it**: the
+  permission is tied to the app's code signature, and an ad-hoc signature changes with every
+  rebuild, so each `./build.sh --install` looks like a new app to macOS. Run
+  `./scripts/make-signing-identity.sh` once: it creates a local "Luik Local" certificate that
+  `build.sh` then uses, so the identity stays the same across builds. Rebuild, and in System
+  Settings › Privacy & Security › Screen Recording remove the old Luik entry (−) and grant it once
+  more. On macOS 15 a monthly "continue to allow" confirmation is normal for every screen-recording
+  app. Downloads from the Releases page are ad-hoc signed and keep the old behaviour.
 - **Build errors**: the code targets Swift 5.9+ and macOS 14+. Open an issue with the error message.
 - **Starting over**: quit Luik and delete (or rename) `~/Library/Application Support/Luik/`.
 
