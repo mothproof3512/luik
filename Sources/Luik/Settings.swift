@@ -3,7 +3,7 @@ import Foundation
 /// Version and repository, used by the settings footer, the update check and build.sh.
 enum AppInfo {
     static let version = "0.15.2"
-    static let repository = "mothproof3512/Luik"
+    static let repository = "mothproof3512/luik"
 }
 
 /// UserDefaults keys. The settings UI uses @AppStorage with the same keys.

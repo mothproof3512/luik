@@ -4,13 +4,13 @@
 
 # Luik
 
-[![Build](https://github.com/mothproof3512/Luik/actions/workflows/build.yml/badge.svg)](https://github.com/mothproof3512/Luik/actions/workflows/build.yml)
+[![Build](https://github.com/mothproof3512/luik/actions/workflows/build.yml/badge.svg)](https://github.com/mothproof3512/luik/actions/workflows/build.yml)
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue)
 ![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A Guake-style drop-down app for macOS, built for pentesters: press a hotkey (⌘Esc by default)
-and a panel slides down from the top of the screen with four tabs:
+and a panel slides down from the top of the screen with nine tabs:
 
 | Tab | What it does |
 |---|---|
@@ -26,6 +26,35 @@ and a panel slides down from the top of the screen with four tabs:
 
 Everything is stored locally as JSON in `~/Library/Application Support/Luik/`.
 
+## Screenshots
+
+Each shot uses a different colour scheme (Settings › Colours); the engagement name sits in the
+top bar, the tabs are ⌘1 … ⌘9.
+
+<p align="center">
+  <img src="docs/screenshots/targets.png" width="100%" alt="Targets: hosts and ports from a scan, checklist nodes with status, and Exploit-DB / knowledge-base suggestions for the selected service">
+  <br><sub><b>Targets</b> — hosts and ports from an nmap import, checklist nodes with a status, and the Suggestions panel matching the service version against Exploit-DB and the knowledge base.</sub>
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/terminal.png" width="100%" alt="Terminal tab with several shells"><br><sub><b>Terminal</b> — SwiftTerm tabs running your own login shell; saved connections under Connect.</sub></td>
+    <td width="50%"><img src="docs/screenshots/one-liners.png" width="100%" alt="One-liners with $RHOST, $LHOST and $LPORT"><br><sub><b>One-liners</b> — commands with Copy / paste-into-terminal buttons; <code>$RHOST</code>, <code>$LHOST</code> and <code>$LPORT</code> filled in from the fields at the top.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/findings.png" width="100%" alt="Findings tab with a finding created from a target node"><br><sub><b>Findings</b> — severity, status, CVSS 3.1 calculator, affected hosts/services and the report sections; this one was created from a Targets node.</sub></td>
+    <td><img src="docs/screenshots/knowledge-base.png" width="100%" alt="Knowledge base with scope, severity and phase filters"><br><sub><b>Knowledge base</b> — your own findings sheet, searchable across every column, with scope / severity / kill-chain-phase filters, Add to target and Create finding.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/searchsploit.png" width="100%" alt="Searchsploit tab with copy-and-paste command lines"><br><sub><b>Searchsploit</b> — Exploit-DB offline, with ready-made command lines per hit.</sub></td>
+    <td><img src="docs/screenshots/chef.png" width="100%" alt="Chef tab identifying an Atlassian PBKDF2 hash"><br><sub><b>Chef</b> — recipes of operations; here <i>Identify hash</i> recognising an Atlassian <code>{PKCS5S2}</code> hash and suggesting the hashcat / john command.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/notes.png" width="100%" alt="Notes tab"><br><sub><b>Notes</b> — a notepad per engagement, saved automatically.</sub></td>
+    <td></td>
+  </tr>
+</table>
+
 ## Installing
 
 ### Option 1: build it yourself (recommended)
@@ -35,7 +64,7 @@ Requires macOS 14 (Sonoma) or newer and Xcode **or** just the Command Line Tools
 `Vendor/`, so the build needs no network access.
 
 ```bash
-git clone https://github.com/mothproof3512/Luik.git
+git clone https://github.com/mothproof3512/luik.git
 cd Luik
 ./build.sh --install     # builds build/Luik.app, copies it to /Applications and launches it
 ```
@@ -47,7 +76,7 @@ A locally built app launches without fuss: it is ad-hoc signed and not quarantin
 ### Option 2: ready-made download
 
 For every `v*` tag, GitHub Actions builds a `Luik.app.zip` and attaches it to the
-[releases](https://github.com/mothproof3512/Luik/releases). That app is not notarized (that
+[releases](https://github.com/mothproof3512/luik/releases). That app is not notarized (that
 requires a paid Apple Developer account), so Gatekeeper blocks it after download. Fix: unzip,
 drag `Luik.app` to `/Applications` and remove the quarantine flag once:
 

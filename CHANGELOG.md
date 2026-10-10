@@ -1,6 +1,7 @@
 # Changelog
 
 ## 0.15.2
+- README: screenshots of every tab (docs/screenshots), repository links in lowercase after the rename.
 - **Knowledge base template and guide**: the empty Knowledge base tab (and the ? button, ⋯ menu, Help menu and ⌘K) explains which columns Luik recognises and saves an example CSV with those columns and two example rows to start from. A `cvss_vector` column is no longer mistaken for the title.
 - **Keyboard shortcuts** sheet (⌘/, ? in the top bar, Help › Keyboard Shortcuts, ⌘K): every shortcut and mouse trick, including your configured hotkey. New Help menu with the template and a link to the repository.
 
