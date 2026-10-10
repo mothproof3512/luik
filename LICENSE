@@ -24,3 +24,8 @@ SOFTWARE.
 
 This project bundles SwiftTerm (Vendor/SwiftTerm), Copyright (c) Miguel de Icaza
 and the xterm.js authors, under the MIT License. See Vendor/SwiftTerm/LICENSE.
+
+The colour schemes in Sources/Luik/Theme.swift use colour values from the
+dictionary-of-colour-combinations dataset, Copyright (c) 2020 Matt DesLauriers,
+under the MIT License (https://github.com/mattdesl/dictionary-of-colour-combinations),
+digitised from Sanzo Wada's "A Dictionary of Color Combinations" (1933).

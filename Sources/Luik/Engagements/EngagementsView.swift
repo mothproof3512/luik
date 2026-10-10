@@ -80,6 +80,7 @@ struct NewEngagementPopover: View {
 struct EngagementsManager: View {
     @Environment(EngagementStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.luikTheme) private var theme
     @State private var selectedID: UUID?
     @State private var showDelete = false
 
@@ -99,7 +100,7 @@ struct EngagementsManager: View {
                     List(store.engagements, selection: $selectedID) { engagement in
                         HStack(spacing: 6) {
                             Image(systemName: engagement.id == store.currentID ? "briefcase.fill" : "briefcase")
-                                .foregroundStyle(engagement.id == store.currentID ? Color.accentColor : .secondary)
+                                .foregroundStyle(engagement.id == store.currentID ? theme.accentColor : .secondary)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(engagement.displayName)
                                     .lineLimit(1)

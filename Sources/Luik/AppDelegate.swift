@@ -38,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .environment(ConnectionStore.shared)
             .environment(EngagementStore.shared)
             .environment(FindingsStore.shared)
+            .environment(ChecklistStore.shared)
         let controller = DropdownController(rootView: root)
         controller.onDidShow = {
             if UIState.shared.module == .terminal {
@@ -83,6 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         TargetStore.shared.flush()
         FindingsStore.shared.flush()
         ChefStore.shared.flush()
+        ChecklistStore.shared.flush()
         ActivityLog.shared.flush()
     }
 
@@ -305,6 +307,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         toolsMenu.addItem(.separator())
         toolsMenu.addItem(NSMenuItem(title: "New Finding", action: #selector(newFinding), keyEquivalent: "n"))
         toolsMenu.addItem(NSMenuItem(title: "Manage Engagements…", action: #selector(manageEngagements), keyEquivalent: ""))
+        toolsMenu.addItem(NSMenuItem(title: "Edit Checklists…", action: #selector(editChecklists), keyEquivalent: ""))
         toolsMenuItem.submenu = toolsMenu
         mainMenu.addItem(toolsMenuItem)
 
@@ -350,6 +353,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func manageEngagements() {
         showDropdown()
         EngagementStore.shared.showManager = true
+    }
+
+    @objc private func editChecklists() {
+        showDropdown()
+        ChecklistStore.shared.showEditor = true
     }
 
     @objc private func newTerminalTab() {

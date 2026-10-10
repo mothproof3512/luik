@@ -121,39 +121,56 @@ final class TargetStore {
         return nil
     }
 
-    // MARK: - Templates
-
-    private var hostTemplate: [String] {
-        SettingsDefaults.templateItems(UserDefaults.standard.string(forKey: SettingsKey.hostTemplate) ?? SettingsDefaults.hostTemplate)
-    }
-
-    private var portTemplate: [String] {
-        SettingsDefaults.templateItems(UserDefaults.standard.string(forKey: SettingsKey.portTemplate) ?? SettingsDefaults.portTemplate)
-    }
-
-    private var serviceRules: [(keys: [String], items: [String])] {
-        SettingsDefaults.serviceTemplateRules(UserDefaults.standard.string(forKey: SettingsKey.serviceTemplates) ?? SettingsDefaults.serviceTemplates)
-    }
+    // MARK: - Checklists (work-item nodes)
 
     /// The nmap service name of a port node: the part of the subtitle before " — ".
     static func serviceName(of node: TargetNode) -> String {
         node.subtitle.components(separatedBy: " — ").first?.trimmingCharacters(in: .whitespaces) ?? ""
     }
 
-    /// Work items for a port node: service-specific when the service (or port number) is known.
-    private func templateItems(for port: TargetNode) -> [String] {
-        SettingsDefaults.templateItems(forService: TargetStore.serviceName(of: port), port: port.portNumber,
-                                       rules: serviceRules, fallback: portTemplate)
+    /// The checklist items a node gets: the system list for hosts, the matching service list
+    /// (or the generic port list) for ports.
+    private func checklistItems(for node: TargetNode) -> [ChecklistItem] {
+        let checklists = ChecklistStore.shared
+        return node.kind == .port ? checklists.items(forService: TargetStore.serviceName(of: node), port: node.portNumber) : checklists.hostItems
     }
 
-    /// Adds the work-item nodes from the template that are still missing.
-    func applyTemplate(to node: TargetNode) {
-        let names = node.kind == .port ? templateItems(for: node) : hostTemplate
+    /// A work-item node for a checklist item, with the hint (RHOST/RPORT filled in) as starting notes.
+    private func taskNode(for item: ChecklistItem, under parent: TargetNode) -> TargetNode {
+        let address = host(of: parent)?.address ?? parent.address
+        let port = parent.kind == .port ? parent.portNumber : nil
+        return TargetNode(kind: .task, title: item.title, notes: ChecklistStore.resolve(item.hint, address: address, port: port))
+    }
+
+    /// Adds the work-item nodes from the checklist that are still missing (matched by title).
+    @discardableResult
+    func applyTemplate(to node: TargetNode) -> Int {
+        guard node.kind == .host || node.kind == .port else { return 0 }
         let existing = Set(node.children.map { $0.title })
-        for name in names where !existing.contains(name) {
-            node.children.append(TargetNode(kind: .task, title: name))
+        var added = 0
+        for item in checklistItems(for: node) where !existing.contains(item.title) {
+            node.children.append(taskNode(for: item, under: node))
+            added += 1
         }
-        scheduleSave()
+        if added > 0 { scheduleSave() }
+        return added
+    }
+
+    /// Adds missing checklist nodes to every host and port of the engagement (after editing the
+    /// checklists). Returns the number of nodes added.
+    @discardableResult
+    func applyChecklistsEverywhere() -> Int {
+        var added = 0
+        for hostNode in hosts {
+            added += applyTemplate(to: hostNode)
+            for port in hostNode.children where port.kind == .port {
+                added += applyTemplate(to: port)
+            }
+        }
+        if added > 0 {
+            ActivityLog.shared.record(.action, "Checklists applied to all targets: \(added) node(s) added", source: "Targets")
+        }
+        return added
     }
 
     // MARK: - Mutations
@@ -166,8 +183,8 @@ final class TargetStore {
             return existing
         }
         let node = TargetNode(kind: .host, title: cleaned, subtitle: hostname, address: cleaned)
-        for name in hostTemplate {
-            node.children.append(TargetNode(kind: .task, title: name))
+        for item in ChecklistStore.shared.hostItems {
+            node.children.append(taskNode(for: item, under: node))
         }
         hosts.append(node)
         selectedID = node.id
@@ -184,10 +201,10 @@ final class TargetStore {
         }
         let node = TargetNode(kind: .port, title: "\(number)/\(proto)", subtitle: description,
                               portNumber: number, portProtocol: proto)
-        for name in templateItems(for: node) {
-            node.children.append(TargetNode(kind: .task, title: name))
-        }
         insertPortSorted(node, into: host)
+        for item in checklistItems(for: node) {
+            node.children.append(taskNode(for: item, under: node))
+        }
         scheduleSave()
         return node
     }

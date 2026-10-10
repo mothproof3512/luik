@@ -146,6 +146,7 @@ struct SnippetRow: View {
     let paste: () -> Void
     let edit: () -> Void
     let delete: () -> Void
+    @Environment(\.luikTheme) private var theme
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
@@ -164,7 +165,7 @@ struct SnippetRow: View {
                     .frame(width: 96)
             }
             .buttonStyle(.borderedProminent)
-            .tint(isCopied ? Color.green : Color.accentColor)
+            .tint(isCopied ? Color.green : theme.accentColor)
             Button(action: paste) {
                 Image(systemName: "terminal")
             }
