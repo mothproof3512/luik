@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.0
+- **One-liners in Targets**: a one-liner can be tagged with the services and ports it is for (editor › "Show in Targets at": `http, https, 80, 443`, `microsoft-ds, 445`, `host` for every host, `port` for every port). The selected host, port or work-item node shows the matching one-liners in a **One-liners** panel with that node's address and port already filled in — copy, or paste into the terminal (logged). The bundled list is tagged; your own copies of the defaults get the same tags once, and the default web/ssh/ftp commands now use the node's port. **Use … as $RHOST / $RPORT** on the panel makes the node the target for the One-liners tab.
+- New placeholders **$RPORT** (field in the One-liners tab; in Targets the node's port) and **$RURL** (`http(s)://host:port` — https for ssl/https services and ports 443/8443, default ports left out, IPv6 bracketed). The export button sets RPORT and RURL in the terminal too; checklist hints understand $RURL as well.
+
 ## 0.15.4
 - Fix: checklist items with a comma inside parentheses ("Technology fingerprint (headers, whatweb)", "Input testing (injection, XSS, IDOR, upload)", …) were split into several items since 0.15.0. The splitter now respects parentheses, existing checklists are repaired once at launch, and work-item nodes that were created in pieces are glued back together (notes, sub-nodes and status kept).
 

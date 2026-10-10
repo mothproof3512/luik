@@ -52,6 +52,7 @@ struct ShortcutsView: View {
                 Shortcut(keys: "click ◯", action: "Cycle a node's status: to do → in progress → done → N/A"),
                 Shortcut(keys: "right-click", action: "Sub-node, add missing checklist items, set a status, delete"),
                 Shortcut(keys: "Finding", action: "Turn the selected node into a finding (notes → evidence, host:port → affected)"),
+                Shortcut(keys: "One-liners ▾", action: "The one-liners tagged for the selected host/port, with $RHOST, $RPORT and $RURL filled in — copy, or paste into the terminal"),
                 Shortcut(keys: "double-click divider", action: "Reset the list/detail split (Targets, Findings, Knowledge base, Searchsploit)"),
             ]),
             ShortcutGroup(title: "Editing text", shortcuts: [

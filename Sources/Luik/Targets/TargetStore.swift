@@ -160,7 +160,8 @@ final class TargetStore {
     private func taskNode(for item: ChecklistItem, under parent: TargetNode) -> TargetNode {
         let address = host(of: parent)?.address ?? parent.address
         let port = parent.kind == .port ? parent.portNumber : nil
-        return TargetNode(kind: .task, title: item.title, notes: ChecklistStore.resolve(item.hint, address: address, port: port))
+        let service = parent.kind == .port ? TargetStore.serviceName(of: parent) : nil
+        return TargetNode(kind: .task, title: item.title, notes: ChecklistStore.resolve(item.hint, address: address, port: port, service: service))
     }
 
     /// Adds the work-item nodes from the checklist that are still missing (matched by title).

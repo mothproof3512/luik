@@ -18,6 +18,7 @@ struct SnippetsView: View {
                     .frame(minWidth: 120, maxWidth: 200)
                 HStack(spacing: 4) {
                     variableField("$RHOST", text: $store.target, placeholder: "10.10.10.5", width: 130)
+                    variableField("$RPORT", text: $store.rport, placeholder: "port", width: 52)
                     variableField("$LHOST", text: $store.lhost, placeholder: "your IP", width: 120)
                     Button {
                         store.detectLHost()
@@ -34,7 +35,7 @@ struct SnippetsView: View {
                         Label(exported ? "Set" : "export", systemImage: exported ? "checkmark" : "arrow.right.square")
                     }
                     .disabled(store.exportLine == nil)
-                    .help("Runs `export RHOST=… LHOST=… LPORT=…` in the active terminal tab, so the variables work there as well")
+                    .help("Runs `export RHOST=… RPORT=… RURL=… LHOST=… LPORT=…` in the active terminal tab, so the variables work there as well")
                 }
                 Spacer()
                 Menu {
@@ -151,8 +152,21 @@ struct SnippetRow: View {
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(snippet.title)
-                    .font(.callout.weight(.semibold))
+                HStack(spacing: 6) {
+                    Text(snippet.title)
+                        .font(.callout.weight(.semibold))
+                    if !snippet.services.isEmpty {
+                        Text(snippet.servicesText)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Color.white.opacity(0.1), in: Capsule())
+                            .help("Shown in Targets under: \(snippet.servicesText)")
+                    }
+                }
                 Text(resolved)
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)
@@ -187,6 +201,7 @@ struct SnippetEditor: View {
     @State var snippet: Snippet
     let onSave: (Snippet) -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var servicesText = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -196,7 +211,7 @@ struct SnippetEditor: View {
                 .textFieldStyle(.roundedBorder)
             TextField("Category", text: $snippet.category)
                 .textFieldStyle(.roundedBorder)
-            Text("Command — placeholders: $RHOST (target), $LHOST (your IP), $LPORT (your port)")
+            Text("Command — placeholders: $RHOST (target), $RPORT (port), $RURL (http(s)://target:port), $LHOST (your IP), $LPORT (your port)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             TextEditor(text: $snippet.command)
@@ -205,6 +220,15 @@ struct SnippetEditor: View {
                 .scrollContentBackground(.hidden)
                 .padding(4)
                 .background(Color.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 6))
+            Text("Show in Targets at — service names or port numbers (http, microsoft-ds, 445, …), \"host\" for every host, \"port\" for every port; empty = only here")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            TextField("http, https, 80, 443, 8080", text: $servicesText)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(.body, design: .monospaced))
+                .onChange(of: servicesText) { _, text in
+                    snippet.services = Snippet.parseServices(text)
+                }
             HStack {
                 Spacer()
                 Button("Cancel") {
@@ -228,5 +252,8 @@ struct SnippetEditor: View {
         }
         .padding(16)
         .frame(width: 540)
+        .onAppear {
+            servicesText = snippet.servicesText
+        }
     }
 }

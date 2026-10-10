@@ -315,6 +315,12 @@ struct NodeDetailView: View {
                 .help("Delete this node (and everything under it)")
             }
 
+            if node.kind == .host || node.kind == .port || store.host(of: node) != nil {
+                OneLinersPanel(node: node)
+                    .padding(8)
+                    .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
+            }
+
             if node.kind == .port {
                 SuggestionsPanel(node: node)
                     .padding(8)

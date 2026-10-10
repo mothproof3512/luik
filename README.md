@@ -16,7 +16,7 @@ and a panel slides down from the top of the screen with nine tabs:
 |---|---|
 | **Terminal** | A real terminal (SwiftTerm) with multiple tabs, running your own shell as a login shell |
 | **Notes** | Notepad with multiple notes, saved automatically |
-| **One-liners** | A list of commands with a **Copy** button; `$RHOST` is replaced by the target you enter; commands can also be pasted straight into the terminal |
+| **One-liners** | A list of commands with a **Copy** button; `$RHOST`, `$RPORT`, `$RURL`, `$LHOST` and `$LPORT` are replaced; commands can also be pasted straight into the terminal. Tag a one-liner with service names or ports and it shows up under the matching port in Targets, filled in for that host |
 | **Targets** | Import nmap, Nessus, nuclei or masscan output (one host or many IPs at once). One node per system, one node per port, and work-item nodes underneath with status and notes, so you can work systematically; scanner findings become nodes under the port |
 | **Findings** | The findings of the engagement with a CVSS 3.1 calculator, affected hosts/services, description/impact/evidence/recommendation/references and status — created by hand, from a target node, from a knowledge-base record or from a Nessus/nuclei import; exported as a Markdown or HTML report |
 | **Knowledge base** | Import your own findings sheet (.xlsx, .csv or .json) and search every column instantly — a product name, version string, CVE, CWE or technique — then read the full finding, with links clickable and matches highlighted |
@@ -39,7 +39,7 @@ top bar, the tabs are ⌘1 … ⌘9.
 <table>
   <tr>
     <td width="50%"><img src="docs/screenshots/terminal.png" width="100%" alt="Terminal tab with several shells"><br><sub><b>Terminal</b> — SwiftTerm tabs running your own login shell; saved connections under Connect.</sub></td>
-    <td width="50%"><img src="docs/screenshots/one-liners.png" width="100%" alt="One-liners with $RHOST, $LHOST and $LPORT"><br><sub><b>One-liners</b> — commands with Copy / paste-into-terminal buttons; <code>$RHOST</code>, <code>$LHOST</code> and <code>$LPORT</code> filled in from the fields at the top.</sub></td>
+    <td width="50%"><img src="docs/screenshots/one-liners.png" width="100%" alt="One-liners with $RHOST, $LHOST and $LPORT"><br><sub><b>One-liners</b> — commands with Copy / paste-into-terminal buttons; <code>$RHOST</code>, <code>$RPORT</code>, <code>$LHOST</code> and <code>$LPORT</code> filled in from the fields at the top; tagged ones also appear under the matching port in Targets.</sub></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/findings.png" width="100%" alt="Findings tab with a finding created from a target node"><br><sub><b>Findings</b> — severity, status, CVSS 3.1 calculator, affected hosts/services and the report sections; this one was created from a Targets node.</sub></td>
@@ -128,12 +128,18 @@ The full list, including mouse tricks and your own hotkey, is one keystroke away
 
 ### One-liners
 
-- Fill in **$RHOST** (the target), **$LHOST** (your own address — the antenna button detects it,
-  preferring VPN tunnels such as utun/tun) and **$LPORT**; they are replaced in commands when
-  copying or pasting. **export** runs `export RHOST=… LHOST=… LPORT=…` in the active terminal tab
-  so the variables work there too. The older forms `<ip>`, `<target>` and `$TARGET` still work.
+- Fill in **$RHOST** (the target), **$RPORT**, **$LHOST** (your own address — the antenna button
+  detects it, preferring VPN tunnels such as utun/tun) and **$LPORT**; they are replaced in commands
+  when copying or pasting. **$RURL** becomes `http(s)://$RHOST:$RPORT` (https for ssl/https services
+  and ports 443/8443, default ports left out). **export** runs `export RHOST=… RPORT=… RURL=…
+  LHOST=… LPORT=…` in the active terminal tab so the variables work there too. The older forms
+  `<ip>`, `<target>` and `$TARGET` still work.
 - **Copy** puts the command on the clipboard; the terminal icon pastes it into the active terminal
   tab (without Enter, so you can still edit it).
+- **Show in Targets at** (in the editor): service names and/or port numbers (`http, https, 80, 443`,
+  `microsoft-ds, 445`), `host` for every host or `port` for every port. Tagged one-liners appear in
+  the **One-liners** panel of the matching host/port in Targets (see below) with the host and port of
+  that node filled in. The bundled list is tagged already; the capsule next to the title shows the tags.
 - Edit, delete and add in the app; the list lives in `snippets.json`. The bundled list contains
   recon and enumeration commands as a starting point — change it as you like.
 
@@ -163,6 +169,10 @@ The full list, including mouse tricks and your own hotkey, is one keystroke away
 6. Select a port node and the **Suggestions** panel shows matching Exploit-DB entries (product and
    version taken from the nmap service description, version-aware) and knowledge-base findings;
    one click opens the hit in its own tab.
+7. The **One-liners** panel on a host, port or work-item node lists the one-liners tagged for that
+   host or service (`http` on 10.10.10.5:8080 → `whatweb -a 3 http://10.10.10.5:8080`, …) — copy, or
+   paste into the terminal; **Use … as $RHOST / $RPORT** makes the node the target for the One-liners
+   tab, the export button and the saved connections.
 
 ### Checklists — your own workflow
 
@@ -172,7 +182,7 @@ right the list's name, the keys it applies to and its items. Keys are service na
 Nessus report them (`http`, `ssl/http`, `microsoft-ds`, `ms-sql-s`, …) and/or port numbers; the
 first matching list wins, so order matters (drag or use the arrows). Every item becomes a work-item
 node with a status; an optional **hint** on an item is written into the node's notes when the node is
-created, with `$RHOST`, `$RPORT` (and `$LHOST`/`$LPORT` from One-liners) filled in — the place for
+created, with `$RHOST`, `$RPORT`, `$RURL` (and `$LHOST`/`$LPORT` from One-liners) filled in — the place for
 the commands you always run and the things you always check for that service. A tester at the
 bottom shows which list a given service/port would get. Checklists live in `checklists.json` in the
 data folder, shared by all engagements. **Export** writes all of them as JSON (for Luik) or Markdown

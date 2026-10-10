@@ -370,22 +370,11 @@ final class ChecklistStore {
 
     // MARK: - Hints
 
-    /// Fills $RHOST / $RPORT (and $LHOST / $LPORT when set in One-liners) in a hint.
-    static func resolve(_ hint: String, address: String, port: Int?) -> String {
+    /// Fills $RHOST / $RPORT / $RURL (and $LHOST / $LPORT when set in One-liners) in a hint.
+    static func resolve(_ hint: String, address: String, port: Int?, service: String? = nil) -> String {
         guard !hint.isEmpty else { return "" }
-        var text = hint
-        for token in ["${RHOST}", "$RHOST"] { text = text.replacingOccurrences(of: token, with: address) }
-        if let port {
-            for token in ["${RPORT}", "$RPORT"] { text = text.replacingOccurrences(of: token, with: String(port)) }
-        }
-        let snippets = SnippetStore.shared
-        if !snippets.lhost.isEmpty {
-            for token in ["${LHOST}", "$LHOST"] { text = text.replacingOccurrences(of: token, with: snippets.lhost) }
-        }
-        if !snippets.lport.isEmpty {
-            for token in ["${LPORT}", "$LPORT"] { text = text.replacingOccurrences(of: token, with: snippets.lport) }
-        }
-        return text
+        // Same placeholders as the one-liners: $RHOST, $RPORT, $RURL, $LHOST, $LPORT.
+        return SnippetStore.shared.resolve(hint, rhost: address, rport: port, service: service)
     }
 
     // MARK: - Saving

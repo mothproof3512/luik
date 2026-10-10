@@ -488,7 +488,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Checklists (work-item nodes)")
                 .font(.subheadline.weight(.semibold))
-            caption("Every host gets the items of \"Every system\"; every open port gets the checklist of its service (HTTP, SSH, SMB, LDAP, Kerberos, MSSQL, … matched on the service name nmap/Nessus report, or on the port number) or the generic port list. Items turn into nodes with a status and notes; a hint on an item becomes the node's starting notes with $RHOST/$RPORT filled in — so the checklists can carry your own workflow.")
+            caption("Every host gets the items of \"Every system\"; every open port gets the checklist of its service (HTTP, SSH, SMB, LDAP, Kerberos, MSSQL, … matched on the service name nmap/Nessus report, or on the port number) or the generic port list. Items turn into nodes with a status and notes; a hint on an item becomes the node's starting notes with $RHOST/$RPORT/$RURL filled in — so the checklists can carry your own workflow.")
             HStack(spacing: 10) {
                 Button("Edit checklists…") {
                     ui.showSettings = false

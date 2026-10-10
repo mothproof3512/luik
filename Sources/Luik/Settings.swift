@@ -2,7 +2,7 @@ import Foundation
 
 /// Version and repository, used by the settings footer, the update check and build.sh.
 enum AppInfo {
-    static let version = "0.15.4"
+    static let version = "0.16.0"
     static let repository = "mothproof3512/luik"
 }
 
@@ -34,6 +34,7 @@ enum SettingsKey {
     static let snippetTarget = "snippetTarget"
     static let snippetLHost = "snippetLHost"
     static let snippetLPort = "snippetLPort"
+    static let snippetRPort = "snippetRPort"
     /// Apps (name or bundle id, comma-separated) in which the global hotkey is paused,
     /// so that e.g. F12 goes straight to a remote desktop or VM.
     static let hotKeyPauseApps = "hotKeyPauseApps"
@@ -106,6 +107,7 @@ enum SettingsDefaults {
             SettingsKey.snippetTarget: "",
             SettingsKey.snippetLHost: "",
             SettingsKey.snippetLPort: "4444",
+            SettingsKey.snippetRPort: "",
             SettingsKey.hotKeyPauseApps: "",
             SettingsKey.logTypedCommands: true,
             SettingsKey.evidenceFolder: "",

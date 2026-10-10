@@ -296,7 +296,7 @@ struct ChecklistEditor: View {
                 Button("Add item", action: addItem)
                     .disabled(newItem.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            Text("Tip: $RHOST, $RPORT, $LHOST and $LPORT in a hint are replaced when the node is created. Drag items to reorder, or use the arrows.")
+            Text("Tip: $RHOST, $RPORT, $RURL (http(s)://host:port), $LHOST and $LPORT in a hint are replaced when the node is created. Drag items to reorder, or use the arrows.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
