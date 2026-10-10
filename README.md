@@ -175,8 +175,11 @@ node with a status; an optional **hint** on an item is written into the node's n
 created, with `$RHOST`, `$RPORT` (and `$LHOST`/`$LPORT` from One-liners) filled in — the place for
 the commands you always run and the things you always check for that service. A tester at the
 bottom shows which list a given service/port would get. Checklists live in `checklists.json` in the
-data folder, shared by all engagements; export and import them as JSON to share a workflow with a
-colleague. **Apply to current targets** adds missing items to the hosts and ports you already have.
+data folder, shared by all engagements. **Export** writes all of them as JSON (for Luik) or Markdown
+(for a wiki or repository — importable too), or just the selected list; **Import** reads such a
+file and asks whether to merge (same-named lists replaced, others kept) or replace everything, while
+a file with single checklists is simply added. Both are also in the Targets ⋯ menu and Settings ›
+Targets. **Apply to current targets** adds missing items to the hosts and ports you already have.
 
 ### Colour schemes
 

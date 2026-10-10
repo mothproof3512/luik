@@ -169,31 +169,181 @@ final class ChecklistStore {
 
     // MARK: - Export / import
 
-    func exportJSON() -> Data? {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return try? encoder.encode(lists)
+    /// What an import file turned out to contain.
+    enum ImportPayload {
+        case set(ChecklistSet)        // a full export: system list, port list and service lists
+        case lists([Checklist])       // one or more individual checklists
     }
 
-    /// Replaces or merges the checklists from an exported file.
-    func importJSON(_ data: Data, merge: Bool) throws {
-        let imported = try JSONDecoder().decode(ChecklistSet.self, from: data)
-        if merge {
-            // Same-named service lists are replaced, new ones appended; the generic lists are replaced.
+    enum ImportMode {
+        case replaceAll   // the file becomes the whole set
+        case merge        // generic lists replaced, same-named service lists replaced, new ones appended
+    }
+
+    private static var encoder: JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return encoder
+    }
+
+    /// Everything, as the JSON Luik reads back with "Import".
+    func exportJSON() -> Data? {
+        try? ChecklistStore.encoder.encode(lists)
+    }
+
+    /// One or more checklists (a single list is written as an object, several as an array).
+    func exportJSON(checklists: [Checklist]) -> Data? {
+        if checklists.count == 1, let only = checklists.first {
+            return try? ChecklistStore.encoder.encode(only)
+        }
+        return try? ChecklistStore.encoder.encode(checklists)
+    }
+
+    /// Reads a file written by "Export": a full set, a single checklist or an array of checklists,
+    /// as JSON or as the Markdown export.
+    static func decodeImport(_ data: Data) throws -> ImportPayload {
+        let decoder = JSONDecoder()
+        if let set = try? decoder.decode(ChecklistSet.self, from: data) { return .set(set) }
+        if let list = try? decoder.decode(Checklist.self, from: data) { return .lists([list]) }
+        if let lists = try? decoder.decode([Checklist].self, from: data) { return .lists(lists) }
+        if let text = String(data: data, encoding: .utf8), let set = parseMarkdown(text) { return .set(set) }
+        throw NSError(domain: "Luik", code: 1, userInfo: [NSLocalizedDescriptionKey: "Not a checklist file exported by Luik (JSON or Markdown)."])
+    }
+
+    /// Imported lists get fresh ids, so they never collide with the ones already here.
+    private static func freshIDs(_ checklist: Checklist) -> Checklist {
+        var copy = checklist
+        copy.id = UUID()
+        copy.items = copy.items.map { item in
+            var fresh = item
+            fresh.id = UUID()
+            return fresh
+        }
+        return copy
+    }
+
+    func importSet(_ imported: ChecklistSet, mode: ImportMode) {
+        let host = ChecklistStore.freshIDs(imported.host)
+        let port = ChecklistStore.freshIDs(imported.port)
+        switch mode {
+        case .replaceAll:
+            lists = ChecklistSet(host: host, port: port, services: imported.services.map(ChecklistStore.freshIDs))
+        case .merge:
             var services = lists.services
-            for list in imported.services {
+            for list in imported.services.map(ChecklistStore.freshIDs) {
                 if let index = services.firstIndex(where: { $0.name.lowercased() == list.name.lowercased() }) {
                     services[index] = list
                 } else {
                     services.append(list)
                 }
             }
-            lists = ChecklistSet(host: imported.host, port: imported.port, services: services)
-        } else {
-            lists = imported
+            lists = ChecklistSet(host: host, port: port, services: services)
         }
         scheduleSave()
-        ActivityLog.shared.record(.action, "Checklists imported (\(imported.services.count) service lists)", source: "Checklists")
+        ActivityLog.shared.record(.action, "Checklists imported (\(imported.services.count) service list(s), \(mode == .replaceAll ? "replaced everything" : "merged"))", source: "Checklists")
+    }
+
+    /// Adds individual checklists: a list whose name matches the system or port list replaces
+    /// that one; a same-named service list is replaced; anything else is appended.
+    func importLists(_ imported: [Checklist]) {
+        for list in imported.map(ChecklistStore.freshIDs) {
+            let name = list.name.lowercased()
+            if name == lists.host.name.lowercased() || name == "every system" {
+                lists.host = Checklist(id: lists.host.id, name: lists.host.name, items: list.items)
+            } else if name == lists.port.name.lowercased() || name == "every port" || name == "every port (fallback)" {
+                lists.port = Checklist(id: lists.port.id, name: lists.port.name, items: list.items)
+            } else if let index = lists.services.firstIndex(where: { $0.name.lowercased() == name }) {
+                lists.services[index] = list
+            } else {
+                lists.services.append(list)
+            }
+        }
+        scheduleSave()
+        ActivityLog.shared.record(.action, "\(imported.count) checklist(s) imported", source: "Checklists")
+    }
+
+    // MARK: Markdown
+
+    /// All checklists as Markdown — readable in a wiki or a repository, and importable again.
+    func markdown() -> String {
+        var out = "# Luik checklists\n\n"
+        func render(_ list: Checklist, fixed: Bool) {
+            out += "## \(list.name)\(list.enabled ? "" : " (disabled)")\n"
+            if !fixed {
+                out += "Applies to: \(list.keys.isEmpty ? "—" : list.keysText)\n"
+            }
+            out += "\n"
+            for item in list.items {
+                out += "- \(item.title)\n"
+                let hint = item.hint.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !hint.isEmpty {
+                    for line in hint.components(separatedBy: .newlines) {
+                        out += "  > \(line)\n"
+                    }
+                }
+            }
+            out += "\n"
+        }
+        render(lists.host, fixed: true)
+        render(lists.port, fixed: true)
+        for list in lists.services { render(list, fixed: false) }
+        return out
+    }
+
+    /// Reads the Markdown written by `markdown()`: "## Name", an optional "Applies to:" line,
+    /// "- item" lines and "> hint" lines under an item. Lists named like the system/port lists
+    /// become those; the rest are service lists. Nil when no "## " heading is found.
+    static func parseMarkdown(_ text: String) -> ChecklistSet? {
+        var host: Checklist? = nil
+        var port: Checklist? = nil
+        var services: [Checklist] = []
+        var current: Checklist? = nil
+
+        func finish() {
+            guard var list = current else { return }
+            list.items = list.items.map { item in
+                var cleaned = item
+                cleaned.hint = cleaned.hint.trimmingCharacters(in: .whitespacesAndNewlines)
+                return cleaned
+            }
+            let name = list.name.lowercased()
+            if host == nil, name == "every system" || name.hasPrefix("every system") {
+                host = list
+            } else if port == nil, name.hasPrefix("every port") {
+                port = list
+            } else {
+                services.append(list)
+            }
+            current = nil
+        }
+
+        for rawLine in text.components(separatedBy: .newlines) {
+            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("## ") {
+                finish()
+                var name = String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+                var enabled = true
+                if name.lowercased().hasSuffix("(disabled)") {
+                    enabled = false
+                    name = String(name.dropLast("(disabled)".count)).trimmingCharacters(in: .whitespaces)
+                }
+                current = Checklist(name: name, items: [], enabled: enabled)
+            } else if current != nil, line.lowercased().hasPrefix("applies to:") {
+                let keys = String(line.dropFirst("applies to:".count))
+                current?.keys = keys.trimmingCharacters(in: .whitespaces) == "—" ? [] : Checklist.parseKeys(keys)
+            } else if current != nil, line.hasPrefix("- ") || line.hasPrefix("* ") {
+                current?.items.append(ChecklistItem(title: String(line.dropFirst(2)).trimmingCharacters(in: .whitespaces)))
+            } else if current != nil, line.hasPrefix(">"), let last = current?.items.indices.last {
+                let hintLine = String(line.dropFirst(1)).trimmingCharacters(in: .whitespaces)
+                current?.items[last].hint += (current?.items[last].hint.isEmpty == true ? "" : "\n") + hintLine
+            }
+        }
+        finish()
+        guard host != nil || port != nil || !services.isEmpty else { return nil }
+        // Lists the file does not mention are kept as they are now.
+        let current = ChecklistStore.shared.lists
+        return ChecklistSet(host: host ?? current.host, port: port ?? current.port,
+                            services: services.isEmpty ? current.services : services)
     }
 
     // MARK: - Hints

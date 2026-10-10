@@ -498,6 +498,10 @@ struct SettingsView: View {
                     targets.applyChecklistsEverywhere()
                 }
                 .help("Add missing checklist items to every host and port of the current engagement")
+                Button("Export…") { ChecklistTransfer.exportAll(as: .json) }
+                    .help("All checklists as JSON (the editor can also export Markdown or a single list)")
+                Button("Import…") { ChecklistTransfer.importWithPrompt() }
+                    .help("A JSON or Markdown file exported from Luik")
             }
             let serviceCount = checklists.lists.services.count
             let itemCount = checklists.allLists.reduce(0) { $0 + $1.items.count }

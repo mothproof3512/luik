@@ -159,10 +159,25 @@ struct ChecklistEditorView: View {
             }
             .help("Add missing checklist items to every host and port of the current engagement")
             Menu {
-                Button("Export checklists as JSON…") { exportJSON() }
-                Button("Import checklists (replace)…") { importJSON(merge: false) }
-                Button("Import checklists (merge)…") { importJSON(merge: true) }
-                Divider()
+                Button("All checklists as JSON…") { message = ChecklistTransfer.exportAll(as: .json) }
+                Button("All checklists as Markdown…") { message = ChecklistTransfer.exportAll(as: .markdown) }
+                if let id = selectedID, let selected = store.checklist(id: id) {
+                    Divider()
+                    Button("Only “\(selected.name.isEmpty ? "Untitled" : selected.name)” as JSON…") { message = ChecklistTransfer.export([selected]) }
+                }
+            } label: {
+                Label("Export", systemImage: "square.and.arrow.up")
+            }
+            .fixedSize()
+            .help("Share your checklists: JSON imports back into Luik; Markdown is for a wiki or repository (and imports too)")
+            Button {
+                message = ChecklistTransfer.importWithPrompt()
+                selectedID = store.lists.host.id
+            } label: {
+                Label("Import…", systemImage: "square.and.arrow.down")
+            }
+            .help("Import a JSON or Markdown file exported from Luik — a full set (merge or replace) or single checklists (added)")
+            Menu {
                 Button("Reset to defaults…", role: .destructive) { showReset = true }
             } label: {
                 Image(systemName: "ellipsis.circle")
@@ -177,35 +192,6 @@ struct ChecklistEditorView: View {
             get: { store.checklist(id: id) ?? Checklist(name: "", items: []) },
             set: { store.update($0) }
         )
-    }
-
-    private func exportJSON() {
-        guard let data = store.exportJSON() else { return }
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = "luik-checklists.json"
-        panel.canCreateDirectories = true
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            try data.write(to: url)
-            message = "Exported to \(url.lastPathComponent)."
-        } catch {
-            message = "Export failed: \(error.localizedDescription)"
-        }
-    }
-
-    private func importJSON(merge: Bool) {
-        let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.message = "Choose a checklists JSON file exported from Luik"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            try store.importJSON(try Data(contentsOf: url), merge: merge)
-            selectedID = store.lists.host.id
-            message = merge ? "Imported and merged." : "Imported."
-        } catch {
-            message = "Import failed: \(error.localizedDescription)"
-        }
     }
 }
 

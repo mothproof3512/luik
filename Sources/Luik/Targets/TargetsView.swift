@@ -37,6 +37,12 @@ struct TargetsView: View {
                         Button("Apply checklists to all targets") {
                             store.applyChecklistsEverywhere()
                         }
+                        Button("Export checklists…") {
+                            ChecklistTransfer.exportAll(as: .json)
+                        }
+                        Button("Import checklists…") {
+                            ChecklistTransfer.importWithPrompt()
+                        }
                         Divider()
                         Button("Export as Markdown…") {
                             exportMarkdown()

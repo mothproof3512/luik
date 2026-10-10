@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.15.3
+- **Checklists export/import** is now in plain sight: Export (all as JSON, all as Markdown, or only the selected list) and Import… buttons in the editor, plus entries in the Targets ⋯ menu and Settings › Targets. Import understands a full set (asks: merge or replace everything), single checklists (added; same names replaced; "Every system"/"Every port" replace those) and the Markdown export; imported lists get fresh ids.
+
 ## 0.15.2
 - Build: `build.sh` signs with a local "Luik Local" certificate when one exists (create it once with `scripts/make-signing-identity.sh`), so the Screen Recording permission for evidence screenshots is no longer lost after every rebuild.
 - README: screenshots of every tab (docs/screenshots), repository links in lowercase after the rename.
