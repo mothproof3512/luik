@@ -333,9 +333,11 @@ final class ChecklistStore {
                 current?.keys = keys.trimmingCharacters(in: .whitespaces) == "—" ? [] : Checklist.parseKeys(keys)
             } else if current != nil, line.hasPrefix("- ") || line.hasPrefix("* ") {
                 current?.items.append(ChecklistItem(title: String(line.dropFirst(2)).trimmingCharacters(in: .whitespaces)))
-            } else if current != nil, line.hasPrefix(">"), let last = current?.items.indices.last {
+            } else if var list = current, line.hasPrefix(">"), let last = list.items.indices.last {
                 let hintLine = String(line.dropFirst(1)).trimmingCharacters(in: .whitespaces)
-                current?.items[last].hint += (current?.items[last].hint.isEmpty == true ? "" : "\n") + hintLine
+                let existingHint = list.items[last].hint
+                list.items[last].hint = existingHint.isEmpty ? hintLine : existingHint + "\n" + hintLine
+                current = list
             }
         }
         finish()
