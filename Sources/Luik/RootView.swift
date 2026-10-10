@@ -442,7 +442,7 @@ struct SettingsView: View {
             Divider()
 
             Toggle("Log typed commands to the Log tab", isOn: $logTypedCommands)
-            caption("Every line you type in a Luik terminal tab is recorded with a timestamp. Lines typed while the terminal has echo off (password prompts of sudo, ssh, …) are never recorded. Commands pasted from One-liners or Searchsploit are always logged.")
+            caption("Every command you run in a Luik terminal tab is recorded with a timestamp — also inside ssh sessions, after tab completion and from history, because Luik reads the command from the screen when you press Enter. Anything that does not appear on screen (passwords for sudo, ssh, su, mysql -p, …) is never recorded; full-screen programs such as vim, less and htop are ignored. Commands pasted from One-liners or Searchsploit are always logged.")
             Spacer(minLength: 0)
         }
         .padding(12)
