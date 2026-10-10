@@ -5,6 +5,7 @@ import SwiftUI
 
 struct TerminalModuleView: View {
     @Environment(TerminalStore.self) private var store
+    @Environment(UIState.self) private var ui
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,6 +39,15 @@ struct TerminalModuleView: View {
                     }
             } else {
                 Spacer()
+            }
+        }
+        // The view stays mounted while other tabs are shown (RootView keeps it in a ZStack), so
+        // focus follows the tab switch here instead of onAppear/onDisappear.
+        .onChange(of: ui.module) { _, module in
+            if module == .terminal {
+                store.focusSelected(afterDelay: true)
+            } else {
+                store.resignFocus()
             }
         }
     }

@@ -313,8 +313,8 @@ app would get mouse input but no keyboard input.
 ## Making releases (for the repository owner)
 
 ```bash
-git tag v0.14.1
-git push origin v0.14.1
+git tag v0.14.2
+git push origin v0.14.2
 ```
 
 GitHub Actions builds the app on a macOS runner, creates a release and attaches `Luik.app.zip`.

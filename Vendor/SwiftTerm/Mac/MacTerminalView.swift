@@ -535,7 +535,13 @@ open class TerminalView: NSView, NSTextInputClient, NSUserInterfaceValidations, 
         updateScrollerFrame()
         updateCursorPosition()
         updateProgressBarFrame()
-        processSizeChange(newSize: frame.size)
+        // Luik: a view that SwiftUI detaches and re-attaches (switching tabs) briefly gets a zero
+        // frame. Resizing the terminal to 2 columns × 1 row reflows the whole buffer into tiny
+        // fragments and trims most of it from the scrollback, so sizes smaller than a few cells are
+        // ignored; the real size follows a moment later.
+        if newSize.width >= cellDimension.width * 4 && newSize.height >= cellDimension.height * 2 {
+            processSizeChange(newSize: frame.size)
+        }
     }
 
     public override func resizeSubviews(withOldSize oldSize: NSSize) {

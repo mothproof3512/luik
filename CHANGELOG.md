@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.14.2
+- Fix: switching to another tab and back wiped the terminal (scrollback gone, prompt redrawn, typed text lost). SwiftUI detached the terminal view and gave it a zero-size frame on the way, which made SwiftTerm reflow the shell to 2×1 cells. The terminal now stays mounted (only hidden) while other tabs are shown, SwiftTerm ignores sizes smaller than a few cells, and the keyboard focus is released when you leave the Terminal tab so keystrokes in Notes never reach the shell.
+- Scrollback raised from 500 to 5000 lines per tab.
+
 ## 0.14.1
 - Fix: typed commands were practically never logged. The old check looked at the pty's ECHO flag, which zsh/bash line editors, ssh and most interactive programs switch off themselves. Luik now reads the command from the screen when you press Enter (the cursor row after the prompt), so commands typed inside ssh sessions, recalled from history or completed with Tab are logged too; passwords never appear on screen and are therefore never recorded, and full-screen programs (alternate buffer) are ignored.
 
