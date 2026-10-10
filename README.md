@@ -377,18 +377,6 @@ app would get mouse input but no keyboard input.
 - **Build errors**: the code targets Swift 5.9+ and macOS 14+. Open an issue with the error message.
 - **Starting over**: quit Luik and delete (or rename) `~/Library/Application Support/Luik/`.
 
-## Making releases (for the repository owner)
-
-```bash
-git tag v0.15.2
-git push origin v0.15.2
-```
-
-GitHub Actions builds the app on a macOS runner, creates a release and attaches `Luik.app.zip`.
-Every push to `main` is built as well (without a release), so you can see whether it still compiles.
-The version number lives in one place, `AppInfo.version` in `Sources/Luik/Settings.swift`; `build.sh`
-reads it from there. Keep it equal to the tag.
-
 ## License
 
 Luik is available under the [MIT License](LICENSE).
