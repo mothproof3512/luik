@@ -487,7 +487,7 @@ struct SettingsView: View {
                 }
                 .help("Add missing checklist items to every host and port of the current engagement")
             }
-            let serviceCount = checklists.set.services.count
+            let serviceCount = checklists.lists.services.count
             let itemCount = checklists.allLists.reduce(0) { $0 + $1.items.count }
             caption("\(serviceCount) service checklists, \(itemCount) items in total. Stored in checklists.json in the data folder (shared by all engagements); the editor can export and import them as JSON to share a workflow.")
             Spacer(minLength: 0)

@@ -36,7 +36,7 @@ struct ChecklistEditorView: View {
                     .frame(width: 250)
                 Divider()
                 if let id = selectedID, store.checklist(id: id) != nil {
-                    ChecklistEditor(checklist: binding(for: id), isService: store.set.services.contains { $0.id == id })
+                    ChecklistEditor(checklist: binding(for: id), isService: store.lists.services.contains { $0.id == id })
                         .id(id)
                 } else {
                     VStack {
@@ -53,11 +53,11 @@ struct ChecklistEditorView: View {
             footer
         }
         .frame(width: 900, height: 620)
-        .onAppear { selectedID = store.set.host.id }
+        .onAppear { selectedID = store.lists.host.id }
         .confirmationDialog("Replace all checklists with the built-in defaults?", isPresented: $showReset) {
             Button("Reset to defaults", role: .destructive) {
                 store.resetToDefaults()
-                selectedID = store.set.host.id
+                selectedID = store.lists.host.id
             }
         } message: {
             Text("Your own lists, keys and hints are lost. Export first if you want to keep them.")
@@ -68,13 +68,13 @@ struct ChecklistEditorView: View {
         VStack(spacing: 0) {
             List(selection: $selectedID) {
                 Section("Always") {
-                    ChecklistRowLabel(checklist: store.set.host, icon: "desktopcomputer", subtitle: "under every host")
-                        .tag(store.set.host.id)
-                    ChecklistRowLabel(checklist: store.set.port, icon: "network", subtitle: "ports without a service match")
-                        .tag(store.set.port.id)
+                    ChecklistRowLabel(checklist: store.lists.host, icon: "desktopcomputer", subtitle: "under every host")
+                        .tag(store.lists.host.id)
+                    ChecklistRowLabel(checklist: store.lists.port, icon: "network", subtitle: "ports without a service match")
+                        .tag(store.lists.port.id)
                 }
                 Section("Per service — first match wins") {
-                    ForEach(store.set.services) { checklist in
+                    ForEach(store.lists.services) { checklist in
                         ChecklistRowLabel(checklist: checklist, icon: checklist.enabled ? "list.bullet.rectangle" : "list.bullet.rectangle.portrait",
                                           subtitle: checklist.keys.isEmpty ? "no keys yet — never matches" : checklist.keysText)
                             .opacity(checklist.enabled ? 1 : 0.5)
@@ -97,9 +97,9 @@ struct ChecklistEditorView: View {
                 }
                 .help("Add a service checklist")
                 Button {
-                    if let id = selectedID, store.set.services.contains(where: { $0.id == id }) {
+                    if let id = selectedID, store.lists.services.contains(where: { $0.id == id }) {
                         store.deleteService(id)
-                        selectedID = store.set.host.id
+                        selectedID = store.lists.host.id
                     }
                 } label: {
                     Image(systemName: "minus")
@@ -128,7 +128,7 @@ struct ChecklistEditorView: View {
 
     private var isServiceSelected: Bool {
         guard let id = selectedID else { return false }
-        return store.set.services.contains { $0.id == id }
+        return store.lists.services.contains { $0.id == id }
     }
 
     private var footer: some View {
@@ -201,7 +201,7 @@ struct ChecklistEditorView: View {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             try store.importJSON(try Data(contentsOf: url), merge: merge)
-            selectedID = store.set.host.id
+            selectedID = store.lists.host.id
             message = merge ? "Imported and merged." : "Imported."
         } catch {
             message = "Import failed: \(error.localizedDescription)"
@@ -268,7 +268,7 @@ struct ChecklistEditor: View {
                     keySummary
                 }
             } else {
-                Text(checklist.id == ChecklistStore.shared.set.host.id
+                Text(checklist.id == ChecklistStore.shared.lists.host.id
                      ? "These items are added under every host (system)."
                      : "These items are added under ports that match none of the service checklists.")
                     .font(.caption)

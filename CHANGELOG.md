@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.15.1
+- Fix: 0.15.0 did not compile (a property named `set` in the checklist store clashed with Swift's setter keyword).
+
 ## 0.15.0
 - **Checklist editor** (Targets ⋯ menu › Edit checklists…, Settings › Targets, Tools menu, ⌘K): the work-item nodes are now proper checklists — Every system, Every port (fallback) and one per service — with a name, the service names/port numbers they apply to, an enable switch, drag-to-reorder lists and an optional **hint per item** that becomes the node's starting notes with $RHOST/$RPORT/$LHOST/$LPORT filled in. A tester shows which list a service/port gets; export/import as JSON to share a workflow; "Apply to current targets" adds missing items to existing hosts and ports. Existing customised templates are migrated once.
 - **Colour schemes** (Settings › Colours): the Luik default plus ten Sanzo Wada combinations (A Dictionary of Color Combinations, 1933) for panel tint, accent, terminal text, cursor and selection.

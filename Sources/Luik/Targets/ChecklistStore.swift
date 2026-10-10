@@ -88,35 +88,35 @@ final class ChecklistStore {
 
     private static let fileName = "checklists.json"
 
-    var set: ChecklistSet
+    var lists: ChecklistSet
     /// The editor sheet.
     var showEditor = false
     @ObservationIgnored private var saver = Debouncer()
 
     init() {
         if let stored = Storage.load(ChecklistSet.self, from: ChecklistStore.fileName) {
-            set = stored
+            lists = stored
         } else {
-            set = ChecklistStore.migratedFromSettings() ?? ChecklistStore.defaults
-            Storage.save(set, to: ChecklistStore.fileName)
+            lists = ChecklistStore.migratedFromSettings() ?? ChecklistStore.defaults
+            Storage.save(lists, to: ChecklistStore.fileName)
         }
     }
 
     // MARK: - Lookup
 
-    var hostItems: [ChecklistItem] { set.host.items }
+    var hostItems: [ChecklistItem] { lists.host.items }
 
     /// The checklist a port gets: the first enabled service list whose keys match the service name
     /// (as nmap/Nessus report it) or the port number, otherwise the generic port list.
     func checklist(forService service: String, port: Int) -> Checklist {
-        set.services.first { $0.matches(service: service, port: port) } ?? set.port
+        lists.services.first { $0.matches(service: service, port: port) } ?? lists.port
     }
 
     func items(forService service: String, port: Int) -> [ChecklistItem] {
         checklist(forService: service, port: port).items
     }
 
-    var allLists: [Checklist] { [set.host, set.port] + set.services }
+    var allLists: [Checklist] { [lists.host, lists.port] + lists.services }
 
     func checklist(id: UUID) -> Checklist? {
         allLists.first { $0.id == id }
@@ -125,12 +125,12 @@ final class ChecklistStore {
     // MARK: - Editing
 
     func update(_ checklist: Checklist) {
-        if checklist.id == set.host.id {
-            set.host = checklist
-        } else if checklist.id == set.port.id {
-            set.port = checklist
-        } else if let index = set.services.firstIndex(where: { $0.id == checklist.id }) {
-            set.services[index] = checklist
+        if checklist.id == lists.host.id {
+            lists.host = checklist
+        } else if checklist.id == lists.port.id {
+            lists.port = checklist
+        } else if let index = lists.services.firstIndex(where: { $0.id == checklist.id }) {
+            lists.services[index] = checklist
         }
         scheduleSave()
     }
@@ -138,31 +138,31 @@ final class ChecklistStore {
     @discardableResult
     func addService(name: String = "New service", keys: [String] = []) -> Checklist {
         let checklist = Checklist(name: name, keys: keys, items: [ChecklistItem(title: "Enumeration")])
-        set.services.append(checklist)
+        lists.services.append(checklist)
         scheduleSave()
         return checklist
     }
 
     func deleteService(_ id: UUID) {
-        set.services.removeAll { $0.id == id }
+        lists.services.removeAll { $0.id == id }
         scheduleSave()
     }
 
     func moveService(from source: IndexSet, to destination: Int) {
-        set.services.move(fromOffsets: source, toOffset: destination)
+        lists.services.move(fromOffsets: source, toOffset: destination)
         scheduleSave()
     }
 
     func moveService(_ id: UUID, up: Bool) {
-        guard let index = set.services.firstIndex(where: { $0.id == id }) else { return }
+        guard let index = lists.services.firstIndex(where: { $0.id == id }) else { return }
         let target = up ? index - 1 : index + 1
-        guard target >= 0, target < set.services.count else { return }
-        set.services.swapAt(index, target)
+        guard target >= 0, target < lists.services.count else { return }
+        lists.services.swapAt(index, target)
         scheduleSave()
     }
 
     func resetToDefaults() {
-        set = ChecklistStore.defaults
+        lists = ChecklistStore.defaults
         scheduleSave()
         ActivityLog.shared.record(.action, "Checklists reset to the defaults", source: "Checklists")
     }
@@ -172,7 +172,7 @@ final class ChecklistStore {
     func exportJSON() -> Data? {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return try? encoder.encode(set)
+        return try? encoder.encode(lists)
     }
 
     /// Replaces or merges the checklists from an exported file.
@@ -180,7 +180,7 @@ final class ChecklistStore {
         let imported = try JSONDecoder().decode(ChecklistSet.self, from: data)
         if merge {
             // Same-named service lists are replaced, new ones appended; the generic lists are replaced.
-            var services = set.services
+            var services = lists.services
             for list in imported.services {
                 if let index = services.firstIndex(where: { $0.name.lowercased() == list.name.lowercased() }) {
                     services[index] = list
@@ -188,9 +188,9 @@ final class ChecklistStore {
                     services.append(list)
                 }
             }
-            set = ChecklistSet(host: imported.host, port: imported.port, services: services)
+            lists = ChecklistSet(host: imported.host, port: imported.port, services: services)
         } else {
-            set = imported
+            lists = imported
         }
         scheduleSave()
         ActivityLog.shared.record(.action, "Checklists imported (\(imported.services.count) service lists)", source: "Checklists")
@@ -221,7 +221,7 @@ final class ChecklistStore {
     func scheduleSave() {
         saver.call { [weak self] in
             guard let self else { return }
-            Storage.save(self.set, to: ChecklistStore.fileName)
+            Storage.save(self.lists, to: ChecklistStore.fileName)
         }
     }
 
