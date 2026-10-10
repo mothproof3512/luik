@@ -1,0 +1,324 @@
+<p align="center">
+  <img src="Resources/AppIcon-preview.png" width="96" alt="Luik">
+</p>
+
+# Luik
+
+[![Build](https://github.com/mothproof3512/Luik/actions/workflows/build.yml/badge.svg)](https://github.com/mothproof3512/Luik/actions/workflows/build.yml)
+![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue)
+![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+A Guake-style drop-down app for macOS, built for pentesters: press a hotkey (⌘Esc by default)
+and a panel slides down from the top of the screen with four tabs:
+
+| Tab | What it does |
+|---|---|
+| **Terminal** | A real terminal (SwiftTerm) with multiple tabs, running your own shell as a login shell |
+| **Notes** | Notepad with multiple notes, saved automatically |
+| **One-liners** | A list of commands with a **Copy** button; `$RHOST` is replaced by the target you enter; commands can also be pasted straight into the terminal |
+| **Targets** | Import nmap, Nessus, nuclei or masscan output (one host or many IPs at once). One node per system, one node per port, and work-item nodes underneath with status and notes, so you can work systematically; scanner findings become nodes under the port |
+| **Findings** | The findings of the engagement with a CVSS 3.1 calculator, affected hosts/services, description/impact/evidence/recommendation/references and status — created by hand, from a target node, from a knowledge-base record or from a Nessus/nuclei import; exported as a Markdown or HTML report |
+| **Knowledge base** | Import your own findings sheet (.xlsx, .csv or .json) and search every column instantly — a product name, version string, CVE, CWE or technique — then read the full finding, with links clickable and matches highlighted |
+| **Log** | Timestamped activity log: commands pasted from One-liners/Searchsploit, commands typed in Luik's terminal tabs (never while echo is off, so no passwords), imports and your own notes — exportable as Markdown for the report |
+| **Chef** | CyberChef-style data kitchen: build a recipe of operations (Base64/Base32/hex/URL/HTML/Unicode, hashes and HMAC, JWT decode, gzip/zlib, JSON, regex, extractors for IPs/URLs/emails/hashes/CVEs, defang, CIDR, timestamps) and the output updates as you type; a magic detector suggests decodings |
+| **Searchsploit** | Exploit-DB search built in: download the official database once, then search it offline like searchsploit, with version-aware matching (`apache 2.4.49` also finds `< 2.4.50` and `2.4.x` entries). Every hit comes with copy-and-paste command lines for the machine where you want the exploit |
+
+Everything is stored locally as JSON in `~/Library/Application Support/Luik/`.
+
+## Installing
+
+### Option 1: build it yourself (recommended)
+
+Requires macOS 14 (Sonoma) or newer and Xcode **or** just the Command Line Tools
+(`xcode-select --install`). No other dependencies: SwiftTerm is bundled as source in
+`Vendor/`, so the build needs no network access.
+
+```bash
+git clone https://github.com/mothproof3512/Luik.git
+cd Luik
+./build.sh --install     # builds build/Luik.app, copies it to /Applications and launches it
+```
+
+Build only: `./build.sh` (result in `build/Luik.app`). Launch without installing: `./build.sh --run`.
+If you have Xcode, you can also open `Package.swift` in Xcode and build/debug from there.
+A locally built app launches without fuss: it is ad-hoc signed and not quarantined.
+
+### Option 2: ready-made download
+
+For every `v*` tag, GitHub Actions builds a `Luik.app.zip` and attaches it to the
+[releases](https://github.com/mothproof3512/Luik/releases). That app is not notarized (that
+requires a paid Apple Developer account), so Gatekeeper blocks it after download. Fix: unzip,
+drag `Luik.app` to `/Applications` and remove the quarantine flag once:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Luik.app
+```
+
+(Or: System Settings › Privacy & Security › "Open Anyway" after the first attempt.)
+
+Luik has no Dock icon; you find it as a ⌄ icon in the menu bar (show/hide, settings, quit).
+
+## Usage
+
+- **Hotkey**: **⌘ Esc** by default. To change it: gear icon top right › General › click the hotkey
+  field › press the key or combination you want (e.g. F12 like Guake, ⌃`, ⌥Space, ⌘⇧T).
+  A bare Esc cancels recording, ⌫ clears the hotkey. The list icon next to the field offers a
+  few common choices. Letters and digits only work together with ⌃, ⌥ or ⌘, otherwise you could
+  never type that key again. If macOS cannot register the combination (because another app
+  already owns it), you see that right under the field. If you pick a function key: on a MacBook
+  keyboard that is `fn`+F-key, unless "Use F1, F2, etc. keys as standard function keys" is
+  enabled (System Settings › Keyboard).
+- The panel appears on the screen the mouse is on, 55% high and full width by default (adjustable).
+- **Transparency**: Settings › Appearance › *Background opacity* applies to the whole panel
+  (every tab). *Blur* blurs what is behind it (macOS HUD style); turn blur off for full
+  transparency like Guake. *Extra terminal opacity* adds a dark layer under the terminal text only.
+- **Corners and animation**: Settings › Appearance › *Corner radius* (0 = square) and *Round the
+  top corners too*; *Animation* sets how fast the panel slides down (all the way left = instant,
+  no animation).
+- By default the panel hides as soon as another app gets focus (can be turned off in settings).
+  When hiding, the app you were using before gets focus back.
+
+### Keyboard shortcuts inside the panel
+
+| Keys | Action |
+|---|---|
+| ⌘1 … ⌘9 | Terminal / Notes / One-liners / Targets / Findings / Knowledge base / Searchsploit / Chef / Log |
+| ⌘T, ⌘W | New / close terminal tab |
+| ⌘⇧] , ⌘⇧[ | Next / previous terminal tab |
+| ⌘C / ⌘V | Copy / paste (also in the terminal) |
+| ⌘K | Search everything |
+| ⌘N | New finding |
+| ⌘⇧E | Capture evidence screenshot (⌘⌥⇧E keeps Luik visible) |
+| ⌘F / ⌘G / ⌘⇧G | Find in the terminal scrollback (and in text fields) |
+| ⌘, | Settings |
+| ⌘Q | Quit Luik |
+
+### One-liners
+
+- Fill in **$RHOST** (the target), **$LHOST** (your own address — the antenna button detects it,
+  preferring VPN tunnels such as utun/tun) and **$LPORT**; they are replaced in commands when
+  copying or pasting. **export** runs `export RHOST=… LHOST=… LPORT=…` in the active terminal tab
+  so the variables work there too. The older forms `<ip>`, `<target>` and `$TARGET` still work.
+- **Copy** puts the command on the clipboard; the terminal icon pastes it into the active terminal
+  tab (without Enter, so you can still edit it).
+- Edit, delete and add in the app; the list lives in `snippets.json`. The bundled list contains
+  recon and enumeration commands as a starting point — change it as you like.
+
+### Targets (nmap, Nessus, nuclei, masscan)
+
+1. Click **Import scan** and paste the output, or choose one or more files; the format is detected.
+   Supported: nmap normal screen output (`nmap ...` / `-oN`), grepable (`-oG`) and XML (`-oX`);
+   Nessus exports (`.nessus`); nuclei JSON (`-json`, `-jsonl`, `-je`); masscan (`-oL`, `-oJ`, `-oG`).
+   Tip: scan with `-oA scans/name` and you have all three nmap formats. Large files (Nessus exports)
+   are imported straight away instead of being loaded into the text box.
+   For Nessus and nuclei you choose from which severity a **node per scanner finding** is added under
+   the port (plugin name, severity, synopsis/description/solution/output in the notes) and from which
+   severity an entry in the **Findings** tab is created — one per plugin/template with every affected
+   host:port, merged into the existing entry when you import again.
+2. Every host gets a node (IP + hostname), with underneath:
+   - a node per open port (service/version as subtitle, NSE script output in the notes),
+   - under every port the **work-item nodes** for that service — SMB, HTTP, SSH, LDAP, Kerberos,
+     MSSQL, SNMP, RDP and about twenty more have their own checklist (Settings › Targets › Per
+     service, editable); unknown services get the generic list (Enumeration, Versions & CVEs,
+     Misconfigurations, Credentials, Exploitation, Notes),
+   - under the host itself the host work items (Recon & enumeration, Vulnerabilities, Initial
+     access, Privilege escalation, Post-exploitation & loot).
+3. Importing the same host(s) again only adds new ports/information; nothing is duplicated.
+4. Every node has a status (click the circle: to do → in progress → done → N/A) and a notes field.
+   Hosts and ports show their progress (handled/total). Right-click for sub-nodes, status or delete.
+5. The templates are editable in the settings (comma-separated). The ⋯ menu exports everything as
+   Markdown.
+6. Select a port node and the **Suggestions** panel shows matching Exploit-DB entries (product and
+   version taken from the nmap service description, version-aware) and knowledge-base findings;
+   one click opens the hit in its own tab.
+
+### Findings and the report
+
+Every finding has a title, severity, an optional CVSS 3.1 vector (the calculator shows the eight
+base metrics as pickers plus temporal metrics; paste a vector from an advisory and press Apply; the
+severity follows the score), the affected hosts/services (one per line; **Add** inserts the selected
+Targets node), description, impact, evidence (the camera button links a screenshot here),
+recommendation, references, a status (open → confirmed → reported → resolved / false positive) and a
+source. Findings come from four places: the **+** button, the **Finding** button on a Targets node
+(its notes become the evidence, host:port the affected service), **Create finding** on a knowledge-base
+record (description/impact/recommendation/references are mapped by column name) and Nessus/nuclei
+imports. The ⋯ menu exports the whole set as a **Markdown** or **HTML report** (summary table, then
+one section per finding, most severe first); Word opens the HTML directly (File › Open) and
+`pandoc findings.html -o findings.docx` makes a .docx.
+
+### Engagements and scope
+
+The briefcase menu in the top bar switches between engagements. Targets, notes, findings, the log and
+the evidence screenshots (a subfolder per engagement) are kept apart; one-liners, the knowledge base,
+Exploit-DB, Chef recipes and connections are shared. **Manage engagements…** holds client, reference,
+period, notes and the **scope**: one entry per line as CIDR (`10.0.0.0/24`), address, range
+(`10.0.0.10-10.0.0.20` or `10.0.0.10-20`), hostname (`example.com` covers its subdomains, `*.example.com`
+too) or IPv6 prefix, plus exclusions that win over the scope. A **Check** field tells you whether an
+address is in scope; hosts outside the scope get an orange shield in Targets and are listed in the
+import summary. Existing data from before 0.14 lands in the "Default engagement" automatically.
+
+### Knowledge base
+
+1. Click **Import** and choose your findings sheet: an Excel file (`.xlsx`), CSV/TSV or JSON. Every
+   sheet in the workbook becomes a searchable table; the header is the first row with at least two
+   filled cells, so a title row above the real header is fine. No third-party code is involved: the
+   .xlsx is unpacked with the system's `unzip` and read with Foundation's XML parser.
+2. Type in the search field: every term must occur somewhere in the row (any column); use
+   `"quotes"` for a phrase. Hits in the ID or title column rank first. Columns named like
+   *Scope*/*Category*, *Severity*/*CVSS* and *Kill chain phase*/*Tactic* become filter menus
+   automatically (phases are listed in attack order).
+3. Select a hit to read the whole finding: every non-empty column, search terms highlighted, URLs
+   clickable. **Copy as Markdown** puts it on the clipboard; **Add to target** appends it to the
+   notes of the node currently selected in the Targets tab.
+4. A re-import replaces the previous copy; **Remove knowledge base** (⋯ menu) deletes Luik's copy.
+   The imported data lives only in `~/Library/Application Support/Luik/knowledgebase.json` — it is
+   never part of this repository or the app.
+
+### Searchsploit
+
+1. Click **Download** once: Luik fetches Exploit-DB's own `files_exploits.csv` (about 10 MB, the
+   file searchsploit searches) from the official GitLab repository and keeps it in its data folder.
+   No network is needed afterwards; click **Update** whenever you want the latest entries. Without
+   internet access, import the file from a local searchsploit installation instead (⋯ menu; a
+   Homebrew/Kali copy is detected automatically).
+2. Search like you would with searchsploit: all terms must match (title, platform, type, CVE codes,
+   tags, path), `"quotes"` keep a phrase together, `CVE-…` works too. Version-like terms are matched
+   smartly: `apache 2.4.49` finds exact mentions first, then ranges such as `< 2.4.50`,
+   `2.4.0 - 2.4.49` or `2.4.49 and prior`, then families such as `2.4.x` or `2.4`.
+3. Filter on platform and type, show verified entries only, hide DoS entries, and sort by relevance
+   or date.
+4. Select a hit for the command lines, each with a Copy button (or **Copy all commands**):
+   `searchsploit -m/-x/-p <id>`, the Kali path, `wget`/`curl` downloads of the exact file from
+   GitLab or exploit-db.com, a run/compile hint based on the file type, and a one-liner to serve the
+   file to another machine. The terminal icon pastes a command into Luik's own terminal.
+
+### Search everything (⌘K)
+
+One box over notes, one-liners, targets (hosts, ports, work items), findings, knowledge-base records,
+Exploit-DB, Chef operations, the log, engagements ("Switch to …") and actions such as "Go to Targets",
+"New finding" or "New terminal tab".
+↑↓ to choose, ↩ to open the hit in its own tab, esc to close.
+
+### Evidence screenshots (⌘⇧E)
+
+Runs macOS's own `screencapture -i`: drag an area, or press space and click a window. The PNG is
+saved with a timestamp in `~/Documents/Luik Evidence` (Settings › Tools), a Markdown image link is
+appended to the notes of the selected target node, and the capture is written to the Log. By default
+Luik hides itself first so you can capture what is behind it; ⌘⌥⇧E keeps it visible. macOS asks once
+for Screen Recording permission.
+
+### Terminal connections
+
+The **Connect** menu in the terminal tab bar holds saved connections (ssh with a jump host, a
+Kali box, …): each is a command that opens in a new tab, with `$RHOST`/`$LHOST`/`$LPORT` filled in.
+⌘F opens SwiftTerm's find bar to search the scrollback.
+
+### Log
+
+Everything that happens during an engagement, with a timestamp: commands pasted into the terminal
+from One-liners or Searchsploit, commands you type in Luik's terminal tabs (lines typed while the
+terminal has echo off — password prompts — are never recorded; the whole feature can be turned off
+under Settings › Terminal), nmap/knowledge-base/Exploit-DB imports, findings added to targets, and
+notes you add yourself. Filter by kind, search, copy or export as Markdown grouped per day.
+
+### Chef
+
+Operations on the left, the recipe in the middle, input and output on the right — the output is
+recalculated on every change. Click an operation to add it as a step; steps have parameters
+(delimiter, key, shift, regex, …), can be disabled, reordered or removed, and show the byte count
+or the error after each step. Paste something unknown and the magic bar suggests what it looks
+like (Base64, hex, URL-encoded, JWT, JSON, Unix time, …) — one click adds the decoder. **Use as
+input** feeds the output back in for the next round; recipes can be saved by name. Everything runs
+locally; nothing is sent anywhere.
+
+**Identify hash** (one hash or hash-bearing line per input line) names the likely algorithms with
+the hashcat mode and john format, splits them into *likely* and *less likely*, and ends with a
+ready-made `hashcat -m … / john --format=…` line. It understands more than bare digests: `hash:salt`
+pairs (with the vBulletin/MyBB/Joomla/osCommerce salt lengths), `user:hash` and /etc/shadow lines,
+pwdump/secretsdump lines (NT in field 4, LM in field 3, empty-password and disabled-LM hashes
+pointed out), NetNTLMv1/v2 captures and Responder log lines, Kerberos (TGS-REP, AS-REP, pre-auth
+for etypes 17/18/23), DCC2, Unix crypt (descrypt, bsdicrypt, md5crypt, bcrypt, sha256/sha512crypt,
+yescrypt, Argon2, sunmd5, sha1crypt), PBKDF2 and scrypt notations, Django/phpass/Drupal/WordPress,
+LDAP `{SSHA}`-style and AIX hashes, MySQL/PostgreSQL/MSSQL/Oracle/Sybase, Cisco (types 4/5/7/8/9,
+ASA/PIX, whole `enable secret`/`password 7` configuration lines), Juniper `$9$`, FortiGate, Office,
+PDF, ZIP/RAR/7z, KeePass, GPG, SSH keys, BitLocker, wallets, WPA, JWTs, Base64 digests, `0x`
+prefixes, checksum lines and colon-separated fingerprints. **Cisco type 7 decode** and **Juniper $9$
+decode** reverse those two obfuscations (the magic bar spots them too).
+
+## Project layout
+
+```
+Package.swift              SwiftPM manifest (macOS 14+, Swift 5.9+)
+build.sh                   builds and bundles Luik.app
+Sources/Luik/
+  main.swift               starts NSApplication
+  AppDelegate.swift        menu bar item, main menu, hotkey, wiring of all modules
+  HotKey.swift             global hotkey (Carbon RegisterEventHotKey, no extra permissions needed)
+  HotKeyRecorder.swift     recorder field for choosing your own hotkey
+  DropdownPanel.swift      the sliding panel (position, animation, handing focus back)
+  RootView.swift           tab bar + settings
+  Settings.swift           keys and defaults
+  Storage.swift            JSON storage + autosave
+  Terminal/                SwiftTerm sessions and tabs
+  Notes/                   notes
+  Snippets/                one-liners
+  Targets/                 nmap/Nessus/nuclei/masscan parsers, tree model, import/export and UI
+  KnowledgeBase/           xlsx/csv/json import, search index and UI
+  Exploits/                Exploit-DB (searchsploit) database, smart search and commands
+  Chef/                    CyberChef-style operations, recipe engine, hash identifier and UI
+  Findings/                finding model, CVSS 3.1 calculator, store with report export, UI
+  Engagements/             engagement store (per-engagement files, scope matcher) and manager UI
+  Activity/                activity log store, typed-command capture and UI
+  Palette/                 ⌘K search over everything
+  Evidence/                screenshot evidence via screencapture
+  UpdateCheck.swift        GitHub release check
+Vendor/SwiftTerm/          SwiftTerm 1.11.2 (MIT) as source
+Resources/AppIcon.iconset  app icon
+```
+
+### Remote desktops and VMs (Windows App, Microsoft Remote Desktop, Parallels, VMware)
+
+Luik's hotkey is system-wide: while it is registered, that key never reaches a remote desktop or
+VM. If you want ⌘Esc (or whatever you chose) passed through there, enter the app's name under
+Settings › General › **Pause hotkey in** (e.g. `Windows App, Remote Desktop`). While that app is
+active the hotkey is paused; open Luik from the menu bar icon in the meantime. As soon as you
+switch to another app the hotkey works again.
+
+When hiding, Luik hands focus back to the app that was active before (macOS 14 "cooperative
+activation"). If that fails, Luik withdraws itself so macOS activates the next app; otherwise that
+app would get mouse input but no keyboard input.
+
+## Troubleshooting
+
+- **The hotkey does nothing**: macOS or another app probably owns the combination (for function
+  keys: `fn`). Pick another hotkey via the menu bar icon › Settings.
+- **Keyboard stops working in a remote desktop (mouse works)**: quit Luik for a moment (menu bar
+  icon › Quit Luik). If it works again, add the remote desktop app's name under "Pause hotkey in"
+  and use version 0.2 or newer (better focus hand-back). If it is also broken without Luik, look
+  at "Secure Keyboard Entry" (Terminal/iTerm2 menu): with that enabled, remote desktop clients on
+  macOS often get no keyboard input at all.
+- **The panel does not appear over a full-screen app**: Luik uses a floating panel that is allowed
+  over full-screen apps; if that fails, switch Spaces briefly.
+- **Build errors**: the code targets Swift 5.9+ and macOS 14+. Open an issue with the error message.
+- **Starting over**: quit Luik and delete (or rename) `~/Library/Application Support/Luik/`.
+
+## Making releases (for the repository owner)
+
+```bash
+git tag v0.13.0
+git push origin v0.13.0
+```
+
+GitHub Actions builds the app on a macOS runner, creates a release and attaches `Luik.app.zip`.
+Every push to `main` is built as well (without a release), so you can see whether it still compiles.
+The version number lives in one place, `AppInfo.version` in `Sources/Luik/Settings.swift`; `build.sh`
+reads it from there. Keep it equal to the tag.
+
+## License
+
+Luik is available under the [MIT License](LICENSE).
+
+Luik bundles [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) by Miguel de Icaza (version
+1.11.2, unmodified, MIT License) as source in `Vendor/SwiftTerm/`; its license is in
+`Vendor/SwiftTerm/LICENSE`.
