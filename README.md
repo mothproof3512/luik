@@ -10,7 +10,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A Guake-style drop-down app for macOS, built for pentesters: press a hotkey (⌘Esc by default)
-and a panel slides down from the top of the screen with four tabs:
+and a panel slides down from the top of the screen with multiple tabs:
 
 | Tab | What it does |
 |---|---|
