@@ -20,7 +20,7 @@ and a panel slides down from the top of the screen with multiple tabs:
 | **Targets** | Import nmap, Nessus, nuclei or masscan output (one host or many IPs at once). One node per system, one node per port, and work-item nodes underneath with status and notes, so you can work systematically; scanner findings become nodes under the port |
 | **Findings** | The findings of the engagement with a CVSS 3.1 calculator, affected hosts/services, description/impact/evidence/recommendation/references and status — created by hand, from a target node, from a knowledge-base record or from a Nessus/nuclei import; exported as a Markdown or HTML report |
 | **Knowledge base** | Import your own findings sheet (.xlsx, .csv or .json) and search every column instantly — a product name, version string, CVE, CWE or technique — then read the full finding, with links clickable and matches highlighted |
-| **Log** | Timestamped activity log: commands pasted from One-liners/Searchsploit, commands typed in Luik's terminal tabs (never while echo is off, so no passwords), imports and your own notes — exportable as Markdown for the report |
+| **Log** | Timestamped activity log: commands pasted from One-liners/Searchsploit, every command you run in Luik's terminal tabs (read from the screen when you press Enter — also inside ssh sessions; passwords never appear on screen, so they are never logged), imports and your own notes — exportable as Markdown for the report |
 | **Chef** | CyberChef-style data kitchen: build a recipe of operations (Base64/Base32/hex/URL/HTML/Unicode, hashes and HMAC, JWT decode, gzip/zlib, JSON, regex, extractors for IPs/URLs/emails/hashes/CVEs, defang, CIDR, timestamps) and the output updates as you type; a magic detector suggests decodings |
 | **Searchsploit** | Exploit-DB search built in: download the official database once, then search it offline like searchsploit, with version-aware matching (`apache 2.4.49` also finds `< 2.4.50` and `2.4.x` entries). Every hit comes with copy-and-paste command lines for the machine where you want the exploit |
 
@@ -217,10 +217,17 @@ Kali box, …): each is a command that opens in a new tab, with `$RHOST`/`$LHOST
 ### Log
 
 Everything that happens during an engagement, with a timestamp: commands pasted into the terminal
-from One-liners or Searchsploit, commands you type in Luik's terminal tabs (lines typed while the
-terminal has echo off — password prompts — are never recorded; the whole feature can be turned off
-under Settings › Terminal), nmap/knowledge-base/Exploit-DB imports, findings added to targets, and
-notes you add yourself. Filter by kind, search, copy or export as Markdown grouped per day.
+from One-liners or Searchsploit, every command you run in Luik's terminal tabs, scanner and
+knowledge-base imports, findings added to targets, evidence screenshots and notes you add yourself.
+Filter by kind, search, copy or export as Markdown grouped per day.
+
+Typed commands are taken from the screen at the moment you press Enter: the text on the cursor row
+after the prompt. That makes it work in every shell and interactive program (zsh/bash line editors,
+ssh sessions on other machines, msfconsole, python…), with tab completion and commands recalled from
+history, and it is what keeps passwords out of the log: whatever you type at a prompt that does not
+echo (sudo, ssh, su, `mysql -p`, `read -s`, also on the remote side) never appears on screen and is
+never recorded. Full-screen programs (vim, less, htop, tmux) use the alternate screen and are
+ignored. The feature can be turned off under Settings › Terminal.
 
 ### Chef
 
@@ -306,8 +313,8 @@ app would get mouse input but no keyboard input.
 ## Making releases (for the repository owner)
 
 ```bash
-git tag v0.13.0
-git push origin v0.13.0
+git tag v0.14.1
+git push origin v0.14.1
 ```
 
 GitHub Actions builds the app on a macOS runner, creates a release and attaches `Luik.app.zip`.

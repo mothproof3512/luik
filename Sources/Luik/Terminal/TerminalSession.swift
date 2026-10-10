@@ -15,28 +15,162 @@ struct TerminalViewRepresentable: NSViewRepresentable {
     func updateNSView(_ nsView: LoggingTerminalView, context: Context) {}
 }
 
-/// SwiftTerm's terminal view plus a hook on the keyboard input that goes to the shell, so typed
-/// commands can be written to the activity log. Lines typed while the pty has echo switched off
-/// (password prompts) are never recorded.
+/// SwiftTerm's terminal view plus a hook on the input that goes to the shell, so the command the
+/// user runs can be written to the activity log.
+///
+/// Shells and most interactive programs (the zsh/bash line editors, ssh, msfconsole, python…) put
+/// the pty in raw mode and echo keystrokes themselves, so the pty's ECHO flag says nothing useful
+/// about what the user is typing. Instead, when Enter is pressed the view reads the screen: the
+/// text that appeared on the cursor row after the prompt is what was run — including commands
+/// recalled from history, tab completions and commands typed inside an ssh session. Input that
+/// never shows up on screen (a password at a local or remote prompt) is therefore never logged,
+/// and full-screen programs (vim, less, htop) are ignored because they use the alternate buffer.
 final class LoggingTerminalView: LocalProcessTerminalView {
-    private let recorder = TypedLineRecorder()
-    /// Called on the main thread with every completed line.
+    /// Called on the main thread with every command the user ran.
     var onTypedLine: ((String) -> Void)?
+    /// Set by TerminalSession around text Luik sends itself (one-liners, connections).
+    var programmaticInput = false
+
+    private var lineActive = false
+    private var startRow = 0
+    private var promptPrefix = ""
+    private var lastPrompt = ""
+    private var typedBytes: [UInt8] = []
+    private var inEscape = false
+    private var escapeLength = 0
+    private var lastProgrammaticText = ""
 
     override func send(source: TerminalView, data: ArraySlice<UInt8>) {
-        if let line = recorder.feed(data), echoIsOn {
-            let callback = onTypedLine
-            DispatchQueue.main.async { callback?(line) }
-        }
+        inspect(data)
         super.send(source: source, data: data)
     }
 
-    /// True unless the shell (or a program such as sudo/ssh) turned echo off on the pty.
-    private var echoIsOn: Bool {
-        guard let process, process.childfd >= 0 else { return true }
+    private func inspect(_ data: ArraySlice<UInt8>) {
+        guard !data.isEmpty else { return }
+        if programmaticInput {
+            let text = String(decoding: data, as: UTF8.self)
+            if text.contains("\n") || text.contains("\r") {
+                // Luik ran the command itself; it is already in the log as "Command".
+                lineActive = false
+                lastProgrammaticText = ""
+            } else {
+                // Pasted for editing: the line starts here, with the prompt as it is right now.
+                if !lineActive { beginLine() }
+                typedBytes.append(contentsOf: data.filter { $0 >= 0x20 })
+                lastProgrammaticText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            return
+        }
+        if !lineActive { beginLine() }
+        for byte in data {
+            if inEscape {
+                escapeLength += 1
+                if escapeLength == 1 {
+                    if byte != 0x5B && byte != 0x4F { inEscape = false }
+                } else if byte >= 0x40 && byte <= 0x7E {
+                    inEscape = false
+                }
+                continue
+            }
+            switch byte {
+            case 0x1B:
+                inEscape = true
+                escapeLength = 0
+            case 0x0D, 0x0A:
+                finishLine()
+                return // the remaining lines of a multi-line paste are not followed
+            case 0x03, 0x04: // Ctrl-C, Ctrl-D: the line is abandoned
+                lineActive = false
+                return
+            case 0x7F, 0x08:
+                if !typedBytes.isEmpty { typedBytes.removeLast() }
+            case 0x15: // Ctrl-U clears the line
+                typedBytes.removeAll()
+            default:
+                if byte >= 0x20 { typedBytes.append(byte) }
+            }
+        }
+    }
+
+    private func beginLine() {
+        let terminal = getTerminal()
+        lineActive = true
+        typedBytes.removeAll()
+        inEscape = false
+        startRow = terminal.cursorScrollInvariantRow
+        promptPrefix = terminal.scrollInvariantLineText(row: startRow, endCol: terminal.cursorColumn) ?? ""
+    }
+
+    private func finishLine() {
+        let terminal = getTerminal()
+        lineActive = false
+        guard !terminal.isCurrentBufferAlternate else { return } // vim, less, htop, tmux…
+        if isCookedModeWithoutEcho { return }                     // a classic local password prompt
+        let start = startRow
+        let end = terminal.cursorScrollInvariantRow
+        let endCol = terminal.cursorColumn
+        let prefix = promptPrefix
+        let typed = String(decoding: typedBytes, as: UTF8.self)
+        let pasted = lastProgrammaticText
+        lastProgrammaticText = ""
+        // Read the screen a moment later, when the echo of the last keystrokes has arrived
+        // (remote shells over ssh answer with a delay).
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            guard let self, let command = self.command(from: start, to: end, endCol: endCol, prefix: prefix, typed: typed) else { return }
+            // Typed, but (almost) nothing of it on screen: a password or other hidden input.
+            if typed.count >= 3 && command.count * 2 < typed.count { return }
+            if command == pasted { return } // pasted by Luik and run unchanged: already logged
+            self.onTypedLine?(command)
+        }
+    }
+
+    /// The text on the rows the line occupied, minus the prompt. Nil when nothing usable is there.
+    private func command(from start: Int, to end: Int, endCol: Int, prefix: String, typed: String) -> String? {
+        let terminal = getTerminal()
+        guard start <= end else { return nil }
+        var text = ""
+        for row in max(start, end - 8)...end {
+            if row == end {
+                guard let rowText = terminal.scrollInvariantLineText(row: row) else { continue }
+                // Up to the cursor, plus whatever directly follows it (cursor in the middle of the
+                // line); text further to the right — a right-hand prompt with the time or the git
+                // branch — is left out.
+                let upToCursor = terminal.scrollInvariantLineText(row: row, endCol: endCol) ?? ""
+                var rest = String(rowText.dropFirst(upToCursor.count))
+                if let gap = rest.range(of: "  ") { rest = String(rest[..<gap.lowerBound]) }
+                text += upToCursor + rest
+            } else {
+                // Rows a long command wrapped over keep their trailing spaces.
+                let wrapped = terminal.scrollInvariantLineIsWrapped(row: row + 1)
+                guard let rowText = terminal.scrollInvariantLineText(row: row, trimRight: !wrapped) else { continue }
+                text += rowText
+            }
+        }
+
+        var command: String
+        let candidates = [prefix, lastPrompt].filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        if let found = candidates.first(where: { text.contains($0) }), let range = text.range(of: found) {
+            command = String(text[range.upperBound...])
+            lastPrompt = found
+        } else if candidates.isEmpty {
+            command = text
+        } else if !typed.isEmpty, let range = text.range(of: typed) {
+            // The prompt we saw is gone (typed ahead of it, or a prompt that redraws itself on
+            // Enter): fall back to the reconstructed keystrokes, as they appear on screen.
+            command = String(text[range.lowerBound...])
+        } else {
+            return nil
+        }
+        command = command.trimmingCharacters(in: .whitespacesAndNewlines)
+        return command.isEmpty ? nil : command
+    }
+
+    /// Canonical mode with echo switched off is how sudo, ssh, su and `read -s` ask for a password.
+    private var isCookedModeWithoutEcho: Bool {
+        guard let process, process.childfd >= 0 else { return false }
         var attributes = termios()
-        guard tcgetattr(process.childfd, &attributes) == 0 else { return true }
-        return (attributes.c_lflag & UInt(ECHO)) != 0
+        guard tcgetattr(process.childfd, &attributes) == 0 else { return false }
+        return (attributes.c_lflag & UInt(ICANON)) != 0 && (attributes.c_lflag & UInt(ECHO)) == 0
     }
 }
 
@@ -92,8 +226,11 @@ final class TerminalSession: Identifiable {
         view.terminate()
     }
 
+    /// Text Luik sends itself (one-liners, Searchsploit commands, connections).
     func send(_ text: String) {
+        view.programmaticInput = true
         view.send(txt: text)
+        view.programmaticInput = false
     }
 
     func focus() {

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.14.1
+- Fix: typed commands were practically never logged. The old check looked at the pty's ECHO flag, which zsh/bash line editors, ssh and most interactive programs switch off themselves. Luik now reads the command from the screen when you press Enter (the cursor row after the prompt), so commands typed inside ssh sessions, recalled from history or completed with Tab are logged too; passwords never appear on screen and are therefore never recorded, and full-screen programs (alternate buffer) are ignored.
+
 ## 0.14.0
 - New **Findings** tab (⌘5): findings with severity, **CVSS 3.1 calculator** (base + temporal metrics, vector in/out, severity follows the score), affected hosts/services, description/impact/evidence/recommendation/references, status and source. Created by hand (+, ⌘N), from a Targets node (**Finding** button: notes → evidence, host:port → affected), from a knowledge-base record (**Create finding**, columns mapped by name) or from scanner imports. Markdown and HTML **report export** with a summary table; Word opens the HTML.
 - **Engagements**: targets, notes, findings, the log and evidence screenshots are now kept per engagement (briefcase menu in the top bar; existing data moves into "Default engagement" automatically). Each engagement has client/reference/period/notes and a **scope** (CIDR, IP, range, hostname/wildcard, IPv6 prefix) with exclusions, an in-scope checker, orange shields on out-of-scope hosts in Targets and a warning in the import summary.
