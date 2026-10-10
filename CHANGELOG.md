@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.0
+- **Checklist editor** (Targets ⋯ menu › Edit checklists…, Settings › Targets, Tools menu, ⌘K): the work-item nodes are now proper checklists — Every system, Every port (fallback) and one per service — with a name, the service names/port numbers they apply to, an enable switch, drag-to-reorder lists and an optional **hint per item** that becomes the node's starting notes with $RHOST/$RPORT/$LHOST/$LPORT filled in. A tester shows which list a service/port gets; export/import as JSON to share a workflow; "Apply to current targets" adds missing items to existing hosts and ports. Existing customised templates are migrated once.
+- **Colour schemes** (Settings › Colours): the Luik default plus ten Sanzo Wada combinations (A Dictionary of Color Combinations, 1933) for panel tint, accent, terminal text, cursor and selection.
+
 ## 0.14.2
 - Fix: switching to another tab and back wiped the terminal (scrollback gone, prompt redrawn, typed text lost). SwiftUI detached the terminal view and gave it a zero-size frame on the way, which made SwiftTerm reflow the shell to 2×1 cells. The terminal now stays mounted (only hidden) while other tabs are shown, SwiftTerm ignores sizes smaller than a few cells, and the keyboard focus is released when you leave the Terminal tab so keystrokes in Notes never reach the shell.
 - Scrollback raised from 500 to 5000 lines per tab.

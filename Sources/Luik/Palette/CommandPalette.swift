@@ -167,6 +167,9 @@ struct CommandPalette: View {
             PaletteItem(id: "engagements", icon: "briefcase", title: "Manage engagements", subtitle: engagements.current.displayName, group: "Actions") {
                 engagements.showManager = true
             },
+            PaletteItem(id: "checklists", icon: "list.bullet.rectangle", title: "Edit checklists", subtitle: "work items per system, port and service", group: "Actions") {
+                ChecklistStore.shared.showEditor = true
+            },
             PaletteItem(id: "hide", icon: "chevron.up", title: "Hide Luik", subtitle: "", group: "Actions") {
                 AppDelegate.shared?.hideDropdown()
             },
@@ -284,6 +287,7 @@ struct CommandPalette: View {
 struct PaletteRow: View {
     let item: PaletteItem
     let isSelected: Bool
+    @Environment(\.luikTheme) private var theme
 
     var body: some View {
         HStack(spacing: 10) {
@@ -310,7 +314,7 @@ struct PaletteRow: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(isSelected ? Color.accentColor.opacity(0.3) : Color.clear)
+        .background(isSelected ? theme.accentColor.opacity(0.3) : Color.clear)
         .contentShape(Rectangle())
     }
 }

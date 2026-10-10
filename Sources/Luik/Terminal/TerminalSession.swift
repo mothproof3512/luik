@@ -212,10 +212,12 @@ final class TerminalSession: Identifiable {
     /// `opacity` is the extra dark layer under the terminal text (0 = the panel background
     /// shows through completely, 1 = solid).
     func applyAppearance(fontSize: CGFloat, opacity: CGFloat) {
+        let theme = LuikTheme.current
         view.font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-        view.nativeBackgroundColor = NSColor(calibratedRed: 0.07, green: 0.08, blue: 0.10, alpha: opacity)
-        view.nativeForegroundColor = NSColor(calibratedWhite: 0.92, alpha: 1)
-        view.caretColor = NSColor(calibratedRed: 0.55, green: 0.85, blue: 0.55, alpha: 1)
+        view.nativeBackgroundColor = theme.backgroundNS.withAlphaComponent(opacity)
+        view.nativeForegroundColor = theme.foregroundNS
+        view.caretColor = theme.cursorNS
+        view.selectedTextBackgroundColor = theme.accentNS.withAlphaComponent(0.35)
         // SwiftTerm sets the layer colour only when the view is created (solid black) and then
         // paints each cell's background with nativeBackgroundColor. Make the layer transparent,
         // otherwise the alpha above has no effect.

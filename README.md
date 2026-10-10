@@ -118,20 +118,41 @@ Luik has no Dock icon; you find it as a ⌄ icon in the menu bar (show/hide, set
    host:port, merged into the existing entry when you import again.
 2. Every host gets a node (IP + hostname), with underneath:
    - a node per open port (service/version as subtitle, NSE script output in the notes),
-   - under every port the **work-item nodes** for that service — SMB, HTTP, SSH, LDAP, Kerberos,
-     MSSQL, SNMP, RDP and about twenty more have their own checklist (Settings › Targets › Per
-     service, editable); unknown services get the generic list (Enumeration, Versions & CVEs,
-     Misconfigurations, Credentials, Exploitation, Notes),
-   - under the host itself the host work items (Recon & enumeration, Vulnerabilities, Initial
+   - under every port the **work-item nodes** from the checklist for that service — SMB, HTTP,
+     SSH, LDAP, Kerberos, MSSQL, SNMP, RDP and about twenty more have their own; ports with no
+     match get the generic list (Enumeration, Versions & CVEs, Misconfigurations, Credentials,
+     Exploitation, Notes),
+   - under the host itself the system checklist (Recon & enumeration, Vulnerabilities, Initial
      access, Privilege escalation, Post-exploitation & loot).
 3. Importing the same host(s) again only adds new ports/information; nothing is duplicated.
 4. Every node has a status (click the circle: to do → in progress → done → N/A) and a notes field.
    Hosts and ports show their progress (handled/total). Right-click for sub-nodes, status or delete.
-5. The templates are editable in the settings (comma-separated). The ⋯ menu exports everything as
-   Markdown.
+5. The checklists are yours to change (see below). The ⋯ menu exports everything as Markdown.
 6. Select a port node and the **Suggestions** panel shows matching Exploit-DB entries (product and
    version taken from the nmap service description, version-aware) and knowledge-base findings;
    one click opens the hit in its own tab.
+
+### Checklists — your own workflow
+
+**Edit checklists…** (Targets ⋯ menu, Settings › Targets, Tools menu or ⌘K) opens the editor:
+on the left **Every system**, **Every port** (the fallback) and one checklist per service; on the
+right the list's name, the keys it applies to and its items. Keys are service names as nmap and
+Nessus report them (`http`, `ssl/http`, `microsoft-ds`, `ms-sql-s`, …) and/or port numbers; the
+first matching list wins, so order matters (drag or use the arrows). Every item becomes a work-item
+node with a status; an optional **hint** on an item is written into the node's notes when the node is
+created, with `$RHOST`, `$RPORT` (and `$LHOST`/`$LPORT` from One-liners) filled in — the place for
+the commands you always run and the things you always check for that service. A tester at the
+bottom shows which list a given service/port would get. Checklists live in `checklists.json` in the
+data folder, shared by all engagements; export and import them as JSON to share a workflow with a
+colleague. **Apply to current targets** adds missing items to the hosts and ports you already have.
+
+### Colour schemes
+
+Settings › Colours offers the Luik default plus ten combinations from Sanzo Wada's *A Dictionary
+of Color Combinations* (1933): from each combination the darkest colour becomes the panel tint, the
+lightest the terminal text and the most saturated one the accent — buttons, selected tab, cursor
+and selection. Opacity and blur from the Appearance tab still apply on top. The colour values come
+from Matt DesLauriers' [dictionary-of-colour-combinations](https://github.com/mattdesl/dictionary-of-colour-combinations) dataset (MIT).
 
 ### Findings and the report
 
@@ -313,8 +334,8 @@ app would get mouse input but no keyboard input.
 ## Making releases (for the repository owner)
 
 ```bash
-git tag v0.14.2
-git push origin v0.14.2
+git tag v0.15.0
+git push origin v0.15.0
 ```
 
 GitHub Actions builds the app on a macOS runner, creates a release and attaches `Luik.app.zip`.
@@ -327,5 +348,7 @@ reads it from there. Keep it equal to the tag.
 Luik is available under the [MIT License](LICENSE).
 
 Luik bundles [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) by Miguel de Icaza (version
-1.11.2, unmodified, MIT License) as source in `Vendor/SwiftTerm/`; its license is in
-`Vendor/SwiftTerm/LICENSE`.
+1.11.2, MIT License, with two small Luik-specific additions marked in the source) as source in
+`Vendor/SwiftTerm/`; its license is in `Vendor/SwiftTerm/LICENSE`. The colour schemes use values
+from the [dictionary-of-colour-combinations](https://github.com/mattdesl/dictionary-of-colour-combinations)
+dataset by Matt DesLauriers (MIT License), digitised from Sanzo Wada's 1933 book.

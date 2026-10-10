@@ -31,6 +31,13 @@ struct TargetsView: View {
                     }
                     Spacer()
                     Menu {
+                        Button("Edit checklists…") {
+                            ChecklistStore.shared.showEditor = true
+                        }
+                        Button("Apply checklists to all targets") {
+                            store.applyChecklistsEverywhere()
+                        }
+                        Divider()
                         Button("Export as Markdown…") {
                             exportMarkdown()
                         }
@@ -194,7 +201,7 @@ struct NodeRow: View {
                 _ = store.addChild(to: node)
             }
             if node.kind == .host || node.kind == .port {
-                Button("Add missing template nodes") {
+                Button("Add missing checklist items") {
                     store.applyTemplate(to: node)
                 }
             }
@@ -277,9 +284,9 @@ struct NodeDetailView: View {
                     Button {
                         store.applyTemplate(to: node)
                     } label: {
-                        Label("Template", systemImage: "list.bullet.rectangle")
+                        Label("Checklist", systemImage: "list.bullet.rectangle")
                     }
-                    .help("Add the missing work-item nodes from the template")
+                    .help("Add the missing work-item nodes from the checklist for this host/service")
                 }
                 Button {
                     findings.create(from: node, in: store)

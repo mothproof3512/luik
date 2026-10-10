@@ -59,8 +59,7 @@ struct PanelBackground: View {
     @AppStorage(SettingsKey.panelBlur) private var panelBlur = true
     @AppStorage(SettingsKey.cornerRadius) private var cornerRadius = 14.0
     @AppStorage(SettingsKey.roundTopCorners) private var roundTopCorners = false
-
-    static let tint = Color(red: 0.07, green: 0.08, blue: 0.10)
+    @Environment(\.luikTheme) private var theme
 
     var body: some View {
         ZStack {
@@ -68,7 +67,7 @@ struct PanelBackground: View {
                 VisualEffectBackground(cornerRadius: CGFloat(min(max(cornerRadius, 0), 60)),
                                        roundTopCorners: roundTopCorners)
             }
-            PanelBackground.tint.opacity(min(max(panelOpacity, 0), 1))
+            theme.backgroundColor.opacity(min(max(panelOpacity, 0), 1))
         }
         .ignoresSafeArea()
     }
@@ -77,9 +76,13 @@ struct PanelBackground: View {
 struct RootView: View {
     @Environment(UIState.self) private var ui
     @Environment(EngagementStore.self) private var engagements
+    @Environment(ChecklistStore.self) private var checklists
+    @AppStorage(SettingsKey.colorScheme) private var colorScheme = "default"
 
     var body: some View {
         @Bindable var engagements = engagements
+        @Bindable var checklists = checklists
+        let theme = LuikTheme.theme(id: colorScheme)
         VStack(spacing: 0) {
             TopBar()
             Divider()
@@ -138,11 +141,17 @@ struct RootView: View {
         .sheet(isPresented: $engagements.showManager) {
             EngagementsManager()
         }
+        .sheet(isPresented: $checklists.showEditor) {
+            ChecklistEditorView()
+        }
+        .environment(\.luikTheme, theme)
+        .tint(theme.accentColor)
     }
 }
 
 struct TopBar: View {
     @Environment(UIState.self) private var ui
+    @Environment(\.luikTheme) private var theme
 
     var body: some View {
         @Bindable var ui = ui
@@ -154,7 +163,7 @@ struct TopBar: View {
                     Label(module.title, systemImage: module.icon)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .background(ui.module == module ? Color.white.opacity(0.14) : Color.clear,
+                        .background(ui.module == module ? theme.accentColor.opacity(0.28) : Color.clear,
                                     in: RoundedRectangle(cornerRadius: 6))
                 }
                 .buttonStyle(.plain)
@@ -221,9 +230,9 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.panelBlur) private var panelBlur = true
     @AppStorage(SettingsKey.terminalExtraOpacity) private var terminalExtraOpacity = 0.0
     @AppStorage(SettingsKey.shellPath) private var shellPath = "/bin/zsh"
-    @AppStorage(SettingsKey.hostTemplate) private var hostTemplate = SettingsDefaults.hostTemplate
-    @AppStorage(SettingsKey.portTemplate) private var portTemplate = SettingsDefaults.portTemplate
-    @AppStorage(SettingsKey.serviceTemplates) private var serviceTemplates = SettingsDefaults.serviceTemplates
+    @AppStorage(SettingsKey.colorScheme) private var colorScheme = "default"
+    @Environment(ChecklistStore.self) private var checklists
+    @Environment(TargetStore.self) private var targets
     @AppStorage(SettingsKey.showOnLaunch) private var showOnLaunch = true
     @AppStorage(SettingsKey.hotKeyPauseApps) private var hotKeyPauseApps = ""
     @AppStorage(SettingsKey.logTypedCommands) private var logTypedCommands = true
@@ -262,6 +271,8 @@ struct SettingsView: View {
                     .tabItem { Text("General") }
                 appearanceTab
                     .tabItem { Text("Appearance") }
+                coloursTab
+                    .tabItem { Text("Colours") }
                 terminalTab
                     .tabItem { Text("Terminal") }
                 targetsTab
@@ -463,34 +474,43 @@ struct SettingsView: View {
 
     private var targetsTab: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Work-item nodes (comma-separated)")
+            Text("Checklists (work-item nodes)")
                 .font(.subheadline.weight(.semibold))
-            LabeledContent("Per system") {
-                TextField("", text: $hostTemplate)
-                    .textFieldStyle(.roundedBorder)
+            caption("Every host gets the items of \"Every system\"; every open port gets the checklist of its service (HTTP, SSH, SMB, LDAP, Kerberos, MSSQL, … matched on the service name nmap/Nessus report, or on the port number) or the generic port list. Items turn into nodes with a status and notes; a hint on an item becomes the node's starting notes with $RHOST/$RPORT filled in — so the checklists can carry your own workflow.")
+            HStack(spacing: 10) {
+                Button("Edit checklists…") {
+                    ui.showSettings = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { checklists.showEditor = true }
+                }
+                Button("Apply to current targets") {
+                    targets.applyChecklistsEverywhere()
+                }
+                .help("Add missing checklist items to every host and port of the current engagement")
             }
-            LabeledContent("Per port") {
-                TextField("", text: $portTemplate)
-                    .textFieldStyle(.roundedBorder)
-            }
-            caption("Used when importing nmap output and by \"Template\" in the Targets tab. Existing nodes are left alone; \"Template\" adds the missing ones.")
+            let serviceCount = checklists.set.services.count
+            let itemCount = checklists.allLists.reduce(0) { $0 + $1.items.count }
+            caption("\(serviceCount) service checklists, \(itemCount) items in total. Stored in checklists.json in the data folder (shared by all engagements); the editor can export and import them as JSON to share a workflow.")
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+    }
 
-            Divider()
-
-            HStack {
-                Text("Per service")
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                Button("Reset to defaults") { serviceTemplates = SettingsDefaults.serviceTemplates }
-                    .controlSize(.small)
+    private var coloursTab: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Colour scheme")
+                .font(.subheadline.weight(.semibold))
+            caption("Ten combinations from Sanzo Wada's A Dictionary of Color Combinations (1933). From each, the darkest colour becomes the panel tint, the lightest the terminal text and the most saturated one the accent (buttons, selection, cursor). Background opacity and blur from the Appearance tab apply on top.")
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 8)], alignment: .leading, spacing: 8) {
+                    ForEach(LuikTheme.all) { scheme in
+                        ThemeCard(scheme: scheme, isSelected: scheme.id == colorScheme) {
+                            colorScheme = scheme.id
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
             }
-            TextEditor(text: $serviceTemplates)
-                .font(.system(.caption, design: .monospaced))
-                .scrollContentBackground(.hidden)
-                .padding(4)
-                .background(Color.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 6))
-                .frame(minHeight: 140)
-            caption("One line per service: nmap service names and/or port numbers before the colon, the work items after it. A port gets the first matching line (service name first, then port number) instead of the generic list above.")
+            Spacer(minLength: 0)
         }
         .padding(12)
     }
