@@ -64,13 +64,34 @@ final class TargetStore {
     /// Where the current engagement's targets live (for "Show in Finder").
     var fileURL: URL { EngagementStore.shared.fileURL(TargetStore.fileName) }
 
-    /// Versions up to 0.7 created work-item nodes with Dutch names; rename them once.
+    /// Versions up to 0.7 created work-item nodes with Dutch names; rename them once. Versions
+    /// 0.15.0–0.15.3 split checklist items on commas inside parentheses ("Technology fingerprint
+    /// (headers" + "whatweb)"); glue those nodes back together.
     private func migrateLegacyNamesIfNeeded() {
         var changed = false
         func visit(_ node: TargetNode) {
             if node.kind == .task, let english = SettingsDefaults.legacyTemplateNames[node.title] {
                 node.title = english
                 changed = true
+            }
+            let tasks = node.children.filter { $0.kind == .task }
+            if !tasks.isEmpty {
+                let merged = SettingsDefaults.mergingSplitParentheses(node.children, title: { $0.kind == .task ? $0.title : "" }) { run -> TargetNode? in
+                    guard run.allSatisfy({ $0.kind == .task }) else { return nil }
+                    let first = run[0]
+                    first.title = run.map { $0.title }.joined(separator: ", ")
+                    let notes = run.map { $0.notes.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                    first.notes = notes.joined(separator: "\n")
+                    first.children = run.flatMap { $0.children }
+                    if first.status == .todo, let other = run.dropFirst().first(where: { $0.status != .todo }) {
+                        first.status = other.status
+                    }
+                    return first
+                }
+                if merged.count != node.children.count {
+                    node.children = merged
+                    changed = true
+                }
             }
             node.children.forEach(visit)
         }

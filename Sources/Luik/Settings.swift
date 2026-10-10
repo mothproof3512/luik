@@ -2,7 +2,7 @@ import Foundation
 
 /// Version and repository, used by the settings footer, the update check and build.sh.
 enum AppInfo {
-    static let version = "0.15.3"
+    static let version = "0.15.4"
     static let repository = "mothproof3512/luik"
 }
 
@@ -143,9 +143,56 @@ enum SettingsDefaults {
 
     /// "A, B, C" -> ["A", "B", "C"]
     static func templateItems(_ raw: String) -> [String] {
-        raw.split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        // Commas inside parentheses belong to the item: "Input testing (injection, XSS, upload)".
+        var items: [String] = []
+        var current = ""
+        var depth = 0
+        for character in raw {
+            if character == "(" { depth += 1 }
+            if character == ")" { depth = max(0, depth - 1) }
+            if depth == 0 && (character == "," || character.isNewline) {
+                items.append(current)
+                current = ""
+            } else {
+                current.append(character)
+            }
+        }
+        items.append(current)
+        return items.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+    }
+
+    /// Repairs lists that were split on a comma inside parentheses by earlier versions:
+    /// ["Technology fingerprint (headers", "whatweb)"] becomes one entry again. `title` reads an
+    /// element's text, `merge` joins a run of fragments into one element (nil = leave them alone).
+    static func mergingSplitParentheses<T>(_ elements: [T], title: (T) -> String, merge: ([T]) -> T?) -> [T] {
+        func balance(_ text: String) -> Int {
+            text.filter { $0 == "(" }.count - text.filter { $0 == ")" }.count
+        }
+        var out: [T] = []
+        var index = 0
+        while index < elements.count {
+            let element = elements[index]
+            var depth = balance(title(element))
+            if depth > 0 {
+                var run = [element]
+                var next = index + 1
+                var closed = false
+                while next < elements.count, next <= index + 6 {
+                    run.append(elements[next])
+                    depth += balance(title(elements[next]))
+                    if depth <= 0 { closed = true; break }
+                    next += 1
+                }
+                if closed, let merged = merge(run) {
+                    out.append(merged)
+                    index = next + 1
+                    continue
+                }
+            }
+            out.append(element)
+            index += 1
+        }
+        return out
     }
 
     /// Names used by versions up to 0.7 (Dutch) and their English replacements.

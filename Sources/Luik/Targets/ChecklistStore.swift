@@ -96,8 +96,28 @@ final class ChecklistStore {
     init() {
         if let stored = Storage.load(ChecklistSet.self, from: ChecklistStore.fileName) {
             lists = stored
+            repairSplitItemsIfNeeded()
         } else {
             lists = ChecklistStore.migratedFromSettings() ?? ChecklistStore.defaults
+            Storage.save(lists, to: ChecklistStore.fileName)
+        }
+    }
+
+    /// 0.15.0–0.15.3 split items on every comma, so "Input testing (injection, XSS, IDOR, upload)"
+    /// became four items. Glue such runs back together once.
+    private func repairSplitItemsIfNeeded() {
+        func repaired(_ list: Checklist) -> Checklist {
+            var copy = list
+            copy.items = SettingsDefaults.mergingSplitParentheses(list.items, title: { $0.title }) { run -> ChecklistItem? in
+                ChecklistItem(id: run[0].id,
+                              title: run.map { $0.title }.joined(separator: ", "),
+                              hint: run.map { $0.hint }.filter { !$0.isEmpty }.joined(separator: "\n"))
+            }
+            return copy
+        }
+        let fixed = ChecklistSet(host: repaired(lists.host), port: repaired(lists.port), services: lists.services.map(repaired))
+        if fixed != lists {
+            lists = fixed
             Storage.save(lists, to: ChecklistStore.fileName)
         }
     }

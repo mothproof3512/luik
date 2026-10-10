@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.15.4
+- Fix: checklist items with a comma inside parentheses ("Technology fingerprint (headers, whatweb)", "Input testing (injection, XSS, IDOR, upload)", …) were split into several items since 0.15.0. The splitter now respects parentheses, existing checklists are repaired once at launch, and work-item nodes that were created in pieces are glued back together (notes, sub-nodes and status kept).
+
 ## 0.15.3
 - **Checklists export/import** is now in plain sight: Export (all as JSON, all as Markdown, or only the selected list) and Import… buttons in the editor, plus entries in the Targets ⋯ menu and Settings › Targets. Import understands a full set (asks: merge or replace everything), single checklists (added; same names replaced; "Every system"/"Every port" replace those) and the Markdown export; imported lists get fresh ids.
 
