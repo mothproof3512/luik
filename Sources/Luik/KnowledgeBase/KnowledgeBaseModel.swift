@@ -47,9 +47,12 @@ struct KBColumnRoles {
     var phaseColumn: String?   // kill chain phase / ATT&CK tactic
 
     static func detect(in columns: [String]) -> KBColumnRoles {
-        func first(matching patterns: [String]) -> String? {
+        func first(matching patterns: [String], excluding: [String] = []) -> String? {
             for pattern in patterns {
-                if let column = columns.first(where: { $0.lowercased().contains(pattern) }) {
+                if let column = columns.first(where: { column in
+                    let lower = column.lowercased()
+                    return lower.contains(pattern) && !excluding.contains { lower.contains($0) }
+                }) {
                     return column
                 }
             }
@@ -57,7 +60,8 @@ struct KBColumnRoles {
         }
         var roles = KBColumnRoles()
         roles.idColumn = columns.first { $0.lowercased() == "id" } ?? first(matching: ["id"])
-        roles.titleColumn = first(matching: ["vector", "title", "name", "finding", "bevinding", "vulnerability", "summary"])
+        // "attack vector" is the title in some sheets; a "cvss_vector" column is not.
+        roles.titleColumn = first(matching: ["vector", "title", "name", "finding", "bevinding", "vulnerability", "summary"], excluding: ["cvss"])
         if roles.titleColumn == nil || roles.titleColumn == roles.idColumn {
             roles.titleColumn = columns.first { $0 != roles.idColumn }
         }

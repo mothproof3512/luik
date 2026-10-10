@@ -170,6 +170,12 @@ struct CommandPalette: View {
             PaletteItem(id: "checklists", icon: "list.bullet.rectangle", title: "Edit checklists", subtitle: "work items per system, port and service", group: "Actions") {
                 ChecklistStore.shared.showEditor = true
             },
+            PaletteItem(id: "shortcuts", icon: "keyboard", title: "Keyboard shortcuts", subtitle: "⌘/", group: "Actions") {
+                ui.showShortcuts = true
+            },
+            PaletteItem(id: "kb-template", icon: "tablecells", title: "Save knowledge-base template", subtitle: "example CSV with the recognised columns", group: "Actions") {
+                KnowledgeBaseTemplate.save()
+            },
             PaletteItem(id: "hide", icon: "chevron.up", title: "Hide Luik", subtitle: "", group: "Actions") {
                 AppDelegate.shared?.hideDropdown()
             },

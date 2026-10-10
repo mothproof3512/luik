@@ -57,4 +57,6 @@ final class UIState {
     var showPalette = false
     /// A newer release on GitHub, if the update check found one: (version, URL).
     var updateAvailable: (version: String, url: String)? = nil
+    /// The keyboard-shortcuts sheet (⌘/).
+    var showShortcuts = false
 }

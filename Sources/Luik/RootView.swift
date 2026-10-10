@@ -80,6 +80,7 @@ struct RootView: View {
     @AppStorage(SettingsKey.colorScheme) private var colorScheme = "default"
 
     var body: some View {
+        @Bindable var ui = ui
         @Bindable var engagements = engagements
         @Bindable var checklists = checklists
         let theme = LuikTheme.theme(id: colorScheme)
@@ -144,6 +145,9 @@ struct RootView: View {
         .sheet(isPresented: $checklists.showEditor) {
             ChecklistEditorView()
         }
+        .sheet(isPresented: $ui.showShortcuts) {
+            ShortcutsView()
+        }
         .environment(\.luikTheme, theme)
         .tint(theme.accentColor)
     }
@@ -191,6 +195,14 @@ struct TopBar: View {
             }
             .buttonStyle(.plain)
             .help("Search everything (⌘K)")
+            .padding(.trailing, 8)
+            Button {
+                ui.showShortcuts = true
+            } label: {
+                Image(systemName: "questionmark.circle")
+            }
+            .buttonStyle(.plain)
+            .help("Keyboard shortcuts (⌘/)")
             .padding(.trailing, 8)
             Button {
                 ui.showSettings.toggle()

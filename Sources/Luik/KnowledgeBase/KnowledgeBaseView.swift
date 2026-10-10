@@ -6,6 +6,7 @@ struct KnowledgeBaseView: View {
     @Environment(KnowledgeBaseStore.self) private var store
     @Environment(TargetStore.self) private var targets
     @State private var showRemoveConfirmation = false
+    @State private var showGuide = false
 
     var body: some View {
         @Bindable var store = store
@@ -97,6 +98,13 @@ struct KnowledgeBaseView: View {
                     Text("Imported \(kb.importedAt.formatted(date: .abbreviated, time: .shortened)) · \(kb.tables.count) sheet(s), \(kb.recordCount) rows")
                     Divider()
                 }
+                Button("Save example template…") {
+                    KnowledgeBaseTemplate.save()
+                }
+                Button("How to prepare a sheet…") {
+                    showGuide = true
+                }
+                Divider()
                 Button("Show data folder in Finder") {
                     NSWorkspace.shared.activateFileViewerSelecting([Storage.url(for: "knowledgebase.json")])
                 }
@@ -110,6 +118,21 @@ struct KnowledgeBaseView: View {
                 Image(systemName: "ellipsis.circle")
             }
             .frame(width: 44)
+            Button {
+                showGuide.toggle()
+            } label: {
+                Image(systemName: "questionmark.circle")
+            }
+            .help("How to prepare a sheet, and the example template")
+            .popover(isPresented: $showGuide, arrowEdge: .bottom) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Preparing your knowledge base")
+                        .font(.headline)
+                    KnowledgeBaseGuide(compact: true)
+                }
+                .padding(14)
+                .frame(width: 440)
+            }
             Button {
                 chooseFile()
             } label: {
@@ -145,7 +168,15 @@ struct KnowledgeBaseView: View {
             }
             .buttonStyle(.borderedProminent)
             .padding(.top, 4)
-            Spacer()
+
+            ScrollView {
+                KnowledgeBaseGuide()
+                    .padding(14)
+                    .frame(maxWidth: 640, alignment: .leading)
+                    .background(Color.black.opacity(0.2), in: RoundedRectangle(cornerRadius: 10))
+            }
+            .padding(.top, 12)
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity)
         .padding(24)

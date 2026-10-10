@@ -10,7 +10,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A Guake-style drop-down app for macOS, built for pentesters: press a hotkey (⌘Esc by default)
-and a panel slides down from the top of the screen with multiple tabs:
+and a panel slides down from the top of the screen with four tabs:
 
 | Tab | What it does |
 |---|---|
@@ -80,6 +80,9 @@ Luik has no Dock icon; you find it as a ⌄ icon in the menu bar (show/hide, set
   When hiding, the app you were using before gets focus back.
 
 ### Keyboard shortcuts inside the panel
+
+The full list, including mouse tricks and your own hotkey, is one keystroke away in the app:
+**⌘/** (or the ? button in the top bar, Help › Keyboard Shortcuts, or ⌘K → "Keyboard shortcuts").
 
 | Keys | Action |
 |---|---|
@@ -181,6 +184,11 @@ import summary. Existing data from before 0.14 lands in the "Default engagement"
 
 ### Knowledge base
 
+0. No sheet yet? The empty tab explains which columns Luik recognises, and **Save example
+   template…** (also in the ⋯ menu, the ? button, Help menu and ⌘K) writes a CSV with those columns
+   (`id, title, scope, severity, cvss_vector, kill_chain_phase, description, impact, recommendation,
+   references, how_to_test, tags`) and two example rows: open it in Excel or Numbers, replace the
+   examples, save as .xlsx or .csv and import it.
 1. Click **Import** and choose your findings sheet: an Excel file (`.xlsx`), CSV/TSV or JSON. Every
    sheet in the workbook becomes a searchable table; the header is the first row with at least two
    filled cells, so a title row above the real header is fine. No third-party code is involved: the
@@ -334,8 +342,8 @@ app would get mouse input but no keyboard input.
 ## Making releases (for the repository owner)
 
 ```bash
-git tag v0.15.1
-git push origin v0.15.1
+git tag v0.15.2
+git push origin v0.15.2
 ```
 
 GitHub Actions builds the app on a macOS runner, creates a release and attaches `Luik.app.zip`.

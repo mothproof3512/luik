@@ -334,6 +334,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         viewMenuItem.submenu = viewMenu
         mainMenu.addItem(viewMenuItem)
 
+        let helpMenuItem = NSMenuItem()
+        let helpMenu = NSMenu(title: "Help")
+        helpMenu.addItem(NSMenuItem(title: "Keyboard Shortcuts", action: #selector(showShortcuts), keyEquivalent: "/"))
+        helpMenu.addItem(NSMenuItem(title: "Knowledge Base Template…", action: #selector(saveKnowledgeBaseTemplate), keyEquivalent: ""))
+        helpMenu.addItem(.separator())
+        helpMenu.addItem(NSMenuItem(title: "Luik on GitHub (README, releases)", action: #selector(openRepository), keyEquivalent: ""))
+        helpMenuItem.submenu = helpMenu
+        mainMenu.addItem(helpMenuItem)
+        NSApp.helpMenu = helpMenu
+
         NSApp.mainMenu = mainMenu
     }
 
@@ -358,6 +368,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func editChecklists() {
         showDropdown()
         ChecklistStore.shared.showEditor = true
+    }
+
+    @objc private func showShortcuts() {
+        showDropdown()
+        UIState.shared.showShortcuts = true
+    }
+
+    @objc private func saveKnowledgeBaseTemplate() {
+        KnowledgeBaseTemplate.save()
+    }
+
+    @objc private func openRepository() {
+        if let url = URL(string: "https://github.com/\(AppInfo.repository)") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     @objc private func newTerminalTab() {
