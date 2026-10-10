@@ -341,9 +341,9 @@ final class ChecklistStore {
         finish()
         guard host != nil || port != nil || !services.isEmpty else { return nil }
         // Lists the file does not mention are kept as they are now.
-        let current = ChecklistStore.shared.lists
-        return ChecklistSet(host: host ?? current.host, port: port ?? current.port,
-                            services: services.isEmpty ? current.services : services)
+        let existing = ChecklistStore.shared.lists
+        return ChecklistSet(host: host ?? existing.host, port: port ?? existing.port,
+                            services: services.isEmpty ? existing.services : services)
     }
 
     // MARK: - Hints

@@ -275,7 +275,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         editMenu.addItem(.separator())
         let findMenuItem = NSMenuItem(title: "Find", action: nil, keyEquivalent: "")
         let findMenu = NSMenu(title: "Find")
-        let findAction = Selector(("performFindPanelAction:"))
+        let findAction = #selector(NSTextView.performFindPanelAction(_:))
         let find = NSMenuItem(title: "Find…", action: findAction, keyEquivalent: "f")
         find.tag = Int(NSFindPanelAction.showFindPanel.rawValue)
         findMenu.addItem(find)
