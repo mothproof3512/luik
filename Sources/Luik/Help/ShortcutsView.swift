@@ -25,6 +25,7 @@ struct ShortcutsView: View {
         return [
             ShortcutGroup(title: "Panel", shortcuts: [
                 Shortcut(keys: hotKeyLabel, action: "Show / hide Luik from any app (Settings › General to change; paused in the apps you list there)"),
+                Shortcut(keys: "drag bottom edge", action: "Change the panel height (becomes Settings › Appearance › Height); double-click the edge to go back to the default height"),
                 Shortcut(keys: "esc", action: "Close the ⌘K search or a popover"),
                 Shortcut(keys: "⌘,", action: "Settings"),
                 Shortcut(keys: "⌘/", action: "This list"),

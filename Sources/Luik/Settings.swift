@@ -2,7 +2,7 @@ import Foundation
 
 /// Version and repository, used by the settings footer, the update check and build.sh.
 enum AppInfo {
-    static let version = "0.16.0"
+    static let version = "0.16.1"
     static let repository = "mothproof3512/luik"
 }
 
@@ -86,10 +86,13 @@ enum SettingsDefaults {
     docker, 2375, 2376: Unauthenticated API, Container & image enumeration
     """
 
+    /// Panel height as a fraction of the screen (Settings › Appearance › Height; drag the bottom edge).
+    static let defaultHeightFraction = 0.55
+
     static var all: [String: Any] {
         [
             SettingsKey.hotKey: "cmd+escape",
-            SettingsKey.heightFraction: 0.55,
+            SettingsKey.heightFraction: defaultHeightFraction,
             SettingsKey.widthFraction: 1.0,
             SettingsKey.cornerRadius: 14.0,
             SettingsKey.roundTopCorners: false,

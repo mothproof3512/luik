@@ -21,10 +21,15 @@ final class DropdownController {
     /// Non-flipped container that rounds and clips the content (NSHostingView itself is
     /// flipped, so corner masks on it would hit the wrong corners).
     private let container = NSView()
+    /// Strip along the bottom edge: drag to change the height, double-click to reset it.
+    private let resizeHandle = ResizeHandleView()
     private(set) var isShown = false
     private var isAnimating = false
     private var hideWhenAnimationEnds = false
     private var previousApp: NSRunningApplication?
+    private var resizeStartFrame: NSRect?
+    /// True while the bottom edge is being dragged (settings changes must not move the panel then).
+    private(set) var isResizing = false
 
     /// Called once the panel is fully visible.
     var onDidShow: (() -> Void)?
@@ -60,8 +65,77 @@ final class DropdownController {
             hosting.topAnchor.constraint(equalTo: container.topAnchor),
             hosting.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
+        resizeHandle.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(resizeHandle)
+        NSLayoutConstraint.activate([
+            resizeHandle.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            resizeHandle.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            resizeHandle.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            resizeHandle.heightAnchor.constraint(equalToConstant: ResizeHandleView.thickness),
+        ])
+        resizeHandle.onBegin = { [weak self] in self?.beginResize() ?? false }
+        resizeHandle.onDrag = { [weak self] delta in self?.resize(by: delta) }
+        resizeHandle.onEnd = { [weak self] in self?.endResize() }
+        resizeHandle.onReset = { [weak self] in self?.resetHeight() }
         panel.contentView = container
         applyCornerStyle()
+    }
+
+    // MARK: - Resizing with the mouse
+
+    /// Smallest height the panel can be dragged to: a fifth of the screen, at least 160 pt.
+    private func minimumHeight(on screen: NSScreen) -> CGFloat {
+        max(160, (screen.visibleFrame.height * 0.2).rounded())
+    }
+
+    private func beginResize() -> Bool {
+        guard isShown, !isAnimating else { return false }
+        resizeStartFrame = panel.frame
+        isResizing = true
+        return true
+    }
+
+    /// Moves the bottom edge; the top edge stays where it is (the panel hangs from the top).
+    private func resize(by delta: CGFloat) {
+        guard isResizing, let start = resizeStartFrame, let screen = panel.screen ?? currentScreen() else { return }
+        let visible = screen.visibleFrame
+        let maxHeight = start.maxY - visible.minY   // down to the Dock / bottom of the screen
+        let height = min(max((start.height + delta).rounded(), minimumHeight(on: screen)), maxHeight)
+        let frame = NSRect(x: start.minX, y: start.maxY - height, width: start.width, height: height)
+        if frame != panel.frame {
+            panel.setFrame(frame, display: true)
+        }
+    }
+
+    /// Stores the new height as the Height setting (as a fraction of the screen, like the slider).
+    private func endResize() {
+        guard isResizing else { return }
+        isResizing = false
+        resizeStartFrame = nil
+        panel.invalidateShadow()
+        guard let screen = panel.screen ?? currentScreen() else { return }
+        let fraction = min(max(Double(panel.frame.height / screen.visibleFrame.height), 0.2), 1.0)
+        UserDefaults.standard.set(fraction, forKey: SettingsKey.heightFraction)
+    }
+
+    /// Double-click on the bottom edge: back to the default height, with a short animation.
+    private func resetHeight() {
+        guard isShown, !isAnimating, !isResizing, let screen = panel.screen ?? currentScreen() else { return }
+        let fraction = SettingsDefaults.defaultHeightFraction
+        let visible = screen.visibleFrame
+        let height = (visible.height * fraction).rounded()
+        let current = panel.frame
+        let frame = NSRect(x: current.minX, y: current.maxY - height, width: current.width, height: height)
+        isResizing = true
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.15
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            self.panel.animator().setFrame(frame, display: true)
+        }, completionHandler: {
+            self.isResizing = false
+            self.panel.invalidateShadow()
+            UserDefaults.standard.set(fraction, forKey: SettingsKey.heightFraction)
+        })
     }
 
     // MARK: - Appearance
@@ -234,7 +308,7 @@ final class DropdownController {
     /// Re-apply size and corners after the settings changed.
     func relayoutIfShown() {
         applyCornerStyle()
-        guard isShown, !isAnimating else { return }
+        guard isShown, !isAnimating, !isResizing else { return }
         guard let screen = panel.screen ?? currentScreen() else { return }
         let frame = targetFrame(on: screen)
         if frame != panel.frame {

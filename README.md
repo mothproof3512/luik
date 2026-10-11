@@ -98,7 +98,10 @@ Luik has no Dock icon; you find it as a ⌄ icon in the menu bar (show/hide, set
   already owns it), you see that right under the field. If you pick a function key: on a MacBook
   keyboard that is `fn`+F-key, unless "Use F1, F2, etc. keys as standard function keys" is
   enabled (System Settings › Keyboard).
-- The panel appears on the screen the mouse is on, 55% high and full width by default (adjustable).
+- The panel appears on the screen the mouse is on, 55% high and full width by default. Drag the
+  bottom edge to change the height (a grip appears when the mouse is over it; the new height is
+  kept as the Height setting), double-click the edge to go back to the default; width and height
+  are also sliders in Settings › Appearance.
 - **Transparency**: Settings › Appearance › *Background opacity* applies to the whole panel
   (every tab). *Blur* blurs what is behind it (macOS HUD style); turn blur off for full
   transparency like Guake. *Extra terminal opacity* adds a dark layer under the terminal text only.
