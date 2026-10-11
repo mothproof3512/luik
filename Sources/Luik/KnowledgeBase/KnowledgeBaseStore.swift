@@ -31,10 +31,15 @@ final class KnowledgeBaseStore {
 
     // MARK: - Import / remove
 
-    func importFile(at url: URL) {
+    /// Imports a local file. A download passes its name and origin, so the ⋯ menu can show where
+    /// the knowledge base came from and the download sheet can offer a newer version.
+    func importFile(at url: URL, sourceName: String? = nil, sourceURL: String? = nil, catalogID: String? = nil, version: String? = nil) {
         do {
             let tables = try SpreadsheetImport.importFile(at: url)
-            let imported = KnowledgeBase(sourceName: url.lastPathComponent, importedAt: Date(), tables: tables)
+            var imported = KnowledgeBase(sourceName: sourceName ?? url.lastPathComponent, importedAt: Date(), tables: tables)
+            imported.sourceURL = sourceURL
+            imported.catalogID = catalogID
+            imported.version = version
             knowledgeBase = imported
             lastError = nil
             selectedID = nil
@@ -43,7 +48,8 @@ final class KnowledgeBaseStore {
             phaseFilter = ""
             rebuildIndex()
             Storage.save(imported, to: KnowledgeBaseStore.fileName)
-            ActivityLog.shared.record(.import, "Knowledge base imported: \(imported.sourceName) (\(imported.recordCount) rows)", source: "Knowledge base")
+            let origin = sourceURL.map { " from \($0)" } ?? ""
+            ActivityLog.shared.record(.import, "Knowledge base imported: \(imported.sourceName) (\(imported.recordCount) rows)\(origin)", source: "Knowledge base")
         } catch {
             lastError = error.localizedDescription
         }

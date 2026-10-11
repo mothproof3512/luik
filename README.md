@@ -19,7 +19,7 @@ and a panel slides down from the top of the screen with nine tabs:
 | **One-liners** | A list of commands with a **Copy** button; `$RHOST`, `$RPORT`, `$RURL`, `$LHOST` and `$LPORT` are replaced; commands can also be pasted straight into the terminal. Tag a one-liner with service names or ports and it shows up under the matching port in Targets, filled in for that host |
 | **Targets** | Import nmap, Nessus, nuclei or masscan output (one host or many IPs at once). One node per system, one node per port, and work-item nodes underneath with status and notes, so you can work systematically; scanner findings become nodes under the port |
 | **Findings** | The findings of the engagement with a CVSS 3.1 calculator, affected hosts/services, description/impact/evidence/recommendation/references and status — created by hand, from a target node, from a knowledge-base record or from a Nessus/nuclei import; exported as a Markdown or HTML report |
-| **Knowledge base** | Import your own findings sheet (.xlsx, .csv or .json) and search every column instantly — a product name, version string, CVE, CWE or technique — then read the full finding, with links clickable and matches highlighted |
+| **Knowledge base** | Download the attack-vectors knowledge base that comes with Luik (349 rows, English or Dutch) or import your own findings sheet (.xlsx, .csv or .json) — also straight from your own GitHub repository — and search every column instantly: a product name, version string, CVE, CWE or technique; then read the full finding, with links clickable and matches highlighted |
 | **Log** | Timestamped activity log: commands pasted from One-liners/Searchsploit, every command you run in Luik's terminal tabs (read from the screen when you press Enter — also inside ssh sessions; passwords never appear on screen, so they are never logged), imports and your own notes — exportable as Markdown for the report |
 | **Chef** | CyberChef-style data kitchen: build a recipe of operations (Base64/Base32/hex/URL/HTML/Unicode, hashes and HMAC, JWT decode, gzip/zlib, JSON, regex, extractors for IPs/URLs/emails/hashes/CVEs, defang, CIDR, timestamps) and the output updates as you type; a magic detector suggests decodings |
 | **Searchsploit** | Exploit-DB search built in: download the official database once, then search it offline like searchsploit, with version-aware matching (`apache 2.4.49` also finds `< 2.4.50` and `2.4.x` entries). Every hit comes with copy-and-paste command lines for the machine where you want the exploit |
@@ -229,7 +229,18 @@ import summary. Existing data from before 0.14 lands in the "Default engagement"
 
 ### Knowledge base
 
-0. No sheet yet? The empty tab explains which columns Luik recognises, and **Save example
+0. **Download** (Knowledge base tab, Tools menu or ⌘K) fetches a ready-made knowledge base from
+   this repository: the [attack-vectors knowledge base](knowledge-base/README.md) — 349 attack
+   vectors and CVEs across web, API, network, Active Directory, cloud, mobile, wireless, social
+   engineering, physical, endpoint and AI/LLM, with default severity, description, impact, test
+   approach, remediation and detection note, mapped to OWASP Top 10 2025, WSTG, ASVS 5.0, MITRE
+   ATT&CK, CWE, CISA KEV and more — in **English** or **Dutch**. The same sheet takes a link to
+   your own file (GitHub, GitLab, a web server; GitHub `…/blob/…` links are converted, an access
+   token covers private repositories and is kept in your keychain) or to a *catalogue* of your
+   team's knowledge bases; **Settings › Tools › Knowledge base catalogue** makes such a catalogue
+   the default list. When the catalogue has a newer version of what you imported, the sheet shows
+   **Update**. The format is described in [knowledge-base/README.md](knowledge-base/README.md).
+   Prefer your own sheet? The empty tab explains which columns Luik recognises, and **Save example
    template…** (also in the ⋯ menu, the ? button, Help menu and ⌘K) writes a CSV with those columns
    (`id, title, scope, severity, cvss_vector, kill_chain_phase, description, impact, recommendation,
    references, how_to_test, tags`) and two example rows: open it in Excel or Numbers, replace the
@@ -246,8 +257,8 @@ import summary. Existing data from before 0.14 lands in the "Default engagement"
    clickable. **Copy as Markdown** puts it on the clipboard; **Add to target** appends it to the
    notes of the node currently selected in the Targets tab.
 4. A re-import replaces the previous copy; **Remove knowledge base** (⋯ menu) deletes Luik's copy.
-   The imported data lives only in `~/Library/Application Support/Luik/knowledgebase.json` — it is
-   never part of this repository or the app.
+   The imported data lives only in `~/Library/Application Support/Luik/knowledgebase.json` — the
+   app itself contains no knowledge base, and nothing but the download request leaves the Mac.
 
 ### Searchsploit
 
@@ -346,7 +357,7 @@ Sources/Luik/
   Notes/                   notes
   Snippets/                one-liners
   Targets/                 nmap/Nessus/nuclei/masscan parsers, tree model, import/export and UI
-  KnowledgeBase/           xlsx/csv/json import, search index and UI
+  KnowledgeBase/           xlsx/csv/json import, search index, catalogue download and UI
   Exploits/                Exploit-DB (searchsploit) database, smart search and commands
   Chef/                    CyberChef-style operations, recipe engine, hash identifier and UI
   Findings/                finding model, CVSS 3.1 calculator, store with report export, UI
@@ -357,6 +368,7 @@ Sources/Luik/
   UpdateCheck.swift        GitHub release check
 Vendor/SwiftTerm/          SwiftTerm 1.11.2 (MIT) as source
 Resources/AppIcon.iconset  app icon
+knowledge-base/            downloadable knowledge bases (EN/NL) and the catalog.json the app reads
 ```
 
 ### Remote desktops and VMs (Windows App, Microsoft Remote Desktop, Parallels, VMware)

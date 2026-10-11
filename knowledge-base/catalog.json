@@ -1,0 +1,23 @@
+{
+  "name": "Luik knowledge bases",
+  "entries": [
+    {
+      "id": "attack-vectors-en",
+      "name": "Attack vectors knowledge base (English)",
+      "language": "English",
+      "version": "1.0",
+      "file": "attack-vectors-knowledge-base_EN_1.0.xlsx",
+      "records": 349,
+      "description": "349 attack vectors and CVEs across web applications, APIs, internal and external networks, Active Directory, cloud, mobile, wireless, social engineering, physical, endpoint and AI/LLM — with default severity, description, impact, test approach, remediation and detection note, mapped to OWASP Top 10 2025, OWASP API Top 10, WSTG, ASVS 5.0, MITRE ATT&CK, CWE, PayloadsAllTheThings, OSCP+ modules, CISSP domains and CISA KEV."
+    },
+    {
+      "id": "attack-vectors-nl",
+      "name": "Attack vectors knowledge base (Nederlands)",
+      "language": "Dutch",
+      "version": "1.0",
+      "file": "attack-vectors-knowledge-base_NL_1.0.xlsx",
+      "records": 349,
+      "description": "Dezelfde 349 aanvalsvectoren en CVE's met Nederlandse rapporttekst (beschrijving, impact, testaanpak, remediatie en detectienotitie); de mappings naar OWASP, WSTG, ASVS, MITRE ATT&CK, CWE en CISA KEV zijn gelijk aan de Engelse versie."
+    }
+  ]
+}

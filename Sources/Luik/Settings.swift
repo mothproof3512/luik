@@ -2,7 +2,7 @@ import Foundation
 
 /// Version and repository, used by the settings footer, the update check and build.sh.
 enum AppInfo {
-    static let version = "0.16.1"
+    static let version = "0.17.0"
     static let repository = "mothproof3512/luik"
 }
 
@@ -49,6 +49,10 @@ enum SettingsKey {
     static let lastUpdateCheck = "lastUpdateCheck"
     /// Id of the colour scheme (LuikTheme.id): "default" or one of the Sanzo Wada combinations.
     static let colorScheme = "colorScheme"
+    /// Catalogue (catalog.json) the knowledge-base download sheet lists; "" = the Luik repository.
+    static let knowledgeBaseCatalogURL = "knowledgeBaseCatalogURL"
+    /// Last URL typed in the download sheet's "your own file" field.
+    static let knowledgeBaseCustomURL = "knowledgeBaseCustomURL"
 }
 
 enum SettingsDefaults {
@@ -117,6 +121,8 @@ enum SettingsDefaults {
             SettingsKey.hideWhileCapturing: true,
             SettingsKey.checkForUpdates: true,
             SettingsKey.colorScheme: "default",
+            SettingsKey.knowledgeBaseCatalogURL: "",
+            SettingsKey.knowledgeBaseCustomURL: "",
         ]
     }
 

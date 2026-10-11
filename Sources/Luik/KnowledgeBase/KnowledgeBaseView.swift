@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct KnowledgeBaseView: View {
     @Environment(KnowledgeBaseStore.self) private var store
     @Environment(TargetStore.self) private var targets
+    @Environment(UIState.self) private var ui
     @State private var showRemoveConfirmation = false
     @State private var showGuide = false
 
@@ -94,9 +95,15 @@ struct KnowledgeBaseView: View {
             }
             Menu {
                 if let kb = store.knowledgeBase {
-                    Text("\(kb.sourceName)")
+                    Text("\(kb.sourceName)\(kb.version.map { " (version \($0))" } ?? "")")
                     Text("Imported \(kb.importedAt.formatted(date: .abbreviated, time: .shortened)) · \(kb.tables.count) sheet(s), \(kb.recordCount) rows")
+                    if let source = kb.sourceURL {
+                        Text("From \(source)")
+                    }
                     Divider()
+                }
+                Button("Download knowledge base…") {
+                    ui.showKnowledgeBaseDownload = true
                 }
                 Button("Save example template…") {
                     KnowledgeBaseTemplate.save()
@@ -134,6 +141,12 @@ struct KnowledgeBaseView: View {
                 .frame(width: 440)
             }
             Button {
+                ui.showKnowledgeBaseDownload = true
+            } label: {
+                Label("Download", systemImage: "icloud.and.arrow.down")
+            }
+            .help("Download a ready-made knowledge base from the Luik repository (English or Dutch), or from your own repository or link")
+            Button {
                 chooseFile()
             } label: {
                 Label(store.knowledgeBase == nil ? "Import" : "Re-import", systemImage: "square.and.arrow.down")
@@ -152,7 +165,7 @@ struct KnowledgeBaseView: View {
                 .foregroundStyle(.secondary)
             Text("No knowledge base yet.")
                 .font(.headline)
-            Text("Import your findings sheet (.xlsx, .csv or .json). Every sheet becomes searchable, across all columns.\nThe data stays on this Mac, in ~/Library/Application Support/Luik/.")
+            Text("Download the attack-vectors knowledge base that comes with Luik (English or Dutch, 349 rows), or import your own findings sheet (.xlsx, .csv or .json). Every sheet becomes searchable, across all columns.\nThe data stays on this Mac, in ~/Library/Application Support/Luik/.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -161,12 +174,19 @@ struct KnowledgeBaseView: View {
                     .foregroundStyle(.orange)
                     .padding(.top, 4)
             }
-            Button {
-                chooseFile()
-            } label: {
-                Label("Import file…", systemImage: "square.and.arrow.down")
+            HStack(spacing: 10) {
+                Button {
+                    ui.showKnowledgeBaseDownload = true
+                } label: {
+                    Label("Download from GitHub…", systemImage: "icloud.and.arrow.down")
+                }
+                .buttonStyle(.borderedProminent)
+                Button {
+                    chooseFile()
+                } label: {
+                    Label("Import file…", systemImage: "square.and.arrow.down")
+                }
             }
-            .buttonStyle(.borderedProminent)
             .padding(.top, 4)
 
             ScrollView {

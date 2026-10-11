@@ -308,6 +308,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         toolsMenu.addItem(NSMenuItem(title: "New Finding", action: #selector(newFinding), keyEquivalent: "n"))
         toolsMenu.addItem(NSMenuItem(title: "Manage Engagements…", action: #selector(manageEngagements), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Edit Checklists…", action: #selector(editChecklists), keyEquivalent: ""))
+        toolsMenu.addItem(NSMenuItem(title: "Download Knowledge Base…", action: #selector(downloadKnowledgeBase), keyEquivalent: ""))
         toolsMenuItem.submenu = toolsMenu
         mainMenu.addItem(toolsMenuItem)
 
@@ -377,6 +378,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func saveKnowledgeBaseTemplate() {
         KnowledgeBaseTemplate.save()
+    }
+
+    @objc private func downloadKnowledgeBase() {
+        showDropdown()
+        UIState.shared.module = .knowledgeBase
+        UIState.shared.showKnowledgeBaseDownload = true
     }
 
     @objc private func openRepository() {

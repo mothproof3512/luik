@@ -173,6 +173,10 @@ struct CommandPalette: View {
             PaletteItem(id: "shortcuts", icon: "keyboard", title: "Keyboard shortcuts", subtitle: "⌘/", group: "Actions") {
                 ui.showShortcuts = true
             },
+            PaletteItem(id: "kb-download", icon: "icloud.and.arrow.down", title: "Download knowledge base", subtitle: "English or Dutch attack-vectors knowledge base from GitHub, or your own link", group: "Actions") {
+                ui.module = .knowledgeBase
+                ui.showKnowledgeBaseDownload = true
+            },
             PaletteItem(id: "kb-template", icon: "tablecells", title: "Save knowledge-base template", subtitle: "example CSV with the recognised columns", group: "Actions") {
                 KnowledgeBaseTemplate.save()
             },

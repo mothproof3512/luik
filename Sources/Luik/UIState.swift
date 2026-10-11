@@ -59,4 +59,6 @@ final class UIState {
     var updateAvailable: (version: String, url: String)? = nil
     /// The keyboard-shortcuts sheet (⌘/).
     var showShortcuts = false
+    /// The "Download a knowledge base" sheet (Knowledge base tab, Tools menu, ⌘K).
+    var showKnowledgeBaseDownload = false
 }

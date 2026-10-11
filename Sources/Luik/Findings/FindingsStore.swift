@@ -197,10 +197,19 @@ final class FindingsStore {
             if let result = CVSS31.score(vector: finding.cvssVector) { finding.severity = result.severity }
         }
         var mapped: Set<String> = []
+        /// The first matching column that has a value (an empty "evidence" column in a knowledge
+        /// base must not hide a filled "test approach" column).
         func take(_ patterns: [String]) -> String {
-            guard let c = column(matching: patterns, excluding: used + Array(mapped)), !record.value(c).isEmpty else { return "" }
-            mapped.insert(c)
-            return record.value(c)
+            for pattern in patterns {
+                for c in columns where !used.contains(c) && !mapped.contains(c) && c.lowercased().contains(pattern) {
+                    let value = record.value(c)
+                    if !value.isEmpty {
+                        mapped.insert(c)
+                        return value
+                    }
+                }
+            }
+            return ""
         }
         finding.description = take(["description", "omschrijving", "beschrijving", "details", "explanation"])
         finding.impact = take(["impact", "risk description", "consequence", "gevolg"])

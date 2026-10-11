@@ -23,6 +23,11 @@ struct KnowledgeBase: Codable {
     var sourceName: String
     var importedAt: Date
     var tables: [KBTable]
+    /// Where a downloaded knowledge base came from (nil for a local file).
+    var sourceURL: String?
+    /// Catalogue entry id and version, so the download sheet can offer an update.
+    var catalogID: String?
+    var version: String?
 
     var recordCount: Int {
         tables.reduce(0) { $0 + $1.records.count }

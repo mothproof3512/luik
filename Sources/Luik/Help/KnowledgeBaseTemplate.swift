@@ -63,6 +63,8 @@ enum KnowledgeBaseTemplate {
 
     /// The guide shown in the Knowledge base tab.
     static let guide: [(title: String, text: String)] = [
+        ("Start with a ready-made knowledge base",
+         "Download… fetches the attack-vectors knowledge base from the Luik repository — 349 attack vectors and CVEs across web, API, network, Active Directory, cloud, mobile, wireless, social engineering, physical, endpoint and AI/LLM, mapped to OWASP, WSTG, ASVS, MITRE ATT&CK, CWE and CISA KEV — in English or Dutch. The same sheet also takes a link to your own file (GitHub, GitLab, a web server; a token for private repositories) or to a catalogue of your team's knowledge bases."),
         ("One row per finding, one column per field",
          "The header is the first row with at least two filled cells, so a title row above it is fine. Every sheet of an .xlsx workbook is imported; .csv/.tsv and .json (an array of objects) work too. Any column is searchable — a product, version, CVE, CWE or technique typed in the search box is matched against every cell."),
         ("Columns Luik recognises by name",

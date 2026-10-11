@@ -148,6 +148,9 @@ struct RootView: View {
         .sheet(isPresented: $ui.showShortcuts) {
             ShortcutsView()
         }
+        .sheet(isPresented: $ui.showKnowledgeBaseDownload) {
+            KnowledgeBaseDownloadView()
+        }
         .environment(\.luikTheme, theme)
         .tint(theme.accentColor)
     }
@@ -251,6 +254,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.evidenceFolder) private var evidenceFolder = ""
     @AppStorage(SettingsKey.hideWhileCapturing) private var hideWhileCapturing = true
     @AppStorage(SettingsKey.checkForUpdates) private var checkForUpdates = true
+    @AppStorage(SettingsKey.knowledgeBaseCatalogURL) private var knowledgeBaseCatalogURL = ""
     @State private var checkingUpdates = false
     @State private var updateMessage: String? = nil
 
@@ -387,6 +391,18 @@ struct SettingsView: View {
             Text("Search everything")
                 .font(.subheadline.weight(.semibold))
             caption("⌘K opens one search box over notes, one-liners, targets, findings, knowledge base, Exploit-DB, Chef operations, the log, engagements and actions. ↑↓ to choose, ↩ to open, esc to close.")
+
+            Divider()
+
+            Text("Knowledge base catalogue")
+                .font(.subheadline.weight(.semibold))
+            HStack(spacing: 8) {
+                TextField(KnowledgeBaseDownloader.defaultCatalogURL, text: $knowledgeBaseCatalogURL)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(.caption, design: .monospaced))
+                Button("Download…") { ui.showKnowledgeBaseDownload = true }
+            }
+            caption("The catalog.json that the Download sheet of the Knowledge base tab lists. Empty = the Luik repository (English and Dutch attack-vectors knowledge bases). Point it at your own repository to make your team's knowledge bases the default; the format is described in knowledge-base/README.md of the repository.")
 
             Divider()
 
