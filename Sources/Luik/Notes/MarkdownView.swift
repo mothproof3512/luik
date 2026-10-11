@@ -13,6 +13,9 @@ struct MarkdownView: View {
     @Environment(\.luikTheme) private var theme
     @State private var elements: [MarkdownElement] = []
     @State private var parsedText: String?
+    @State private var contentWidth: CGFloat = 640
+
+    private static let horizontalPadding: CGFloat = 14
 
     var body: some View {
         ScrollView {
@@ -21,8 +24,14 @@ struct MarkdownView: View {
                     render(element)
                 }
             }
-            .padding(14)
+            .padding(MarkdownView.horizontalPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .background(GeometryReader { proxy in
+                Color.clear.preference(key: MarkdownWidthKey.self, value: proxy.size.width)
+            })
+        }
+        .onPreferenceChange(MarkdownWidthKey.self) { width in
+            if width > 0 { contentWidth = width }
         }
         .environment(\.openURL, OpenURLAction { url in
             if let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" || scheme == "mailto" {
@@ -73,8 +82,9 @@ struct MarkdownView: View {
         case .thematicBreak:
             Divider()
                 .padding(.vertical, 4)
-        case .table(let rows, let hasHeader):
-            MarkdownTableView(rows: rows, hasHeader: hasHeader)
+        case .table(let rows, let hasHeader, let alignments):
+            MarkdownTableView(rows: rows, hasHeader: hasHeader, alignments: alignments,
+                              availableWidth: max(contentWidth - 2 * MarkdownView.horizontalPadding - CGFloat(element.indent) * 18, 160))
                 .padding(.leading, CGFloat(element.indent) * 18)
                 .padding(.vertical, 4)
         }
@@ -155,32 +165,153 @@ struct CodeBlockView: View {
     }
 }
 
-/// A Markdown table as a grid; the header row is bold with a rule under it.
+private struct MarkdownWidthKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+/// Column alignment from the delimiter row (`:---`, `---:`, `:---:`).
+enum MarkdownColumnAlignment: Sendable {
+    case leading
+    case center
+    case trailing
+
+    var alignment: Alignment {
+        switch self {
+        case .leading: return .topLeading
+        case .center: return .top
+        case .trailing: return .topTrailing
+        }
+    }
+
+    var textAlignment: TextAlignment {
+        switch self {
+        case .leading: return .leading
+        case .center: return .center
+        case .trailing: return .trailing
+        }
+    }
+}
+
+/// A Markdown table laid out like a web page would: columns as wide as their content when that
+/// fits, otherwise shared out proportionally with the text wrapping, and only scrolled
+/// horizontally when even the longest words do not fit. Header row tinted and bold, zebra rows.
 struct MarkdownTableView: View {
     let rows: [[AttributedString]]
     let hasHeader: Bool
+    let alignments: [MarkdownColumnAlignment]
+    let availableWidth: CGFloat
+
+    private static let fontSize: CGFloat = 12
+    private static let cellPaddingHorizontal: CGFloat = 8
+    private static let cellPaddingVertical: CGFloat = 5
+    private static let longestWordCap: CGFloat = 260
+
+    private var columnCount: Int { rows.map(\.count).max() ?? 0 }
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            Grid(alignment: .topLeading, horizontalSpacing: 14, verticalSpacing: 4) {
-                ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
-                    GridRow {
-                        ForEach(Array(row.enumerated()), id: \.offset) { _, cell in
-                            Text(cell)
-                                .font(index == 0 && hasHeader ? .callout.weight(.semibold) : .callout)
-                                .textSelection(.enabled)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .frame(maxWidth: 420, alignment: .leading)
+        let widths = columnWidths()
+        let total = widths.reduce(0, +)
+        Group {
+            if total > availableWidth + 0.5 {
+                ScrollView(.horizontal, showsIndicators: true) {
+                    grid(widths: widths)
+                }
+            } else {
+                grid(widths: widths)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.white.opacity(0.14), lineWidth: 1))
+    }
+
+    private func grid(widths: [CGFloat]) -> some View {
+        Grid(alignment: .topLeading, horizontalSpacing: 0, verticalSpacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
+                let isHeader = hasHeader && rowIndex == 0
+                GridRow {
+                    ForEach(0..<max(columnCount, 1), id: \.self) { column in
+                        let alignment = column < alignments.count ? alignments[column] : .leading
+                        Group {
+                            if column < row.count {
+                                Text(row[column])
+                                    .font(isHeader ? .callout.weight(.semibold) : .callout)
+                                    .multilineTextAlignment(alignment.textAlignment)
+                                    .textSelection(.enabled)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            } else {
+                                Text("")
+                            }
                         }
-                    }
-                    if index == 0 && hasHeader {
-                        Divider()
+                        .padding(.horizontal, MarkdownTableView.cellPaddingHorizontal)
+                        .padding(.vertical, MarkdownTableView.cellPaddingVertical)
+                        .frame(width: column < widths.count ? widths[column] : 80, alignment: alignment.alignment)
+                        .background(isHeader ? Color.white.opacity(0.12) : (rowIndex % 2 == (hasHeader ? 0 : 1) ? Color.white.opacity(0.04) : Color.clear))
+                        .overlay(alignment: .bottom) {
+                            Rectangle()
+                                .fill(Color.white.opacity(isHeader ? 0.2 : 0.07))
+                                .frame(height: 1)
+                        }
                     }
                 }
             }
-            .padding(8)
         }
-        .background(Color.black.opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
+    }
+
+    /// Natural widths when they fit; otherwise the longest word of each column as a floor (capped)
+    /// and the rest shared in proportion to what each column would like.
+    private func columnWidths() -> [CGFloat] {
+        let columns = max(columnCount, 1)
+        var ideal = [CGFloat](repeating: 0, count: columns)
+        var minimum = [CGFloat](repeating: 0, count: columns)
+        let padding = 2 * MarkdownTableView.cellPaddingHorizontal
+        for row in rows {
+            for (index, cell) in row.enumerated() where index < columns {
+                let measured = MarkdownTableView.measure(cell)
+                ideal[index] = max(ideal[index], measured.width + padding + 1)
+                minimum[index] = max(minimum[index], min(measured.longestWord, MarkdownTableView.longestWordCap) + padding + 1)
+            }
+        }
+        for index in 0..<columns {
+            ideal[index] = max(ideal[index], 24 + padding)
+            minimum[index] = max(minimum[index], 24 + padding)
+        }
+        let idealTotal = ideal.reduce(0, +)
+        if idealTotal <= availableWidth { return ideal }
+        let floorTotal = minimum.reduce(0, +)
+        if floorTotal >= availableWidth { return minimum }   // scrolls horizontally
+        let extra = availableWidth - floorTotal
+        let flex = (0..<columns).map { max(ideal[$0] - minimum[$0], 0) }
+        let flexTotal = flex.reduce(0, +)
+        return (0..<columns).map { index in
+            minimum[index] + (flexTotal > 0 ? extra * flex[index] / flexTotal : extra / CGFloat(columns))
+        }
+    }
+
+    /// Width of a cell's widest line, and of its longest word, with the fonts Text will use.
+    private static func measure(_ cell: AttributedString) -> (width: CGFloat, longestWord: CGFloat) {
+        let regular = NSFont.systemFont(ofSize: fontSize)
+        let bold = NSFont.systemFont(ofSize: fontSize, weight: .semibold)
+        let mono = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        var lines: [NSMutableAttributedString] = [NSMutableAttributedString()]
+        var longestWord: CGFloat = 0
+        for run in cell.runs {
+            let piece = String(cell[run.range].characters)
+            let intent = run.inlinePresentationIntent ?? []
+            let font = intent.contains(.code) ? mono : (intent.contains(.stronglyEmphasized) ? bold : regular)
+            let attributes: [NSAttributedString.Key: Any] = [.font: font]
+            for (index, part) in piece.components(separatedBy: "\n").enumerated() {
+                if index > 0 { lines.append(NSMutableAttributedString()) }
+                lines[lines.count - 1].append(NSAttributedString(string: part, attributes: attributes))
+                for word in part.split(whereSeparator: { $0.isWhitespace }) {
+                    longestWord = max(longestWord, (String(word) as NSString).size(withAttributes: attributes).width)
+                }
+            }
+        }
+        let width = lines.map { $0.size().width }.max() ?? 0
+        return (width, longestWord)
     }
 }
 
@@ -193,7 +324,7 @@ struct MarkdownElement: Identifiable, Sendable {
         case paragraph
         case code(String?)
         case thematicBreak
-        case table(rows: [[AttributedString]], hasHeader: Bool)
+        case table(rows: [[AttributedString]], hasHeader: Bool, alignments: [MarkdownColumnAlignment])
     }
 
     let id: Int
@@ -212,10 +343,21 @@ struct MarkdownElement: Identifiable, Sendable {
     }
 }
 
+/// A pipe table cut out of the source before Foundation parses the rest.
+struct MarkdownTable: Sendable {
+    var rows: [[AttributedString]]
+    var hasHeader: Bool
+    var alignments: [MarkdownColumnAlignment]
+}
+
 enum MarkdownParser {
+    /// Stands in for a table in the text handed to Foundation (U+FFFC never occurs in prose).
+    static let tablePlaceholder = "\u{FFFC}LUIK-TABLE:"
+
     /// Blocks in document order. Falls back to one paragraph per line when the parser rejects
     /// the text (it is lenient, so that is rare).
-    static func parse(_ text: String) -> [MarkdownElement] {
+    static func parse(_ source: String) -> [MarkdownElement] {
+        let (text, tables) = extractTables(source.replacingOccurrences(of: "\r\n", with: "\n"))
         let options = AttributedString.MarkdownParsingOptions(allowsExtendedAttributes: true,
                                                               interpretedSyntax: .full,
                                                               failurePolicy: .returnPartiallyParsedIfPossible)
@@ -252,7 +394,7 @@ enum MarkdownParser {
 
         func flushTable() {
             guard tableIdentity != nil else { return }
-            var element = MarkdownElement(id: elements.count, kind: .table(rows: tableRows, hasHeader: tableHasHeader), text: AttributedString())
+            var element = MarkdownElement(id: elements.count, kind: .table(rows: tableRows, hasHeader: tableHasHeader, alignments: []), text: AttributedString())
             element.indent = tableIndent
             elements.append(element)
             tableRows = []
@@ -339,6 +481,18 @@ enum MarkdownParser {
                 continue
             }
 
+            // A placeholder paragraph stands for a table that was cut out of the source.
+            if case .paragraph = kind, let table = MarkdownParser.table(forPlaceholder: String(block.text.characters), in: tables) {
+                var element = MarkdownElement(id: elements.count, kind: .table(rows: table.rows, hasHeader: table.hasHeader, alignments: table.alignments), text: AttributedString())
+                element.indent = indent
+                element.quoteDepth = quoteDepth
+                if let listItem, lastListItemIdentity != listItem.identity {
+                    lastListItemIdentity = listItem.identity
+                }
+                elements.append(element)
+                continue
+            }
+
             var element = MarkdownElement(id: elements.count, kind: kind, text: block.text)
             element.indent = indent
             element.quoteDepth = quoteDepth
@@ -358,5 +512,124 @@ enum MarkdownParser {
         }
         flushTable()
         return elements
+    }
+
+    // MARK: Pipe tables
+
+    static func table(forPlaceholder text: String, in tables: [MarkdownTable]) -> MarkdownTable? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix(tablePlaceholder), trimmed.hasSuffix("\u{FFFC}") else { return nil }
+        let number = trimmed.dropFirst(tablePlaceholder.count).dropLast()
+        guard let index = Int(number), index >= 0, index < tables.count else { return nil }
+        return tables[index]
+    }
+
+    /// Replaces every pipe table (header row, delimiter row, body rows) by a placeholder
+    /// paragraph and returns the tables with their cells parsed as inline Markdown. Fenced code
+    /// is left alone.
+    static func extractTables(_ text: String) -> (String, [MarkdownTable]) {
+        let lines = text.components(separatedBy: "\n")
+        var output: [String] = []
+        var tables: [MarkdownTable] = []
+        var fence: String? = nil
+        var index = 0
+        while index < lines.count {
+            let line = lines[index]
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if let marker = fenceMarker(trimmed) {
+                if let open = fence {
+                    if marker.hasPrefix(String(open.first!)) && marker.count >= open.count { fence = nil }
+                } else {
+                    fence = marker
+                }
+                output.append(line)
+                index += 1
+                continue
+            }
+            if fence == nil, index + 1 < lines.count, isTableRow(trimmed),
+               let alignments = delimiterRow(lines[index + 1]) {
+                let header = splitCells(trimmed)
+                if header.count == alignments.count {
+                    var rows: [[String]] = [header]
+                    var next = index + 2
+                    while next < lines.count {
+                        let candidate = lines[next].trimmingCharacters(in: .whitespaces)
+                        guard isTableRow(candidate) else { break }
+                        rows.append(splitCells(candidate))
+                        next += 1
+                    }
+                    let columns = max(rows.map(\.count).max() ?? 0, alignments.count)
+                    let padded = rows.map { row in row + Array(repeating: "", count: max(columns - row.count, 0)) }
+                    var columnAlignments = alignments
+                    while columnAlignments.count < columns { columnAlignments.append(.leading) }
+                    tables.append(MarkdownTable(rows: padded.map { $0.map(inlineCell) }, hasHeader: true, alignments: columnAlignments))
+                    let indent = String(line.prefix { $0 == " " || $0 == "\t" })
+                    if let last = output.last, !last.trimmingCharacters(in: .whitespaces).isEmpty { output.append("") }
+                    output.append(indent + tablePlaceholder + "\(tables.count - 1)" + "\u{FFFC}")
+                    output.append("")
+                    index = next
+                    continue
+                }
+            }
+            output.append(line)
+            index += 1
+        }
+        return (output.joined(separator: "\n"), tables)
+    }
+
+    /// "```" / "~~~" (three or more) at the start of a line.
+    private static func fenceMarker(_ trimmed: String) -> String? {
+        for character in ["`", "~"] {
+            let run = trimmed.prefix { String($0) == character }
+            if run.count >= 3 { return String(run) }
+        }
+        return nil
+    }
+
+    private static func isTableRow(_ trimmed: String) -> Bool {
+        !trimmed.isEmpty && trimmed.contains("|") && fenceMarker(trimmed) == nil
+    }
+
+    /// `| :--- | ---: | :---: |` → alignments, or nil when the line is not a delimiter row.
+    private static func delimiterRow(_ line: String) -> [MarkdownColumnAlignment]? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard trimmed.contains("-") else { return nil }
+        var alignments: [MarkdownColumnAlignment] = []
+        for cell in splitCells(trimmed) {
+            let compact = cell.replacingOccurrences(of: " ", with: "")
+            guard !compact.isEmpty else { return nil }
+            let left = compact.hasPrefix(":")
+            let right = compact.hasSuffix(":")
+            let dashes = compact.trimmingCharacters(in: CharacterSet(charactersIn: ":"))
+            guard !dashes.isEmpty, dashes.allSatisfy({ $0 == "-" }) else { return nil }
+            alignments.append(left && right ? .center : (right ? .trailing : .leading))
+        }
+        return alignments.isEmpty ? nil : alignments
+    }
+
+    /// Cells of a row; outer pipes are optional, `\|` is a literal pipe.
+    private static func splitCells(_ trimmed: String) -> [String] {
+        let sentinel = "\u{E000}"
+        var text = trimmed.replacingOccurrences(of: "\\|", with: sentinel)
+        if text.hasPrefix("|") { text.removeFirst() }
+        if text.hasSuffix("|") { text.removeLast() }
+        return text.components(separatedBy: "|").map {
+            $0.replacingOccurrences(of: sentinel, with: "|").trimmingCharacters(in: .whitespaces)
+        }
+    }
+
+    /// Inline Markdown of a cell; `<br>` becomes a line break.
+    private static func inlineCell(_ raw: String) -> AttributedString {
+        var text = raw
+        for tag in ["<br>", "<br/>", "<br />", "<BR>", "<BR/>", "<BR />"] {
+            text = text.replacingOccurrences(of: tag, with: "\n")
+        }
+        let options = AttributedString.MarkdownParsingOptions(allowsExtendedAttributes: true,
+                                                              interpretedSyntax: .inlineOnlyPreservingWhitespace,
+                                                              failurePolicy: .returnPartiallyParsedIfPossible)
+        if let parsed = try? AttributedString(markdown: text, options: options) {
+            return parsed
+        }
+        return AttributedString(text)
     }
 }

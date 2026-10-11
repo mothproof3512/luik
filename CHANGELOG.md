@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.18.1
+- Markdown tables in Read mode are laid out properly: columns take the width of their content when it fits, otherwise the space is shared in proportion and the text wraps (a horizontal scroll only when the longest words do not fit); header row tinted and bold, zebra rows, column alignment from the delimiter row (`:---:`), `<br>` and `\|` inside cells, inline code and links in cells. Pipe tables are now read by Luik itself before the rest is handed to the system parser, so they render the same everywhere (also inside list items and block quotes); fenced code is left untouched.
+
 ## 0.18.0
 - **Markdown notes**: notes are rendered Markdown (headings, lists, tables, block quotes, links, inline code) with an Edit / Read switch; in Read mode every code block has a copy button. Rendered with Foundation's own Markdown parser — no third-party code.
 - **Library** in the Notes sidebar, shared by all engagements, as plain .md files in `~/Library/Application Support/Luik/Library/`: **Import folder or files…** copies a whole folder of cheat sheets at once (subfolders kept, folder name = collection); documents open in Read mode and can be edited in place; Rescan / Show in Finder for outside edits; filter box over notes and library (titles, then full text); ⌘K searches the library too.
