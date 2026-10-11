@@ -437,12 +437,36 @@ struct FieldView: View {
     let label: String
     let value: String
     @Environment(KnowledgeBaseStore.self) private var store
+    @Environment(NotesStore.self) private var notes
+    @Environment(UIState.self) private var ui
+
+    /// A "PayloadsAllTheThings" / "InternalAllTheThings" column names a page; when that
+    /// documentation is in the library, offer to open it.
+    private var libraryDocument: LibraryDocument? {
+        let key = label.lowercased().replacingOccurrences(of: " ", with: "")
+        guard key.contains("allthethings") else { return nil }
+        let library = LibraryStore.shared
+        for part in value.components(separatedBy: CharacterSet(charactersIn: ";,|")) {
+            if let document = library.document(topic: part) { return document }
+        }
+        return nil
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
+            if let document = libraryDocument {
+                Button {
+                    notes.open(document)
+                    ui.module = .notes
+                } label: {
+                    Label("Open “\(document.title)” in the library", systemImage: "books.vertical")
+                        .font(.caption)
+                }
+                .buttonStyle(.link)
+            }
             if value.contains("http://") || value.contains("https://") {
                 VStack(alignment: .leading, spacing: 2) {
                     ForEach(Array(FieldView.urlParts(value).enumerated()), id: \.offset) { _, part in

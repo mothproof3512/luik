@@ -80,7 +80,7 @@ final class KnowledgeBaseDownloader {
         if !fieldsLoaded {
             fieldsLoaded = true
             customURL = UserDefaults.standard.string(forKey: SettingsKey.knowledgeBaseCustomURL) ?? ""
-            token = KeychainItem.knowledgeBaseToken.read() ?? ""
+            token = KeychainItem.githubToken.read() ?? ""
         }
         importedAt = nil
         if catalog == nil || !isUsingDefaultCatalog {
@@ -145,7 +145,7 @@ final class KnowledgeBaseDownloader {
             return
         }
         UserDefaults.standard.set(text, forKey: SettingsKey.knowledgeBaseCustomURL)
-        KeychainItem.knowledgeBaseToken.write(token.trimmingCharacters(in: .whitespacesAndNewlines))
+        KeychainItem.githubToken.write(token.trimmingCharacters(in: .whitespacesAndNewlines))
         isDownloading = true
         statusIsError = false
         status = "Downloading \(url.lastPathComponent)…"
@@ -279,9 +279,10 @@ final class KnowledgeBaseDownloader {
     }
 }
 
-/// Small secrets in the login keychain (service "dev.luik.app").
+/// Small secrets in the login keychain (service "dev.luik.app"): the access token for private
+/// repositories, shared by the knowledge-base and library downloads.
 enum KeychainItem: String {
-    case knowledgeBaseToken = "knowledge-base-token"
+    case githubToken = "github-token"
 
     private static let service = "dev.luik.app"
 

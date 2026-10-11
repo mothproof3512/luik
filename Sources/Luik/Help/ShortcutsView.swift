@@ -56,6 +56,11 @@ struct ShortcutsView: View {
                 Shortcut(keys: "One-liners ▾", action: "The one-liners tagged for the selected host/port, with $RHOST, $RPORT and $RURL filled in — copy, or paste into the terminal"),
                 Shortcut(keys: "double-click divider", action: "Reset the list/detail split (Targets, Findings, Knowledge base, Searchsploit)"),
             ]),
+            ShortcutGroup(title: "Notes and library", shortcuts: [
+                Shortcut(keys: "Edit / Read", action: "Notes are Markdown: edit the text, or read it rendered — every code block then has a copy button"),
+                Shortcut(keys: "⋯ › Import folder", action: "Copy a folder of .md cheat sheets into the library (shared by all engagements); ⋯ › Download documentation fetches PayloadsAllTheThings, InternalAllTheThings or your own repository"),
+                Shortcut(keys: "click a link", action: "Links between pages of a downloaded collection open inside Luik; web links open in the browser"),
+            ]),
             ShortcutGroup(title: "Editing text", shortcuts: [
                 Shortcut(keys: "⌘Z  ⌘⇧Z", action: "Undo / redo in notes and fields"),
                 Shortcut(keys: "⌘A  ⌘X", action: "Select all / cut"),

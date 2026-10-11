@@ -15,7 +15,7 @@ and a panel slides down from the top of the screen with nine tabs:
 | Tab | What it does |
 |---|---|
 | **Terminal** | A real terminal (SwiftTerm) with multiple tabs, running your own shell as a login shell |
-| **Notes** | Notepad with multiple notes, saved automatically |
+| **Notes** | Markdown notes per engagement (edit / read, code blocks with a copy button), saved automatically — plus the **Library**: your cheat sheets imported from a folder in one go, and documentation such as PayloadsAllTheThings and InternalAllTheThings downloaded (and updated) from GitHub, all searchable |
 | **One-liners** | A list of commands with a **Copy** button; `$RHOST`, `$RPORT`, `$RURL`, `$LHOST` and `$LPORT` are replaced; commands can also be pasted straight into the terminal. Tag a one-liner with service names or ports and it shows up under the matching port in Targets, filled in for that host |
 | **Targets** | Import nmap, Nessus, nuclei or masscan output (one host or many IPs at once). One node per system, one node per port, and work-item nodes underneath with status and notes, so you can work systematically; scanner findings become nodes under the port |
 | **Findings** | The findings of the engagement with a CVSS 3.1 calculator, affected hosts/services, description/impact/evidence/recommendation/references and status — created by hand, from a target node, from a knowledge-base record or from a Nessus/nuclei import; exported as a Markdown or HTML report |
@@ -50,7 +50,7 @@ top bar, the tabs are ⌘1 … ⌘9.
     <td><img src="docs/screenshots/chef.png" width="100%" alt="Chef tab identifying an Atlassian PBKDF2 hash"><br><sub><b>Chef</b> — recipes of operations; here <i>Identify hash</i> recognising an Atlassian <code>{PKCS5S2}</code> hash and suggesting the hashcat / john command.</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/notes.png" width="100%" alt="Notes tab"><br><sub><b>Notes</b> — a notepad per engagement, saved automatically.</sub></td>
+    <td><img src="docs/screenshots/notes.png" width="100%" alt="Notes tab"><br><sub><b>Notes</b> — Markdown notes per engagement, saved automatically, with the library of cheat sheets and downloaded documentation in the sidebar.</sub></td>
     <td></td>
   </tr>
 </table>
@@ -128,6 +128,26 @@ The full list, including mouse tricks and your own hotkey, is one keystroke away
 | ⌘F / ⌘G / ⌘⇧G | Find in the terminal scrollback (and in text fields) |
 | ⌘, | Settings |
 | ⌘Q | Quit Luik |
+
+### Notes and the library
+
+- Notes are **Markdown**. The control at the top right switches between **Edit** (plain text,
+  monospaced) and **Read** (rendered: headings, lists, tables, quotes, links, and code blocks with
+  a **copy** button). The choice is remembered. Each engagement has its own notes.
+- The **Library** in the sidebar is shared by all engagements and lives as plain `.md` files in
+  `~/Library/Application Support/Luik/Library/<collection>/`:
+  - **⋯ › Import folder or files…** copies a folder of cheat sheets in one go (subfolders kept; the
+    folder name becomes the collection) or loose `.md` files (into "Cheatsheets"). Edit them in Luik
+    (saved back to the file) or in any editor — **Rescan** picks up outside changes; **Show in
+    Finder** opens the folder.
+  - **⋯ › Download documentation…** fetches **PayloadsAllTheThings** and **InternalAllTheThings**
+    (swisskyrepo, MIT) or any GitHub repository of Markdown pages you add (`owner/name`, optional
+    branch; a token for private repositories, kept in the keychain). Luik downloads the repository
+    archive, keeps the Markdown files and remembers the commit; **Check for updates** compares with
+    GitHub and **Update** replaces the copy. Links between pages open inside Luik.
+  - The filter box searches notes and the whole library (titles first, then full text); ⌘K finds
+    library pages too, and a knowledge-base record that names a PayloadsAllTheThings page gets an
+    **Open in the library** link once that documentation is downloaded.
 
 ### One-liners
 
@@ -354,7 +374,8 @@ Sources/Luik/
   Settings.swift           keys and defaults
   Storage.swift            JSON storage + autosave
   Terminal/                SwiftTerm sessions and tabs
-  Notes/                   notes
+  Notes/                   Markdown notes, renderer (MarkdownView) and the library sidebar
+  Library/                 library store (collections of .md files), GitHub downloads and the sources sheet
   Snippets/                one-liners
   Targets/                 nmap/Nessus/nuclei/masscan parsers, tree model, import/export and UI
   KnowledgeBase/           xlsx/csv/json import, search index, catalogue download and UI

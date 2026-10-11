@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.0
+- **Markdown notes**: notes are rendered Markdown (headings, lists, tables, block quotes, links, inline code) with an Edit / Read switch; in Read mode every code block has a copy button. Rendered with Foundation's own Markdown parser — no third-party code.
+- **Library** in the Notes sidebar, shared by all engagements, as plain .md files in `~/Library/Application Support/Luik/Library/`: **Import folder or files…** copies a whole folder of cheat sheets at once (subfolders kept, folder name = collection); documents open in Read mode and can be edited in place; Rescan / Show in Finder for outside edits; filter box over notes and library (titles, then full text); ⌘K searches the library too.
+- **Download documentation…** (Notes ⋯ menu, Tools menu, ⌘K): PayloadsAllTheThings and InternalAllTheThings (swisskyrepo) or any GitHub repository of Markdown pages (`owner/name`, optional branch, token for private repositories) are downloaded as an archive, reduced to their Markdown files and shown as a collection with the commit remembered; **Check for updates** / **Update** keep them current; relative links between pages open inside Luik. A knowledge-base record that names a PayloadsAllTheThings page links to it once the documentation is downloaded.
+- The GitHub access token is now one keychain item shared by the knowledge-base and library downloads.
+
 ## 0.17.0
 - **Download a knowledge base** (Knowledge base tab › Download, the empty tab, ⋯ menu, Tools menu, ⌘K): the attack-vectors knowledge base now ships in the repository (`knowledge-base/`, 349 rows, English and Dutch) and is imported with one click. The sheet also takes any link — an .xlsx/.csv/.tsv/.json file on GitHub, GitLab or a web server (GitHub `…/blob/…` links are converted to raw downloads; an optional access token for private repositories is kept in the keychain) — or a `catalog.json` listing a team's own knowledge bases, which can be made the default list in Settings › Tools. The ⋯ menu shows where the imported knowledge base came from; when the catalogue has a newer version, the sheet offers **Update**.
 - Create finding from a knowledge-base record: an empty *Evidence* column no longer hides a filled *Test approach* column — the first matching column with a value is used.

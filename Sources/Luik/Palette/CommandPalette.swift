@@ -173,6 +173,10 @@ struct CommandPalette: View {
             PaletteItem(id: "shortcuts", icon: "keyboard", title: "Keyboard shortcuts", subtitle: "⌘/", group: "Actions") {
                 ui.showShortcuts = true
             },
+            PaletteItem(id: "library-download", icon: "books.vertical", title: "Download documentation", subtitle: "PayloadsAllTheThings, InternalAllTheThings or your own repository into the library", group: "Actions") {
+                ui.module = .notes
+                ui.showLibrarySources = true
+            },
             PaletteItem(id: "kb-download", icon: "icloud.and.arrow.down", title: "Download knowledge base", subtitle: "English or Dutch attack-vectors knowledge base from GitHub, or your own link", group: "Actions") {
                 ui.module = .knowledgeBase
                 ui.showKnowledgeBaseDownload = true
@@ -228,6 +232,15 @@ struct CommandPalette: View {
             PaletteItem(id: "note-\(note.id)", icon: "note.text", title: note.title.isEmpty ? "Untitled" : note.title,
                         subtitle: String(note.body.prefix(80)).replacingOccurrences(of: "\n", with: " "), group: "Notes") {
                 notes.selectedID = note.id
+                ui.module = .notes
+            }
+        }
+
+        // Library (cheat sheets, PayloadsAllTheThings, …): titles first, then full text.
+        items += LibraryStore.shared.search(q, limit: CommandPalette.perSource).map { document in
+            PaletteItem(id: "library-\(document.id)", icon: "books.vertical", title: document.title,
+                        subtitle: document.breadcrumb, group: "Library") {
+                notes.open(document)
                 ui.module = .notes
             }
         }

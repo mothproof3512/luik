@@ -61,4 +61,6 @@ final class UIState {
     var showShortcuts = false
     /// The "Download a knowledge base" sheet (Knowledge base tab, Tools menu, ⌘K).
     var showKnowledgeBaseDownload = false
+    /// The "Download documentation" sheet of the library (Notes tab, Tools menu, ⌘K).
+    var showLibrarySources = false
 }

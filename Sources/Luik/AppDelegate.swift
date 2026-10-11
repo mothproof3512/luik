@@ -39,6 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .environment(EngagementStore.shared)
             .environment(FindingsStore.shared)
             .environment(ChecklistStore.shared)
+            .environment(LibraryStore.shared)
         let controller = DropdownController(rootView: root)
         controller.onDidShow = {
             if UIState.shared.module == .terminal {
@@ -80,6 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Writes every pending autosave right now (hide, quit, engagement switch).
     func flushAllStores() {
         NotesStore.shared.flush()
+        LibraryStore.shared.flush()
         SnippetStore.shared.flush()
         TargetStore.shared.flush()
         FindingsStore.shared.flush()
@@ -309,6 +311,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         toolsMenu.addItem(NSMenuItem(title: "Manage Engagements…", action: #selector(manageEngagements), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Edit Checklists…", action: #selector(editChecklists), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Download Knowledge Base…", action: #selector(downloadKnowledgeBase), keyEquivalent: ""))
+        toolsMenu.addItem(NSMenuItem(title: "Download Documentation (Library)…", action: #selector(downloadDocumentation), keyEquivalent: ""))
+        toolsMenu.addItem(NSMenuItem(title: "Import Cheat Sheets into Library…", action: #selector(importCheatSheets), keyEquivalent: ""))
         toolsMenuItem.submenu = toolsMenu
         mainMenu.addItem(toolsMenuItem)
 
@@ -384,6 +388,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         showDropdown()
         UIState.shared.module = .knowledgeBase
         UIState.shared.showKnowledgeBaseDownload = true
+    }
+
+    @objc private func downloadDocumentation() {
+        showDropdown()
+        UIState.shared.module = .notes
+        UIState.shared.showLibrarySources = true
+    }
+
+    @objc private func importCheatSheets() {
+        showDropdown()
+        UIState.shared.module = .notes
+        LibraryStore.shared.importWithPanel()
     }
 
     @objc private func openRepository() {
