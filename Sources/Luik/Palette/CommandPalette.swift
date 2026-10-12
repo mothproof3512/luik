@@ -246,7 +246,7 @@ struct CommandPalette: View {
         }
 
         // One-liners
-        items += snippets.snippets.filter { matches($0.title + " " + $0.command + " " + $0.category) }.prefix(CommandPalette.perSource).map { snippet in
+        items += snippets.snippets.filter { matches($0.searchText) }.prefix(CommandPalette.perSource).map { snippet in
             PaletteItem(id: "snippet-\(snippet.id)", icon: "doc.on.clipboard", title: snippet.title,
                         subtitle: snippets.resolve(snippet.command), group: "One-liners") {
                 snippets.search = snippet.title

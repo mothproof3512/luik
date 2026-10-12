@@ -159,6 +159,13 @@ The full list, including mouse tricks and your own hotkey, is one keystroke away
   `<ip>`, `<target>` and `$TARGET` still work.
 - **Copy** puts the command on the clipboard; the terminal icon pastes it into the active terminal
   tab (without Enter, so you can still edit it).
+- **Steps**: a one-liner can be several commands that belong together — a listener on your
+  machine, the payload on the target, the upgrade afterwards. Add steps in the editor (each with an
+  optional label such as "On the target"), reorder them with the arrows; the row shows them
+  numbered with their own copy / paste buttons and **Copy all** for the whole sequence, also at the
+  matching port in Targets.
+- **Order**: drag a row to move it within its category (or right-click › Move up / down / to top /
+  to bottom); the arrows next to a category heading move whole categories. The order is kept.
 - **Show in Targets at** (in the editor): service names and/or port numbers (`http, https, 80, 443`,
   `microsoft-ds, 445`), `host` for every host or `port` for every port. Tagged one-liners appear in
   the **One-liners** panel of the matching host/port in Targets (see below) with the host and port of

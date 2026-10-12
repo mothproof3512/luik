@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.19.0
+- **Multi-step one-liners**: a one-liner can hold several commands that belong together (listener → payload → upgrade), each with an optional label. The editor has Add step and arrows to reorder; the row shows the steps numbered with their own copy / paste buttons and **Copy all** for the sequence; the one-liners panel in Targets shows them the same way. Single-command one-liners are unchanged, and `snippets.json` keeps the old `command` field next to the steps, so older versions still read it. Two defaults became sequences: file transfer over HTTP and over netcat.
+- **Reorder one-liners**: drag a row within its category, or right-click › Move up / Move down / Move to top / Move to bottom (and Duplicate); the arrows next to a category heading (and its context menu) move whole categories. The order is saved. The editor also offers the existing categories in a menu.
+
 ## 0.18.1
 - Markdown tables in Read mode are laid out properly: columns take the width of their content when it fits, otherwise the space is shared in proportion and the text wraps (a horizontal scroll only when the longest words do not fit); header row tinted and bold, zebra rows, column alignment from the delimiter row (`:---:`), `<br>` and `\|` inside cells, inline code and links in cells. Pipe tables are now read by Luik itself before the rest is handed to the system parser, so they render the same everywhere (also inside list items and block quotes); fenced code is left untouched.
 

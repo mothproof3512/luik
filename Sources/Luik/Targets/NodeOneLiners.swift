@@ -126,12 +126,60 @@ struct OneLinersPanel: View {
     }
 
     private func row(for snippet: Snippet) -> some View {
-        let command = snippets.resolve(snippet.command, rhost: address, rport: port, service: service)
-        let copied = copiedID == snippet.id
+        VStack(alignment: .leading, spacing: 2) {
+            if snippet.isMultiStep {
+                HStack(spacing: 6) {
+                    Text(snippet.title)
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                    Text("\(snippet.steps.count) steps")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                    Button {
+                        let all = snippet.steps.map { resolve($0.command) }.joined(separator: "\n")
+                        copy(all, id: snippet.id)
+                    } label: {
+                        Image(systemName: copiedID == snippet.id ? "checkmark" : "doc.on.doc.fill")
+                            .foregroundStyle(copiedID == snippet.id ? Color.green : theme.accentColor)
+                            .frame(width: 16)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Copy every step, one per line")
+                }
+                ForEach(Array(snippet.steps.enumerated()), id: \.element.id) { index, step in
+                    commandLine(title: step.label.isEmpty ? "Step \(index + 1)" : "\(index + 1). \(step.label)",
+                                command: resolve(step.command), id: step.id, titleIsSecondary: true)
+                        .padding(.leading, 10)
+                }
+            } else if let step = snippet.steps.first {
+                commandLine(title: snippet.title, command: resolve(step.command), id: snippet.id, titleIsSecondary: false)
+            }
+        }
+    }
+
+    private func resolve(_ command: String) -> String {
+        snippets.resolve(command, rhost: address, rport: port, service: service)
+    }
+
+    private func copy(_ text: String, id: UUID) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        copiedID = id
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            if copiedID == id { copiedID = nil }
+        }
+    }
+
+    /// One command with its copy and paste buttons.
+    private func commandLine(title: String, command: String, id: UUID, titleIsSecondary: Bool) -> some View {
+        let copied = copiedID == id
         return HStack(alignment: .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(snippet.title)
-                    .font(.caption.weight(.semibold))
+                Text(title)
+                    .font(titleIsSecondary ? .caption2 : .caption.weight(.semibold))
+                    .foregroundStyle(titleIsSecondary ? Color.secondary : Color.primary)
                     .lineLimit(1)
                 Text(command)
                     .font(.system(.caption2, design: .monospaced))
@@ -142,13 +190,7 @@ struct OneLinersPanel: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Button {
-                let pasteboard = NSPasteboard.general
-                pasteboard.clearContents()
-                pasteboard.setString(command, forType: .string)
-                copiedID = snippet.id
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                    if copiedID == snippet.id { copiedID = nil }
-                }
+                copy(command, id: id)
             } label: {
                 Image(systemName: copied ? "checkmark" : "doc.on.doc")
                     .foregroundStyle(copied ? Color.green : theme.accentColor)

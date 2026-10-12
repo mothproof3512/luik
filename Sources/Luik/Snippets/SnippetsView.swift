@@ -45,12 +45,14 @@ struct SnippetsView: View {
                     Button("Show data folder in Finder") {
                         NSWorkspace.shared.activateFileViewerSelecting([Storage.url(for: "snippets.json")])
                     }
+                    Divider()
+                    Text("Drag a row to reorder it within its category; right-click a row or a category heading for more.")
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
                 .frame(width: 44)
                 Button {
-                    editing = Snippet(title: "", command: "", category: "General")
+                    editing = Snippet(title: "", command: "", category: store.allCategories.first ?? "General")
                 } label: {
                     Label("New", systemImage: "plus")
                 }
@@ -67,24 +69,74 @@ struct SnippetsView: View {
                 }
                 .frame(maxWidth: .infinity)
             } else {
+                let searching = !store.search.trimmingCharacters(in: .whitespaces).isEmpty
+                let categories = store.filteredCategories
                 List {
-                    ForEach(store.filteredCategories, id: \.self) { category in
-                        Section(category) {
+                    ForEach(categories, id: \.self) { category in
+                        Section {
                             ForEach(store.filtered.filter { $0.category == category }) { snippet in
                                 SnippetRow(snippet: snippet,
-                                           resolved: store.resolve(snippet.command),
                                            isCopied: copiedID == snippet.id,
-                                           copy: {
+                                           copyAll: {
                                                store.copyToClipboard(snippet)
                                                flashCopied(snippet.id)
                                            },
-                                           paste: {
-                                               terminals.sendToSelected(store.resolve(snippet.command), source: "One-liners")
+                                           copyStep: { step in
+                                               store.copyToClipboard(text: store.resolve(step.command))
+                                               flashCopied(step.id)
+                                           },
+                                           stepCopied: { step in copiedID == step.id },
+                                           paste: { step in
+                                               terminals.sendToSelected(store.resolve(step.command), source: "One-liners")
                                                ui.module = .terminal
                                                terminals.focusSelected(afterDelay: true)
                                            },
                                            edit: { editing = snippet },
                                            delete: { store.delete(snippet.id) })
+                                    .contextMenu {
+                                        Button("Edit…") { editing = snippet }
+                                        Button("Duplicate") { store.duplicate(snippet.id) }
+                                        Divider()
+                                        Button("Move up") { store.move(snippet.id, .up) }
+                                        Button("Move down") { store.move(snippet.id, .down) }
+                                        Button("Move to top") { store.move(snippet.id, .top) }
+                                        Button("Move to bottom") { store.move(snippet.id, .bottom) }
+                                        Divider()
+                                        Button("Delete", role: .destructive) { store.delete(snippet.id) }
+                                    }
+                            }
+                            .onMove { source, destination in
+                                guard !searching else { return }
+                                store.move(inCategory: category, from: source, to: destination)
+                            }
+                        } header: {
+                            HStack(spacing: 6) {
+                                Text(category)
+                                Spacer()
+                                if !searching, categories.count > 1 {
+                                    Button {
+                                        store.moveCategory(category, up: true)
+                                    } label: {
+                                        Image(systemName: "chevron.up")
+                                    }
+                                    .buttonStyle(.plain)
+                                    .foregroundStyle(.secondary)
+                                    .disabled(categories.first == category)
+                                    .help("Move this category up")
+                                    Button {
+                                        store.moveCategory(category, up: false)
+                                    } label: {
+                                        Image(systemName: "chevron.down")
+                                    }
+                                    .buttonStyle(.plain)
+                                    .foregroundStyle(.secondary)
+                                    .disabled(categories.last == category)
+                                    .help("Move this category down")
+                                }
+                            }
+                            .contextMenu {
+                                Button("Move category up") { store.moveCategory(category, up: true) }
+                                Button("Move category down") { store.moveCategory(category, up: false) }
                             }
                         }
                     }
@@ -94,7 +146,7 @@ struct SnippetsView: View {
             }
         }
         .sheet(item: $editing) { snippet in
-            SnippetEditor(snippet: snippet) { saved in
+            SnippetEditor(snippet: snippet, categories: store.allCategories) { saved in
                 store.upsert(saved)
             }
         }
@@ -139,66 +191,131 @@ struct SnippetsView: View {
     }
 }
 
+/// One one-liner: a single command on one line, or its numbered steps with their own buttons.
 struct SnippetRow: View {
     let snippet: Snippet
-    let resolved: String
     let isCopied: Bool
-    let copy: () -> Void
-    let paste: () -> Void
+    let copyAll: () -> Void
+    let copyStep: (SnippetStep) -> Void
+    let stepCopied: (SnippetStep) -> Bool
+    let paste: (SnippetStep) -> Void
     let edit: () -> Void
     let delete: () -> Void
+    @Environment(SnippetStore.self) private var store
     @Environment(\.luikTheme) private var theme
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(snippet.title)
-                        .font(.callout.weight(.semibold))
-                    if !snippet.services.isEmpty {
-                        Text(snippet.servicesText)
-                            .font(.caption2)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(snippet.title)
+                            .font(.callout.weight(.semibold))
+                        if snippet.isMultiStep {
+                            Text("\(snippet.steps.count) steps")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Color.white.opacity(0.1), in: Capsule())
+                        }
+                        if !snippet.services.isEmpty {
+                            Text(snippet.servicesText)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Color.white.opacity(0.1), in: Capsule())
+                                .help("Shown in Targets under: \(snippet.servicesText)")
+                        }
+                    }
+                    if !snippet.isMultiStep, let step = snippet.steps.first {
+                        Text(store.resolve(step.command))
+                            .font(.system(.caption, design: .monospaced))
                             .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 1)
-                            .background(Color.white.opacity(0.1), in: Capsule())
-                            .help("Shown in Targets under: \(snippet.servicesText)")
+                            .lineLimit(2)
+                            .textSelection(.enabled)
                     }
                 }
-                Text(resolved)
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .textSelection(.enabled)
+                Spacer()
+                Button(action: copyAll) {
+                    Label(isCopied ? "Copied" : (snippet.isMultiStep ? "Copy all" : "Copy"), systemImage: isCopied ? "checkmark" : "doc.on.doc")
+                        .frame(width: 96)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(isCopied ? Color.green : theme.accentColor)
+                .help(snippet.isMultiStep ? "Copy every step, one per line" : "Copy")
+                if !snippet.isMultiStep, let step = snippet.steps.first {
+                    Button {
+                        paste(step)
+                    } label: {
+                        Image(systemName: "terminal")
+                    }
+                    .help("Paste into the active terminal")
+                }
+                Button(action: edit) {
+                    Image(systemName: "pencil")
+                }
+                .help("Edit")
+                Button(role: .destructive, action: delete) {
+                    Image(systemName: "trash")
+                }
+                .help("Delete")
             }
-            Spacer()
-            Button(action: copy) {
-                Label(isCopied ? "Copied" : "Copy", systemImage: isCopied ? "checkmark" : "doc.on.doc")
-                    .frame(width: 96)
+            if snippet.isMultiStep {
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(Array(snippet.steps.enumerated()), id: \.element.id) { index, step in
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text("\(index + 1)")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(theme.accentColor)
+                                .frame(width: 16, alignment: .trailing)
+                            VStack(alignment: .leading, spacing: 1) {
+                                if !step.label.isEmpty {
+                                    Text(step.label)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Text(store.resolve(step.command))
+                                    .font(.system(.caption, design: .monospaced))
+                                    .lineLimit(3)
+                                    .textSelection(.enabled)
+                            }
+                            Spacer(minLength: 0)
+                            Button {
+                                copyStep(step)
+                            } label: {
+                                Image(systemName: stepCopied(step) ? "checkmark" : "doc.on.doc")
+                                    .foregroundStyle(stepCopied(step) ? Color.green : theme.accentColor)
+                                    .frame(width: 16)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Copy this step")
+                            Button {
+                                paste(step)
+                            } label: {
+                                Image(systemName: "terminal")
+                                    .frame(width: 16)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Paste this step into the active terminal")
+                        }
+                    }
+                }
+                .padding(.leading, 2)
+                .padding(.top, 2)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(isCopied ? Color.green : theme.accentColor)
-            Button(action: paste) {
-                Image(systemName: "terminal")
-            }
-            .help("Paste into the active terminal")
-            Button(action: edit) {
-                Image(systemName: "pencil")
-            }
-            .help("Edit")
-            Button(role: .destructive, action: delete) {
-                Image(systemName: "trash")
-            }
-            .help("Delete")
         }
         .padding(.vertical, 4)
     }
 }
 
+/// Add / edit a one-liner: title, category, its steps (one is enough) and where Targets shows it.
 struct SnippetEditor: View {
     @State var snippet: Snippet
+    var categories: [String] = []
     let onSave: (Snippet) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var servicesText = ""
@@ -209,17 +326,40 @@ struct SnippetEditor: View {
                 .font(.headline)
             TextField("Title", text: $snippet.title)
                 .textFieldStyle(.roundedBorder)
-            TextField("Category", text: $snippet.category)
-                .textFieldStyle(.roundedBorder)
-            Text("Command — placeholders: $RHOST (target), $RPORT (port), $RURL (http(s)://target:port), $LHOST (your IP), $LPORT (your port)")
+            HStack(spacing: 6) {
+                TextField("Category", text: $snippet.category)
+                    .textFieldStyle(.roundedBorder)
+                if !categories.isEmpty {
+                    Menu {
+                        ForEach(categories, id: \.self) { category in
+                            Button(category) { snippet.category = category }
+                        }
+                    } label: {
+                        Image(systemName: "chevron.down.circle")
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help("Pick an existing category")
+                }
+            }
+            Text("Steps — one command, or several that belong together (listener, payload, upgrade). Placeholders: $RHOST (target), $RPORT (port), $RURL (http(s)://target:port), $LHOST (your IP), $LPORT (your port)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            TextEditor(text: $snippet.command)
-                .font(.system(.body, design: .monospaced))
-                .frame(minHeight: 110)
-                .scrollContentBackground(.hidden)
-                .padding(4)
-                .background(Color.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 6))
+                .fixedSize(horizontal: false, vertical: true)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(Array(snippet.steps.enumerated()), id: \.element.id) { index, step in
+                        stepEditor(index: index, step: step)
+                    }
+                    Button {
+                        snippet.steps.append(SnippetStep(command: ""))
+                    } label: {
+                        Label("Add step", systemImage: "plus")
+                    }
+                    .buttonStyle(.link)
+                }
+            }
+            .frame(minHeight: 150, maxHeight: 360)
             Text("Show in Targets at — service names or port numbers (http, microsoft-ds, 445, …), \"host\" for every host, \"port\" for every port; empty = only here")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -237,6 +377,8 @@ struct SnippetEditor: View {
                 .keyboardShortcut(.cancelAction)
                 Button("Save") {
                     var saved = snippet
+                    saved.steps = saved.steps.filter { !$0.command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                    if saved.steps.isEmpty { return }
                     if saved.title.trimmingCharacters(in: .whitespaces).isEmpty {
                         saved.title = String(saved.command.prefix(40))
                     }
@@ -247,13 +389,70 @@ struct SnippetEditor: View {
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
-                .disabled(snippet.command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(!snippet.steps.contains { !$0.command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
             }
         }
         .padding(16)
-        .frame(width: 540)
+        .frame(width: 600)
         .onAppear {
             servicesText = snippet.servicesText
+        }
+    }
+
+    private func stepEditor(index: Int, step: SnippetStep) -> some View {
+        let binding = Binding<SnippetStep>(
+            get: { snippet.steps.first { $0.id == step.id } ?? step },
+            set: { newValue in
+                if let position = snippet.steps.firstIndex(where: { $0.id == step.id }) {
+                    snippet.steps[position] = newValue
+                }
+            }
+        )
+        return HStack(alignment: .top, spacing: 6) {
+            Text("\(index + 1)")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 16, alignment: .trailing)
+                .padding(.top, 6)
+            VStack(alignment: .leading, spacing: 4) {
+                if snippet.steps.count > 1 {
+                    TextField("Label (optional): On the target, Listener, …", text: binding.label)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.caption)
+                }
+                TextEditor(text: binding.command)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: snippet.steps.count > 1 ? 44 : 100)
+                    .scrollContentBackground(.hidden)
+                    .padding(4)
+                    .background(Color.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 6))
+            }
+            if snippet.steps.count > 1 {
+                VStack(spacing: 2) {
+                    Button {
+                        SnippetStore.reorder(&snippet.steps, from: IndexSet(integer: index), to: max(index - 1, 0))
+                    } label: {
+                        Image(systemName: "chevron.up")
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(index == 0)
+                    Button {
+                        SnippetStore.reorder(&snippet.steps, from: IndexSet(integer: index), to: min(index + 2, snippet.steps.count))
+                    } label: {
+                        Image(systemName: "chevron.down")
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(index == snippet.steps.count - 1)
+                    Button(role: .destructive) {
+                        snippet.steps.remove(at: index)
+                    } label: {
+                        Image(systemName: "minus.circle")
+                    }
+                    .buttonStyle(.plain)
+                }
+                .foregroundStyle(.secondary)
+                .padding(.top, 4)
+            }
         }
     }
 }
