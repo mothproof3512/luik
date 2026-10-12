@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.20.0
+- **Reverse shell generator** (One-liners › Reverse shell, Tools menu, ⌘K): templates come from the Reverse Shell Cheat Sheet in the library (InternalAllTheThings — PayloadsAllTheThings' page now only points there) and from your own one-liners in a "Reverse shells" category; fill in $LHOST/$LPORT (shared with the One-liners tab, antenna button detects the VPN address), choose the shell to spawn (/bin/sh, bash, zsh, …) and an encoding (URL, double URL, base64 pipe, PowerShell -EncodedCommand). Shows the listener to start first (netcat, rlwrap, ncat, socat, pwncat-cs, Metasploit handler), the payload and the TTY upgrade from the same sheet, each with Copy; listener and upgrade paste into the terminal; Copy all steps; **Save as one-liner** stores the three steps with the placeholders. Without the sheet in the library the window explains what to download.
+
 ## 0.19.0
 - **Multi-step one-liners**: a one-liner can hold several commands that belong together (listener → payload → upgrade), each with an optional label. The editor has Add step and arrows to reorder; the row shows the steps numbered with their own copy / paste buttons and **Copy all** for the sequence; the one-liners panel in Targets shows them the same way. Single-command one-liners are unchanged, and `snippets.json` keeps the old `command` field next to the steps, so older versions still read it. Two defaults became sequences: file transfer over HTTP and over netcat.
 - **Reorder one-liners**: drag a row within its category, or right-click › Move up / Move down / Move to top / Move to bottom (and Duplicate); the arrows next to a category heading (and its context menu) move whole categories. The order is saved. The editor also offers the existing categories in a menu.

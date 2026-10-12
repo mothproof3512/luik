@@ -173,6 +173,9 @@ struct CommandPalette: View {
             PaletteItem(id: "shortcuts", icon: "keyboard", title: "Keyboard shortcuts", subtitle: "⌘/", group: "Actions") {
                 ui.showShortcuts = true
             },
+            PaletteItem(id: "reverse-shell", icon: "arrow.uturn.backward.circle", title: "Reverse shell generator", subtitle: "template from the library's cheat sheet, $LHOST/$LPORT, shell, encoding, listener, TTY upgrade", group: "Actions") {
+                ui.showReverseShell = true
+            },
             PaletteItem(id: "library-download", icon: "books.vertical", title: "Download documentation", subtitle: "PayloadsAllTheThings, InternalAllTheThings or your own repository into the library", group: "Actions") {
                 ui.module = .notes
                 ui.showLibrarySources = true

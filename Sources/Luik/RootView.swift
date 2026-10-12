@@ -151,6 +151,9 @@ struct RootView: View {
         .sheet(isPresented: $ui.showKnowledgeBaseDownload) {
             KnowledgeBaseDownloadView()
         }
+        .sheet(isPresented: $ui.showReverseShell) {
+            ReverseShellView()
+        }
         .environment(\.luikTheme, theme)
         .tint(theme.accentColor)
     }

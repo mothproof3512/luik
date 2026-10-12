@@ -166,6 +166,16 @@ The full list, including mouse tricks and your own hotkey, is one keystroke away
   matching port in Targets.
 - **Order**: drag a row to move it within its category (or right-click › Move up / down / to top /
   to bottom); the arrows next to a category heading move whole categories. The order is kept.
+- **Reverse shell** (button in the toolbar, Tools menu, ⌘K): a generator that reads the templates
+  from the *Reverse Shell Cheat Sheet* in your library — download **InternalAllTheThings** (where
+  the sheet lives now; PayloadsAllTheThings only points to it) — plus your own one-liners in a
+  category named *Reverse shells*. Pick a template (Bash, Python, PHP, PowerShell, …), fill in
+  `$LHOST`/`$LPORT` (shared with the One-liners tab), choose the shell to spawn and an encoding
+  (URL, double URL, base64 pipe, PowerShell `-EncodedCommand`); the sheet shows the listener to
+  start first (netcat, rlwrap, ncat, socat, pwncat-cs, Metasploit handler), the payload and the TTY
+  upgrade from the same cheat sheet, each with Copy (the listener and the upgrade also paste into
+  the terminal). **Save as one-liner** keeps the three steps with the placeholders, so they follow
+  `$LHOST`/`$LPORT` later. Nothing is bundled: the templates update with the documentation.
 - **Show in Targets at** (in the editor): service names and/or port numbers (`http, https, 80, 443`,
   `microsoft-ds, 445`), `host` for every host or `port` for every port. Tagged one-liners appear in
   the **One-liners** panel of the matching host/port in Targets (see below) with the host and port of
@@ -383,7 +393,8 @@ Sources/Luik/
   Terminal/                SwiftTerm sessions and tabs
   Notes/                   Markdown notes, renderer (MarkdownView) and the library sidebar
   Library/                 library store (collections of .md files), GitHub downloads and the sources sheet
-  Snippets/                one-liners
+  Snippets/                one-liners (multi-step, ordering, $RHOST/$RPORT/$RURL/$LHOST/$LPORT)
+  Shells/                  reverse shell generator (templates read from the library's cheat sheet)
   Targets/                 nmap/Nessus/nuclei/masscan parsers, tree model, import/export and UI
   KnowledgeBase/           xlsx/csv/json import, search index, catalogue download and UI
   Exploits/                Exploit-DB (searchsploit) database, smart search and commands

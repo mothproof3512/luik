@@ -63,4 +63,6 @@ final class UIState {
     var showKnowledgeBaseDownload = false
     /// The "Download documentation" sheet of the library (Notes tab, Tools menu, ⌘K).
     var showLibrarySources = false
+    /// The reverse shell generator (One-liners tab, Tools menu, ⌘K).
+    var showReverseShell = false
 }

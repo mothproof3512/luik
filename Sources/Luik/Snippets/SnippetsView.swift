@@ -38,6 +38,12 @@ struct SnippetsView: View {
                     .help("Runs `export RHOST=… RPORT=… RURL=… LHOST=… LPORT=…` in the active terminal tab, so the variables work there as well")
                 }
                 Spacer()
+                Button {
+                    ui.showReverseShell = true
+                } label: {
+                    Label("Reverse shell", systemImage: "arrow.uturn.backward.circle")
+                }
+                .help("Reverse shell generator: a template from the cheat sheet in the library, $LHOST/$LPORT, shell and encoding, with the listener and the TTY upgrade")
                 Menu {
                     Button("Add missing defaults") {
                         store.addMissingDefaults()

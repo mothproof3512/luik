@@ -312,6 +312,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         toolsMenu.addItem(NSMenuItem(title: "Edit Checklists…", action: #selector(editChecklists), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Download Knowledge Base…", action: #selector(downloadKnowledgeBase), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Download Documentation (Library)…", action: #selector(downloadDocumentation), keyEquivalent: ""))
+        toolsMenu.addItem(NSMenuItem(title: "Reverse Shell Generator…", action: #selector(showReverseShell), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Import Cheat Sheets into Library…", action: #selector(importCheatSheets), keyEquivalent: ""))
         toolsMenuItem.submenu = toolsMenu
         mainMenu.addItem(toolsMenuItem)
@@ -388,6 +389,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         showDropdown()
         UIState.shared.module = .knowledgeBase
         UIState.shared.showKnowledgeBaseDownload = true
+    }
+
+    @objc private func showReverseShell() {
+        showDropdown()
+        UIState.shared.showReverseShell = true
     }
 
     @objc private func downloadDocumentation() {

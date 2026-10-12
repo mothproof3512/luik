@@ -52,6 +52,7 @@ struct ShortcutsView: View {
             ShortcutGroup(title: "One-liners", shortcuts: [
                 Shortcut(keys: "drag a row", action: "Reorder one-liners within a category (right-click: Move up / down / to top / to bottom, Duplicate); the arrows beside a heading move the category"),
                 Shortcut(keys: "Copy all", action: "A multi-step one-liner copies every step, one per line; each step also has its own copy and paste buttons"),
+                Shortcut(keys: "Reverse shell", action: "Generator: a template from the cheat sheet in your library (InternalAllTheThings) or your own “Reverse shells” one-liners, with $LHOST/$LPORT, shell, encoding, the listener and the TTY upgrade; Save as one-liner keeps the three steps"),
             ]),
             ShortcutGroup(title: "Targets", shortcuts: [
                 Shortcut(keys: "click ◯", action: "Cycle a node's status: to do → in progress → done → N/A"),
