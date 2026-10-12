@@ -2,7 +2,7 @@ import Foundation
 
 /// Version and repository, used by the settings footer, the update check and build.sh.
 enum AppInfo {
-    static let version = "0.20.0"
+    static let version = "0.20.1"
     static let repository = "mothproof3512/luik"
 }
 
@@ -37,6 +37,8 @@ enum SettingsKey {
     static let snippetRPort = "snippetRPort"
     /// Display order of the one-liner categories (array of names).
     static let snippetCategoryOrder = "snippetCategoryOrder"
+    /// Order of the tabs in the top bar (array of Module raw values).
+    static let tabOrder = "tabOrder"
     /// Apps (name or bundle id, comma-separated) in which the global hotkey is paused,
     /// so that e.g. F12 goes straight to a remote desktop or VM.
     static let hotKeyPauseApps = "hotKeyPauseApps"

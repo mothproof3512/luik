@@ -79,6 +79,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Writes every pending autosave right now (hide, quit, engagement switch).
+    private var viewMenu: NSMenu?
+
     func flushAllStores() {
         NotesStore.shared.flush()
         LibraryStore.shared.flush()
@@ -332,11 +334,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let viewMenuItem = NSMenuItem()
         let viewMenu = NSMenu(title: "View")
-        for (index, module) in Module.allCases.enumerated() {
-            let item = NSMenuItem(title: module.title, action: #selector(switchModule(_:)), keyEquivalent: "\(index + 1)")
-            item.representedObject = module.rawValue
-            viewMenu.addItem(item)
-        }
+        self.viewMenu = viewMenu
+        rebuildViewMenu()
         viewMenuItem.submenu = viewMenu
         mainMenu.addItem(viewMenuItem)
 
@@ -430,6 +429,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func previousTerminalTab() {
         TerminalStore.shared.selectPrevious()
+    }
+
+    /// The View menu follows the tab order of the top bar: ⌘1 is the first tab, and so on.
+    func rebuildViewMenu() {
+        guard let viewMenu else { return }
+        viewMenu.removeAllItems()
+        for (index, module) in UIState.shared.tabOrder.enumerated() {
+            let item = NSMenuItem(title: module.title, action: #selector(switchModule(_:)), keyEquivalent: index < 9 ? "\(index + 1)" : "")
+            item.representedObject = module.rawValue
+            viewMenu.addItem(item)
+        }
+        viewMenu.addItem(.separator())
+        viewMenu.addItem(NSMenuItem(title: "Reset Tab Order", action: #selector(resetTabOrder), keyEquivalent: ""))
+    }
+
+    @objc private func resetTabOrder() {
+        UIState.shared.resetTabOrder()
     }
 
     @objc private func switchModule(_ sender: NSMenuItem) {

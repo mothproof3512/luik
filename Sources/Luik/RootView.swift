@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Blurs whatever is behind the panel, like a HUD window.
 /// The blur layer follows the rounded corners through a maskImage; a layer mask on the
@@ -162,11 +163,13 @@ struct RootView: View {
 struct TopBar: View {
     @Environment(UIState.self) private var ui
     @Environment(\.luikTheme) private var theme
+    /// The tab being dragged to a new position.
+    @State private var draggingTab: Module?
 
     var body: some View {
         @Bindable var ui = ui
         HStack(spacing: 4) {
-            ForEach(Array(Module.allCases.enumerated()), id: \.element) { index, module in
+            ForEach(Array(ui.tabOrder.enumerated()), id: \.element) { index, module in
                 Button {
                     ui.module = module
                 } label: {
@@ -175,9 +178,30 @@ struct TopBar: View {
                         .padding(.vertical, 5)
                         .background(ui.module == module ? theme.accentColor.opacity(0.28) : Color.clear,
                                     in: RoundedRectangle(cornerRadius: 6))
+                        .overlay {
+                            if draggingTab == module {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .strokeBorder(theme.accentColor.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
+                            }
+                        }
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .help("\(module.title) (⌘\(index + 1))")
+                .help(index < 9 ? "\(module.title) (⌘\(index + 1)) — drag to reorder" : "\(module.title) — drag to reorder")
+                .onDrag {
+                    draggingTab = module
+                    return NSItemProvider(object: NSString(string: module.rawValue))
+                }
+                .onDrop(of: [.text], delegate: TabDropDelegate(target: module, dragging: $draggingTab, ui: ui))
+                .contextMenu {
+                    Button("Move left") { ui.moveTab(module, by: -1) }
+                        .disabled(index == 0)
+                    Button("Move right") { ui.moveTab(module, by: 1) }
+                        .disabled(index == ui.tabOrder.count - 1)
+                    Divider()
+                    Button("Reset tab order") { ui.resetTabOrder() }
+                        .disabled(ui.isDefaultTabOrder)
+                }
             }
             Spacer()
             EngagementMenu()
@@ -231,6 +255,31 @@ struct TopBar: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
+    }
+}
+
+/// Live reordering while a tab is dragged over another: the dragged tab takes that tab's place.
+struct TabDropDelegate: DropDelegate {
+    let target: Module
+    @Binding var dragging: Module?
+    let ui: UIState
+
+    func dropEntered(info: DropInfo) {
+        guard let dragging, dragging != target,
+              let from = ui.tabOrder.firstIndex(of: dragging),
+              let to = ui.tabOrder.firstIndex(of: target) else { return }
+        withAnimation(.easeInOut(duration: 0.15)) {
+            ui.moveTab(from: from, to: to)
+        }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        dragging = nil
+        return true
     }
 }
 
@@ -452,6 +501,14 @@ struct SettingsView: View {
 
     private var appearanceTab: some View {
         VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Tabs: drag them in the top bar to change their order (⌘1–9 follow it).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Reset order") { ui.resetTabOrder() }
+                    .disabled(ui.isDefaultTabOrder)
+            }
             percentRow("Height", value: $heightFraction, range: 0.25...1.0, step: 0.05)
             percentRow("Width", value: $widthFraction, range: 0.4...1.0, step: 0.05)
             LabeledContent("Corner radius") {

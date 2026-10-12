@@ -108,6 +108,9 @@ Luik has no Dock icon; you find it as a ⌄ icon in the menu bar (show/hide, set
 - **Corners and animation**: Settings › Appearance › *Corner radius* (0 = square) and *Round the
   top corners too*; *Animation* sets how fast the panel slides down (all the way left = instant,
   no animation).
+- **Tabs** can be reordered by dragging them in the top bar (or right-click a tab: Move left /
+  right, Reset tab order; also View › Reset Tab Order and Settings › Appearance). ⌘1–⌘9 and the
+  View menu follow the order you choose; it is remembered.
 - By default the panel hides as soon as another app gets focus (can be turned off in settings).
   When hiding, the app you were using before gets focus back.
 
@@ -118,7 +121,7 @@ The full list, including mouse tricks and your own hotkey, is one keystroke away
 
 | Keys | Action |
 |---|---|
-| ⌘1 … ⌘9 | Terminal / Notes / One-liners / Targets / Findings / Knowledge base / Searchsploit / Chef / Log |
+| ⌘1 … ⌘9 | The tabs in the order of the top bar (default: Terminal / Notes / One-liners / Targets / Findings / Knowledge base / Searchsploit / Chef / Log) |
 | ⌘T, ⌘W | New / close terminal tab |
 | ⌘⇧] , ⌘⇧[ | Next / previous terminal tab |
 | ⌘C / ⌘V | Copy / paste (also in the terminal) |

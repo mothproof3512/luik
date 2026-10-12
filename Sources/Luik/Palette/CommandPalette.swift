@@ -145,7 +145,7 @@ struct CommandPalette: View {
         let q = query.trimmingCharacters(in: .whitespaces)
 
         // Actions
-        let actions: [PaletteItem] = Module.allCases.map { module in
+        let actions: [PaletteItem] = ui.tabOrder.map { module in
             PaletteItem(id: "go-\(module.rawValue)", icon: module.icon, title: "Go to \(module.title)", subtitle: "", group: "Actions") {
                 ui.module = module
             }

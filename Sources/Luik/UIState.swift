@@ -65,4 +65,45 @@ final class UIState {
     var showLibrarySources = false
     /// The reverse shell generator (One-liners tab, Tools menu, ⌘K).
     var showReverseShell = false
+
+    /// The tabs in the order of the top bar (drag a tab to change it); ⌘1–9 follow this order.
+    var tabOrder: [Module] = UIState.loadTabOrder()
+
+    static func loadTabOrder() -> [Module] {
+        let stored = UserDefaults.standard.stringArray(forKey: SettingsKey.tabOrder) ?? []
+        var order = stored.compactMap { Module(rawValue: $0) }
+        for module in Module.allCases where !order.contains(module) {
+            order.append(module)
+        }
+        return order
+    }
+
+    var isDefaultTabOrder: Bool { tabOrder == Module.allCases }
+
+    /// Puts the tab at `from` where the tab at `to` is (the one at `to` shifts aside).
+    func moveTab(from: Int, to: Int) {
+        guard from != to, tabOrder.indices.contains(from), tabOrder.indices.contains(to) else { return }
+        let module = tabOrder.remove(at: from)
+        tabOrder.insert(module, at: to)
+        saveTabOrder()
+    }
+
+    /// Context menu: one position to the left (-1) or right (+1).
+    func moveTab(_ module: Module, by offset: Int) {
+        guard let index = tabOrder.firstIndex(of: module) else { return }
+        let target = index + offset
+        guard tabOrder.indices.contains(target) else { return }
+        tabOrder.swapAt(index, target)
+        saveTabOrder()
+    }
+
+    func resetTabOrder() {
+        tabOrder = Module.allCases
+        saveTabOrder()
+    }
+
+    private func saveTabOrder() {
+        UserDefaults.standard.set(tabOrder.map { $0.rawValue }, forKey: SettingsKey.tabOrder)
+        AppDelegate.shared?.rebuildViewMenu()
+    }
 }

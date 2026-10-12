@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.20.1
+- **Reorder the tabs**: drag a tab in the top bar to a new position (the others slide aside while you drag), or right-click a tab for Move left / Move right / Reset tab order. ⌘1–⌘9, the View menu, ⌘K's "Go to" actions and the shortcuts sheet follow the new order, which is remembered. Reset is also in View › Reset Tab Order and Settings › Appearance.
+
 ## 0.20.0
 - **Reverse shell generator** (One-liners › Reverse shell, Tools menu, ⌘K): templates come from the Reverse Shell Cheat Sheet in the library (InternalAllTheThings — PayloadsAllTheThings' page now only points there) and from your own one-liners in a "Reverse shells" category; fill in $LHOST/$LPORT (shared with the One-liners tab, antenna button detects the VPN address), choose the shell to spawn (/bin/sh, bash, zsh, …) and an encoding (URL, double URL, base64 pipe, PowerShell -EncodedCommand). Shows the listener to start first (netcat, rlwrap, ncat, socat, pwncat-cs, Metasploit handler), the payload and the TTY upgrade from the same sheet, each with Copy; listener and upgrade paste into the terminal; Copy all steps; **Save as one-liner** stores the three steps with the placeholders. Without the sheet in the library the window explains what to download.
 
