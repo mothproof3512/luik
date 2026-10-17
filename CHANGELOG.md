@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.24.0
+- **Tools tab** with a sidebar for small utilities; first tool: **Version & end-of-life check**. Product search over endoflife.date's ~480 products (names, labels, aliases, multi-word), every release cycle with release / latest / active-support / end-of-life dates and status colour, a verdict for the version you found (current, behind on patches, security fixes only, not maintained, end of life) with the dates, **Create finding** with severity suggested from the verdict, and GitHub release notes rendered as Markdown (repository from endoflife.date's identifiers or typed in; the library's GitHub token is used when present). The product list is cached for a day.
+- Targets: **Version** button on a port node sends the product and version from the service line to the check. Tools menu and ⌘K: Version & end-of-life check.
+
 ## 0.23.0
 - **Plan tab**: the engagement-level test plan, made from a template — built in: External network penetration test, Internal network and Active Directory, Web application, Minimal plan — with phases, items to tick off (status cycle, hints, notes), fill-in fields on the plan (client, reference, tester, dates, scope, rules of engagement, contacts; prefilled from the engagement) and on items (text, multi-line, date, choice, yes/no), progress per phase and overall, Markdown export for the report, duplicate / delete. Plans are saved per engagement (`plans.json`); ⌘K finds plan items.
 - **Plan templates**: "Save plan as template" keeps the structure, hints and field definitions of a worked plan (not the answers) as your own template; the Templates editor edits name, summary, fields, phases and items (built-in ones are duplicated first), with JSON export / import to share. Tools menu: New Plan from Template…, Plan Templates…

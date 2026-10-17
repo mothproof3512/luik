@@ -294,6 +294,19 @@ struct NodeDetailView: View {
                     }
                     .help("Add the missing work-item nodes from the checklist for this host/service")
                 }
+                if node.kind == .port {
+                    let query = ServiceQuery(node: node)
+                    Button {
+                        let product = query.product.isEmpty ? query.knowledgeTerms.joined(separator: " ") : query.product.joined(separator: " ")
+                        VersionCheck.shared.prefill(product: product, version: query.version)
+                        ui.tool = .versionCheck
+                        ui.module = .tools
+                    } label: {
+                        Label("Version", systemImage: "clock.badge.exclamationmark")
+                    }
+                    .disabled(query.product.isEmpty && query.knowledgeTerms.isEmpty)
+                    .help("Is \(query.displayQuery.isEmpty ? "this service" : query.displayQuery) current, supported or end of life? Opens Tools › Version check with the product and version from the service line")
+                }
                 Button {
                     findings.create(from: node, in: store)
                     ui.module = .findings

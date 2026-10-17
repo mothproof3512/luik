@@ -22,6 +22,7 @@ and a panel slides down from the top of the screen with nine tabs:
 | **Knowledge base** | Download the attack-vectors knowledge base that comes with Luik (349 rows, English or Dutch) or import your own findings sheet (.xlsx, .csv or .json) — also straight from your own GitHub repository — and search every column instantly: a product name, version string, CVE, CWE or technique; then read the full finding, with links clickable and matches highlighted |
 | **Log** | Timestamped activity log: commands pasted from One-liners/Searchsploit, every command you run in Luik's terminal tabs (read from the screen when you press Enter — also inside ssh sessions; passwords never appear on screen, so they are never logged), imports and your own notes — exportable as Markdown for the report |
 | **Plan** | The engagement-level test plan from a template (external, internal/AD, web application, minimal, or your own): phases with items to tick off, hints, notes and fill-in fields (client, scope, dates, roles, …), progress per phase, Markdown export for the report — and "Save as template" so a worked plan becomes next time's template |
+| **Tools** | Small utilities with a sidebar — first one: **Version & end-of-life check**: type a product (or press Version on a port node in Targets), see every release cycle with release, support and end-of-life dates from endoflife.date, a verdict for the version you found (current / behind on patches / security-only / end of life) with **Create finding**, and the release notes from GitHub rendered in place |
 | **Diagram** | Network architecture drawings per engagement: devices (firewall, router, switch, servers, DC, clients, cloud, …) as cards with icon, name and address, links with labels, arrows and dashed styles, and zones for segments (DMZ, LAN, VLAN). Built by hand, from the hosts in Targets, or imported from draw.io and Mermaid; exported as PNG (dark or light), SVG, draw.io, Mermaid or JSON |
 | **Chef** | CyberChef-style data kitchen: build a recipe of operations (Base64/Base32/hex/URL/HTML/Unicode, hashes and HMAC, JWT decode, gzip/zlib, JSON, regex, extractors for IPs/URLs/emails/hashes/CVEs, defang, CIDR, timestamps) and the output updates as you type; a magic detector suggests decodings |
 | **Searchsploit** | Exploit-DB search built in: download the official database once, then search it offline like searchsploit, with version-aware matching (`apache 2.4.49` also finds `< 2.4.50` and `2.4.x` entries). Every hit comes with copy-and-paste command lines for the machine where you want the exploit |
@@ -310,6 +311,19 @@ one section per finding, most severe first); Word opens the HTML directly (File 
    edit; export / import as JSON to share them with a team. Templates live in
    `plan-templates.json` in the data folder, plans in `plans.json` of the engagement.
 
+### Tools › Version & end-of-life check
+
+Type a product name — endoflife.date tracks about 480 (web servers, languages, databases, operating
+systems, appliances, frameworks); aliases and multi-word names like "apache httpd" work — and pick
+it from the list; add the version you found. Luik shows every release cycle with release date,
+latest patch, active-support and end-of-life dates and a status colour, and a verdict for your
+version: current, behind on patches, security fixes only, not maintained, or end of life, with the
+dates to quote. **Create finding** writes an "Outdated …" finding with those facts (severity
+suggested from the verdict; adjust it). The release notes come from GitHub when endoflife.date
+knows the repository (or enter `owner/name`), rendered as Markdown. On a **port node in Targets**
+the **Version** button sends the product and version from the nmap service line straight here. The
+product list is cached for a day; only the product you pick is fetched.
+
 ### Engagements and scope
 
 The briefcase menu in the top bar switches between engagements. Targets, notes, findings, the log and
@@ -458,6 +472,7 @@ Sources/Luik/
   Snippets/                one-liners (multi-step, ordering, $RHOST/$RPORT/$RURL/$LHOST/$LPORT)
   Diagram/                 network diagrams: model and store, rendering, canvas and inspector, import/export
   Plan/                    test plans: model, built-in templates, store, tab and template editor
+  Tools/                   Tools tab: version & end-of-life check (endoflife.date, GitHub releases), public IP
   Shells/                  reverse shell generator (templates read from the library's cheat sheet)
   Targets/                 nmap/Nessus/nuclei/masscan parsers, tree model, import/export and UI
   KnowledgeBase/           xlsx/csv/json import, search index, catalogue download and UI

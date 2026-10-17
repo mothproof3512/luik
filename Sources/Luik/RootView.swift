@@ -162,6 +162,7 @@ extension RootView {
         case .activity: ActivityView()
         case .diagram: DiagramView()
         case .plan: PlanView()
+        case .tools: ToolsView()
         }
     }
 }

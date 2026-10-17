@@ -177,6 +177,10 @@ struct CommandPalette: View {
                 ui.module = .diagram
                 DiagramStore.shared.newDiagram()
             },
+            PaletteItem(id: "version-check", icon: "clock.badge.exclamationmark", title: "Version & end-of-life check", subtitle: "endoflife.date cycles and dates, GitHub release notes", group: "Actions") {
+                ui.tool = .versionCheck
+                ui.module = .tools
+            },
             PaletteItem(id: "new-plan", icon: "list.clipboard", title: "New plan from template", subtitle: "engagement test plan: phases, items, fields", group: "Actions") {
                 ui.module = .plan
                 PlanStore.shared.showNewPlan = true

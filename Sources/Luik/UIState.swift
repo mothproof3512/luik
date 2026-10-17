@@ -14,6 +14,7 @@ enum Module: String, CaseIterable, Identifiable {
     case activity
     case diagram
     case plan
+    case tools
 
     var id: String { rawValue }
 
@@ -30,6 +31,7 @@ enum Module: String, CaseIterable, Identifiable {
         case .activity: return "Log"
         case .diagram: return "Diagram"
         case .plan: return "Plan"
+        case .tools: return "Tools"
         }
     }
 
@@ -46,6 +48,7 @@ enum Module: String, CaseIterable, Identifiable {
         case .activity: return "clock.arrow.circlepath"
         case .diagram: return "point.3.connected.trianglepath.dotted"
         case .plan: return "list.clipboard"
+        case .tools: return "wrench.and.screwdriver"
         }
     }
 }
@@ -71,6 +74,8 @@ final class UIState {
     var showLibrarySources = false
     /// The reverse shell generator (One-liners tab, Tools menu, ⌘K).
     var showReverseShell = false
+    /// The tool shown in the Tools tab.
+    var tool: ToolKind = .versionCheck
 
     /// The tabs in the order of the top bar (drag a tab to change it); ⌘1–9 follow this order.
     var tabOrder: [Module] = UIState.loadTabOrder()
