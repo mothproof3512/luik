@@ -339,6 +339,17 @@ own zone and the login redirect, code → token and JWKS/introspection flows dra
 links. draw.io and Mermaid imports recognise the usual names (Okta, Keycloak, Entra, Kong, Redis,
 Kafka, S3, Lambda, …).
 
+### Diagram templates
+
+**New from template** (diagram menu, or *Start from a template* on an empty tab) offers fifteen
+starting points, five per group: *Web application set-ups* (classic three-tier, SPA + REST API,
+microservices on Kubernetes, serverless, monolith with CMS / webshop), *Authentication flows*
+(OAuth 2.0 authorization code + PKCE, enterprise SSO with SAML / OIDC, session-based login,
+machine-to-machine with client credentials / API keys, Active Directory Kerberos / NTLM) and
+*Network layouts* (small office, DMZ with two firewalls, segmented enterprise with VLANs, hybrid
+cloud hub-and-spoke, remote access with VPN and jump host). Each comes with zones, labelled links
+and example addresses to overwrite with the client's.
+
 ### Network map from Targets
 
 Diagram › **From Targets › Build a network map** makes a new diagram from everything in Targets:

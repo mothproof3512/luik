@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.31.0
+- **Diagram templates**: *New from template* with fifteen starting points — five web application set-ups (three-tier, SPA + REST API, microservices on Kubernetes, serverless, monolith with CMS / webshop), five authentication flows (OAuth 2.0 code + PKCE, enterprise SSO SAML / OIDC, session-based login, machine-to-machine, Active Directory Kerberos / NTLM) and five network layouts (small office, DMZ with two firewalls, segmented VLANs, hybrid cloud, remote access with VPN and jump host), each with zones, labelled links and example addresses. The two older examples sit in the same menu.
+
 ## 0.30.1
 - **Diagram: web application and identity elements** — Add menu groups *Web application* (user/browser, CDN, WAF, reverse proxy / API gateway, web app, API, service, message queue, cache, object storage, container, serverless, third-party API) and *Identity & auth* (IdP/SSO, authorization server OAuth/OIDC, MFA, directory/LDAP, session/token store, secrets vault, certificate authority), with icons, colours and export abbreviations; *New from example: web application* with the login / token / introspection flows; draw.io and Mermaid imports guess these kinds from the usual product names.
 - Build fixes for 0.30.0 (address sorting in the network map, view id in the library detail).

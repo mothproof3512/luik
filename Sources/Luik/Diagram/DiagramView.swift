@@ -64,8 +64,9 @@ struct DiagramView: View {
                 }
                 if !store.diagrams.isEmpty { Divider() }
                 Button("New diagram") { store.newDiagram() }
-                Button("New from example: network") { store.newDiagram(name: "Example network", sample: true) }
-                Button("New from example: web application") { store.newDiagram(name: "Example web application", webApp: true) }
+                Menu("New from template") {
+                    templateMenu
+                }
                 if store.current != nil {
                     Divider()
                     Button("Rename…") {
@@ -165,6 +166,28 @@ struct DiagramView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
+    }
+
+    /// Fifteen starting points in three groups; the two older examples stay at the bottom.
+    @ViewBuilder
+    private var templateMenu: some View {
+        ForEach(DiagramTemplate.Category.allCases) { category in
+            Section(category.rawValue) {
+                ForEach(DiagramTemplate.templates(in: category)) { template in
+                    Button {
+                        store.newDiagram(from: template)
+                        status = template.summary
+                    } label: {
+                        Text(template.name)
+                    }
+                    .help(template.summary)
+                }
+            }
+        }
+        Section("Examples") {
+            Button("Example network") { store.newDiagram(name: "Example network", sample: true) }
+            Button("Example web application") { store.newDiagram(name: "Example web application", webApp: true) }
+        }
     }
 
     private var addMenu: some View {
@@ -310,8 +333,12 @@ struct DiagramView: View {
                     Label("New diagram", systemImage: "plus")
                 }
                 .buttonStyle(.borderedProminent)
-                Button("Start from the network example") { store.newDiagram(name: "Example network", sample: true) }
-                Button("Start from the web application example") { store.newDiagram(name: "Example web application", webApp: true) }
+                Menu {
+                    templateMenu
+                } label: {
+                    Label("Start from a template", systemImage: "square.grid.2x2")
+                }
+                .fixedSize()
                 Button("Network map from Targets") {
                     let placed = store.buildNetworkMap()
                     status = placed == 0 ? "No hosts in Targets yet." : "Network map: \(placed) host(s) grouped by /24."

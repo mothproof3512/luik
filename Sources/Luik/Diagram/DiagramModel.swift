@@ -462,6 +462,18 @@ final class DiagramStore {
         return diagram
     }
 
+    /// A new diagram from one of the built-in templates (web application set-ups, authentication
+    /// flows, network layouts).
+    @discardableResult
+    func newDiagram(from template: DiagramTemplate) -> Diagram {
+        let diagram = template.build(uniqueName(template.name))
+        diagrams.append(diagram)
+        select(diagram.id)
+        scheduleSave()
+        ActivityLog.shared.record(.action, "Diagram created from template: \(template.name)", source: "Diagram")
+        return diagram
+    }
+
     func add(_ diagram: Diagram) {
         var copy = diagram
         copy.name = uniqueName(diagram.name)
