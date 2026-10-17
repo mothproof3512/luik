@@ -76,6 +76,11 @@ struct ShortcutsView: View {
                 Shortcut(keys: "⋯ › Import folder", action: "Copy a folder of .md cheat sheets into the library (shared by all engagements); ⋯ › Download documentation fetches PayloadsAllTheThings, InternalAllTheThings or your own repository"),
                 Shortcut(keys: "click a link", action: "Links between pages of a downloaded collection open inside Luik; web links open in the browser"),
             ]),
+            ShortcutGroup(title: "Plan", shortcuts: [
+                Shortcut(keys: "click ◯", action: "Cycle an item's status (to do → in progress → done → N/A); right-click for a status, move or delete"),
+                Shortcut(keys: "⌄ on an item", action: "Expand: hint, item fields and notes"),
+                Shortcut(keys: "right-click plan", action: "Copy / export as Markdown, save as template, duplicate, delete"),
+            ]),
             ShortcutGroup(title: "Log", shortcuts: [
                 Shortcut(keys: "Pause logging", action: "Stop recording for a while; the red badge in the top bar resumes it"),
             ]),

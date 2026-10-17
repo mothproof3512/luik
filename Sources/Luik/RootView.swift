@@ -161,6 +161,7 @@ extension RootView {
         case .chef: ChefView()
         case .activity: ActivityView()
         case .diagram: DiagramView()
+        case .plan: PlanView()
         }
     }
 }

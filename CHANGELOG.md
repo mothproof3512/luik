@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.0
+- **Plan tab**: the engagement-level test plan, made from a template — built in: External network penetration test, Internal network and Active Directory, Web application, Minimal plan — with phases, items to tick off (status cycle, hints, notes), fill-in fields on the plan (client, reference, tester, dates, scope, rules of engagement, contacts; prefilled from the engagement) and on items (text, multi-line, date, choice, yes/no), progress per phase and overall, Markdown export for the report, duplicate / delete. Plans are saved per engagement (`plans.json`); ⌘K finds plan items.
+- **Plan templates**: "Save plan as template" keeps the structure, hints and field definitions of a worked plan (not the answers) as your own template; the Templates editor edits name, summary, fields, phases and items (built-in ones are duplicated first), with JSON export / import to share. Tools menu: New Plan from Template…, Plan Templates…
+
 ## 0.22.0
 - **Tabs keep their state**: every tab stays mounted and is only hidden, so you come back to the same scroll position, expanded folders, selection and half-typed text.
 - **Pause logging** (Log tab): stops recording commands, imports and actions until you resume; a red "Log paused" badge in the top bar resumes on click; pause and resume are logged with the duration.

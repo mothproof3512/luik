@@ -41,6 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .environment(ChecklistStore.shared)
             .environment(LibraryStore.shared)
             .environment(DiagramStore.shared)
+            .environment(PlanStore.shared)
         let controller = DropdownController(rootView: root)
         controller.onDidShow = {
             if UIState.shared.module == .terminal {
@@ -86,6 +87,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotesStore.shared.flush()
         LibraryStore.shared.flush()
         DiagramStore.shared.flush()
+        PlanStore.shared.flush()
         SnippetStore.shared.flush()
         TargetStore.shared.flush()
         FindingsStore.shared.flush()
@@ -317,6 +319,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         toolsMenu.addItem(NSMenuItem(title: "Download Knowledge Base…", action: #selector(downloadKnowledgeBase), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Download Documentation (Library)…", action: #selector(downloadDocumentation), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Reverse Shell Generator…", action: #selector(showReverseShell), keyEquivalent: ""))
+        toolsMenu.addItem(NSMenuItem(title: "New Plan from Template…", action: #selector(newPlan), keyEquivalent: ""))
+        toolsMenu.addItem(NSMenuItem(title: "Plan Templates…", action: #selector(editPlanTemplates), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Import Cheat Sheets into Library…", action: #selector(importCheatSheets), keyEquivalent: ""))
         toolsMenuItem.submenu = toolsMenu
         mainMenu.addItem(toolsMenuItem)
@@ -390,6 +394,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         showDropdown()
         UIState.shared.module = .knowledgeBase
         UIState.shared.showKnowledgeBaseDownload = true
+    }
+
+    @objc private func newPlan() {
+        showDropdown()
+        UIState.shared.module = .plan
+        PlanStore.shared.showNewPlan = true
+    }
+
+    @objc private func editPlanTemplates() {
+        showDropdown()
+        UIState.shared.module = .plan
+        PlanStore.shared.showTemplateEditor = true
     }
 
     @objc private func showReverseShell() {

@@ -177,6 +177,14 @@ struct CommandPalette: View {
                 ui.module = .diagram
                 DiagramStore.shared.newDiagram()
             },
+            PaletteItem(id: "new-plan", icon: "list.clipboard", title: "New plan from template", subtitle: "engagement test plan: phases, items, fields", group: "Actions") {
+                ui.module = .plan
+                PlanStore.shared.showNewPlan = true
+            },
+            PaletteItem(id: "plan-templates", icon: "list.clipboard", title: "Plan templates", subtitle: "edit, duplicate, export / import", group: "Actions") {
+                ui.module = .plan
+                PlanStore.shared.showTemplateEditor = true
+            },
             PaletteItem(id: "reverse-shell", icon: "arrow.uturn.backward.circle", title: "Reverse shell generator", subtitle: "template from the library's cheat sheet, $LHOST/$LPORT, shell, encoding, listener, TTY upgrade", group: "Actions") {
                 ui.showReverseShell = true
             },
@@ -253,6 +261,21 @@ struct CommandPalette: View {
                 if let hit { DiagramStore.shared.selection = .node(hit.id) }
                 ui.module = .diagram
             })
+        }
+
+        // Plan items of this engagement.
+        for plan in PlanStore.shared.plans {
+            for phase in plan.phases {
+                for item in phase.items where matches(item.title + " " + phase.name + " " + item.notes) {
+                    items.append(PaletteItem(id: "plan-item-\(item.id)", icon: item.status.symbol, title: item.title,
+                                             subtitle: "\(plan.name) › \(phase.name) · \(item.status.label)", group: "Plan") {
+                        PlanStore.shared.selectedPlanID = plan.id
+                        PlanStore.shared.selectedPhaseID = phase.id
+                        ui.module = .plan
+                    })
+                    if items.filter({ $0.group == "Plan" }).count >= CommandPalette.perSource { break }
+                }
+            }
         }
 
         // Library (cheat sheets, PayloadsAllTheThings, …): titles first, then full text.

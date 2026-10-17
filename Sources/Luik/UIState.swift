@@ -13,6 +13,7 @@ enum Module: String, CaseIterable, Identifiable {
     case chef
     case activity
     case diagram
+    case plan
 
     var id: String { rawValue }
 
@@ -28,6 +29,7 @@ enum Module: String, CaseIterable, Identifiable {
         case .chef: return "Chef"
         case .activity: return "Log"
         case .diagram: return "Diagram"
+        case .plan: return "Plan"
         }
     }
 
@@ -43,6 +45,7 @@ enum Module: String, CaseIterable, Identifiable {
         case .chef: return "wand.and.stars"
         case .activity: return "clock.arrow.circlepath"
         case .diagram: return "point.3.connected.trianglepath.dotted"
+        case .plan: return "list.clipboard"
         }
     }
 }

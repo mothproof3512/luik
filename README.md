@@ -21,6 +21,7 @@ and a panel slides down from the top of the screen with nine tabs:
 | **Findings** | The findings of the engagement with a CVSS 3.1 calculator, affected hosts/services, description/impact/evidence/recommendation/references and status — created by hand, from a target node, from a knowledge-base record or from a Nessus/nuclei import; exported as a Markdown or HTML report |
 | **Knowledge base** | Download the attack-vectors knowledge base that comes with Luik (349 rows, English or Dutch) or import your own findings sheet (.xlsx, .csv or .json) — also straight from your own GitHub repository — and search every column instantly: a product name, version string, CVE, CWE or technique; then read the full finding, with links clickable and matches highlighted |
 | **Log** | Timestamped activity log: commands pasted from One-liners/Searchsploit, every command you run in Luik's terminal tabs (read from the screen when you press Enter — also inside ssh sessions; passwords never appear on screen, so they are never logged), imports and your own notes — exportable as Markdown for the report |
+| **Plan** | The engagement-level test plan from a template (external, internal/AD, web application, minimal, or your own): phases with items to tick off, hints, notes and fill-in fields (client, scope, dates, roles, …), progress per phase, Markdown export for the report — and "Save as template" so a worked plan becomes next time's template |
 | **Diagram** | Network architecture drawings per engagement: devices (firewall, router, switch, servers, DC, clients, cloud, …) as cards with icon, name and address, links with labels, arrows and dashed styles, and zones for segments (DMZ, LAN, VLAN). Built by hand, from the hosts in Targets, or imported from draw.io and Mermaid; exported as PNG (dark or light), SVG, draw.io, Mermaid or JSON |
 | **Chef** | CyberChef-style data kitchen: build a recipe of operations (Base64/Base32/hex/URL/HTML/Unicode, hashes and HMAC, JWT decode, gzip/zlib, JSON, regex, extractors for IPs/URLs/emails/hashes/CVEs, defang, CIDR, timestamps) and the output updates as you type; a magic detector suggests decodings |
 | **Searchsploit** | Exploit-DB search built in: download the official database once, then search it offline like searchsploit, with version-aware matching (`apache 2.4.49` also finds `< 2.4.50` and `2.4.x` entries). Every hit comes with copy-and-paste command lines for the machine where you want the exploit |
@@ -290,6 +291,25 @@ imports. The ⋯ menu exports the whole set as a **Markdown** or **HTML report**
 one section per finding, most severe first); Word opens the HTML directly (File › Open) and
 `pandoc findings.html -o findings.docx` makes a .docx.
 
+### Plan — the test plan of the engagement
+
+1. **+** (or Tools › New Plan from Template…, ⌘K) and choose a template: *External network
+   penetration test*, *Internal network and Active Directory*, *Web application*, *Minimal plan*,
+   or one of your own. Client, reference and scope are prefilled from the engagement.
+2. The sidebar lists the plan's phases with their progress; the right side shows the engagement
+   details (fill-in fields: text, multi-line, date with a Today button, choice, yes/no) and the
+   selected phase with its items. Click the circle to cycle an item's status (to do → in progress →
+   done → N/A), expand an item for its hint, item fields and notes; right-click to move or delete;
+   **Add item** / phase menu › Mark all done. Everything is saved as you type, per engagement.
+3. **Copy / Export as Markdown** (⋯ menu or right-click the plan) writes the fields and every phase
+   as a table of status, item and notes — the "performed work" chapter of the report.
+4. **Save plan as template…** turns the worked plan into your own template: structure, hints and
+   field definitions are kept, statuses and answers dropped. That is how the plan improves with
+   every engagement. **Templates…** opens the editor: name, summary, engagement fields, phases and
+   items with hints and item fields (e.g. a Result choice); built-in templates are duplicated to
+   edit; export / import as JSON to share them with a team. Templates live in
+   `plan-templates.json` in the data folder, plans in `plans.json` of the engagement.
+
 ### Engagements and scope
 
 The briefcase menu in the top bar switches between engagements. Targets, notes, findings, the log and
@@ -437,6 +457,7 @@ Sources/Luik/
   Library/                 library store (collections of .md files), GitHub downloads and the sources sheet
   Snippets/                one-liners (multi-step, ordering, $RHOST/$RPORT/$RURL/$LHOST/$LPORT)
   Diagram/                 network diagrams: model and store, rendering, canvas and inspector, import/export
+  Plan/                    test plans: model, built-in templates, store, tab and template editor
   Shells/                  reverse shell generator (templates read from the library's cheat sheet)
   Targets/                 nmap/Nessus/nuclei/masscan parsers, tree model, import/export and UI
   KnowledgeBase/           xlsx/csv/json import, search index, catalogue download and UI
