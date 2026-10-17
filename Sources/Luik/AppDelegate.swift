@@ -320,6 +320,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         toolsMenu.addItem(NSMenuItem(title: "Download Documentation (Library)…", action: #selector(downloadDocumentation), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Reverse Shell Generator…", action: #selector(showReverseShell), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Version & End-of-life Check…", action: #selector(showVersionCheck), keyEquivalent: ""))
+        toolsMenu.addItem(NSMenuItem(title: "Mail Security Check (SPF, DKIM, DMARC)…", action: #selector(showMailSecurity), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "New Plan from Template…", action: #selector(newPlan), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Plan Templates…", action: #selector(editPlanTemplates), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Import Cheat Sheets into Library…", action: #selector(importCheatSheets), keyEquivalent: ""))
@@ -395,6 +396,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         showDropdown()
         UIState.shared.module = .knowledgeBase
         UIState.shared.showKnowledgeBaseDownload = true
+    }
+
+    @objc private func showMailSecurity() {
+        showDropdown()
+        UIState.shared.tool = .mailSecurity
+        UIState.shared.module = .tools
     }
 
     @objc private func showVersionCheck() {

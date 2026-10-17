@@ -4,24 +4,28 @@ import SwiftUI
 /// Small tools that do not deserve a tab of their own: a sidebar of tools, the chosen one on the right.
 enum ToolKind: String, CaseIterable, Identifiable {
     case versionCheck
+    case mailSecurity
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .versionCheck: return "Version & end-of-life check"
+        case .mailSecurity: return "Mail security: SPF, DKIM, DMARC"
         }
     }
 
     var icon: String {
         switch self {
         case .versionCheck: return "clock.badge.exclamationmark"
+        case .mailSecurity: return "envelope.badge.shield.half.filled"
         }
     }
 
     var summary: String {
         switch self {
         case .versionCheck: return "Is this version current, supported or end of life? Cycles and dates from endoflife.date, release notes from GitHub."
+        case .mailSecurity: return "Can this domain be spoofed? MX, SPF (with lookup count), DMARC policy, DKIM keys, MTA-STS and TLS-RPT, judged and explained."
         }
     }
 }
@@ -59,6 +63,8 @@ struct ToolsView: View {
             switch ui.tool {
             case .versionCheck:
                 VersionCheckView()
+            case .mailSecurity:
+                MailSecurityView()
             }
         }
     }
@@ -416,6 +422,175 @@ struct VersionCheckView: View {
         finding.source = "Version check"
         _ = findings.add(finding)
         ActivityLog.shared.record(.action, "Finding “\(finding.title)” created from the version check", source: "Tools")
+        findingCreated = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { findingCreated = false }
+    }
+}
+
+
+/// Mail security check for a domain.
+struct MailSecurityView: View {
+    @Environment(FindingsStore.self) private var findings
+    @Environment(\.luikTheme) private var theme
+    @State private var findingCreated = false
+    @State private var copied = false
+    @State private var showRecords = false
+
+    var body: some View {
+        @Bindable var check = MailSecurityCheck.shared
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                TextField("Domain (example.com)", text: $check.domain)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: 260)
+                    .onSubmit { check.run() }
+                TextField("Extra DKIM selectors, comma-separated (optional)", text: $check.selectors)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: 300)
+                    .help("Common selectors are tried automatically; add the one from a real mail's DKIM-Signature header (s=…) when it is not among them")
+                Button {
+                    check.run()
+                } label: {
+                    Label("Check", systemImage: "play.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(check.isRunning || check.domain.trimmingCharacters(in: .whitespaces).isEmpty)
+                if check.isRunning {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                Spacer()
+                if let result = check.result {
+                    Button {
+                        let pasteboard = NSPasteboard.general
+                        pasteboard.clearContents()
+                        pasteboard.setString(MailSecurityCheck.markdown(result), forType: .string)
+                        copied = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copied = false }
+                    } label: {
+                        Label(copied ? "Copied" : "Copy as Markdown", systemImage: copied ? "checkmark" : "doc.on.doc")
+                    }
+                    if !result.problems.isEmpty {
+                        Button {
+                            createFinding(result)
+                        } label: {
+                            Label(findingCreated ? "Finding created" : "Create finding", systemImage: findingCreated ? "checkmark" : "exclamationmark.triangle")
+                        }
+                        .help("A finding “Weak email authentication for \(result.domain)” with the issues and the records in the description")
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            Divider()
+            if let error = check.error {
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.orange)
+                    .padding()
+            }
+            if let result = check.result {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 8) {
+                            Text(result.domain)
+                                .font(.title2.weight(.semibold))
+                            Text("\(result.problems.filter { $0.level == .fail }.count) failing · \(result.problems.filter { $0.level == .warn }.count) warnings · checked \(result.checkedAt.formatted(date: .omitted, time: .shortened))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        ForEach(result.items) { item in
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Image(systemName: symbol(item.level))
+                                    .foregroundStyle(color(item.level))
+                                    .frame(width: 16)
+                                Text(item.text)
+                                    .font(.callout)
+                                    .textSelection(.enabled)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(color(item.level).opacity(item.level == .pass ? 0.05 : 0.12), in: RoundedRectangle(cornerRadius: 6))
+                        }
+                        if !result.spfExpanded.isEmpty || !result.dkim.isEmpty {
+                            DisclosureGroup(isExpanded: $showRecords) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    ForEach(Array(result.spfExpanded.enumerated()), id: \.offset) { _, line in
+                                        Text(line)
+                                            .font(.system(.caption, design: .monospaced))
+                                            .textSelection(.enabled)
+                                    }
+                                    ForEach(Array(result.dkim.enumerated()), id: \.offset) { _, key in
+                                        Text("\(key.selector)._domainkey.\(result.domain): \(key.record)")
+                                            .font(.system(.caption, design: .monospaced))
+                                            .textSelection(.enabled)
+                                            .lineLimit(3)
+                                    }
+                                }
+                                .padding(.top, 4)
+                            } label: {
+                                Text("Records: \(result.spfExpanded.count) SPF include(s), \(result.dkim.count) DKIM key(s) — \(result.selectorsTried.count) selectors tried")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                VStack(spacing: 8) {
+                    Spacer()
+                    Image(systemName: "envelope.badge.shield.half.filled")
+                        .font(.largeTitle)
+                        .foregroundStyle(.secondary)
+                    Text("Enter a mail domain and press Check. Only DNS queries are made (through dig, your normal resolver).")
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+            }
+        }
+    }
+
+    private func symbol(_ level: MailCheckItem.Level) -> String {
+        switch level {
+        case .pass: return "checkmark.circle.fill"
+        case .info: return "info.circle"
+        case .warn: return "exclamationmark.triangle.fill"
+        case .fail: return "xmark.octagon.fill"
+        }
+    }
+
+    private func color(_ level: MailCheckItem.Level) -> Color {
+        switch level {
+        case .pass: return .green
+        case .info: return .secondary
+        case .warn: return .yellow
+        case .fail: return .red
+        }
+    }
+
+    private func createFinding(_ result: MailSecurityResult) {
+        var finding = Finding(title: "Weak email authentication for \(result.domain)")
+        let fails = result.problems.filter { $0.level == .fail }
+        if fails.contains(where: { $0.text.contains("+all") }) {
+            finding.severity = .high
+        } else if !fails.isEmpty {
+            finding.severity = .medium
+        } else {
+            finding.severity = .low
+        }
+        finding.description = "Issues:\n" + result.problems.map { "- \($0.text)" }.joined(separator: "\n")
+            + "\n\nRecords:\n" + result.items.filter { $0.level == .pass && ($0.text.hasPrefix("SPF:") || $0.text.hasPrefix("DMARC:") || $0.text.hasPrefix("MX:")) }.map { "- \($0.text)" }.joined(separator: "\n")
+        finding.impact = "Mail that appears to come from @\(result.domain) can be forged and is accepted or at least not rejected by receiving systems — the basis for phishing of customers, partners and staff in the organisation's name."
+        finding.recommendation = "Publish a single SPF record that lists all legitimate senders within 10 DNS lookups and ends in -all; sign outbound mail with DKIM (2048-bit keys); publish a DMARC record with p=reject (via quarantine, with pct ramp-up) and rua= reporting; consider MTA-STS and TLS-RPT for transport security."
+        finding.affected = [result.domain]
+        finding.source = "Mail security check"
+        _ = findings.add(finding)
+        ActivityLog.shared.record(.action, "Finding “\(finding.title)” created from the mail security check", source: "Tools")
         findingCreated = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { findingCreated = false }
     }

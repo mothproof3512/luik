@@ -181,6 +181,10 @@ struct CommandPalette: View {
                 ui.tool = .versionCheck
                 ui.module = .tools
             },
+            PaletteItem(id: "mail-security", icon: "envelope.badge.shield.half.filled", title: "Mail security check (SPF, DKIM, DMARC)", subtitle: "can this domain be spoofed?", group: "Actions") {
+                ui.tool = .mailSecurity
+                ui.module = .tools
+            },
             PaletteItem(id: "new-plan", icon: "list.clipboard", title: "New plan from template", subtitle: "engagement test plan: phases, items, fields", group: "Actions") {
                 ui.module = .plan
                 PlanStore.shared.showNewPlan = true

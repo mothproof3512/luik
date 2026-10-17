@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.25.0
+- **Tools › Mail security (SPF, DKIM, DMARC)**: for a domain, MX, SPF (single record, `all` qualifier, DNS-lookup count with include expansion, `ptr`, length), DMARC (policy, pct, sp, rua, alignment), DKIM (about thirty common selectors plus your own, RSA key size from the published key, revoked and testing keys), MTA-STS and TLS-RPT — each line judged pass / info / warn / fail with the reason. Only DNS queries via `dig`. Copy as Markdown; **Create finding** with the issues and records. Tools menu and ⌘K entries.
+
 ## 0.24.0
 - **Tools tab** with a sidebar for small utilities; first tool: **Version & end-of-life check**. Product search over endoflife.date's ~480 products (names, labels, aliases, multi-word), every release cycle with release / latest / active-support / end-of-life dates and status colour, a verdict for the version you found (current, behind on patches, security fixes only, not maintained, end of life) with the dates, **Create finding** with severity suggested from the verdict, and GitHub release notes rendered as Markdown (repository from endoflife.date's identifiers or typed in; the library's GitHub token is used when present). The product list is cached for a day.
 - Targets: **Version** button on a port node sends the product and version from the service line to the check. Tools menu and ⌘K: Version & end-of-life check.
