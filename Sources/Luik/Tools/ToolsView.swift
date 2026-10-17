@@ -1,39 +1,8 @@
 import AppKit
 import SwiftUI
 
-/// Small tools that do not deserve a tab of their own: a sidebar of tools, the chosen one on the right.
-enum ToolKind: String, CaseIterable, Identifiable {
-    case versionCheck
-    case mailSecurity
-    case reachability
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .versionCheck: return "Version & end-of-life check"
-        case .mailSecurity: return "Mail security: SPF, DKIM, DMARC"
-        case .reachability: return "Reachability canary"
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .versionCheck: return "clock.badge.exclamationmark"
-        case .mailSecurity: return "envelope.badge.shield.half.filled"
-        case .reachability: return "dot.radiowaves.left.and.right"
-        }
-    }
-
-    var summary: String {
-        switch self {
-        case .versionCheck: return "Is this version current, supported or end of life? Cycles and dates from endoflife.date, release notes from GitHub."
-        case .mailSecurity: return "Can this domain be spoofed? MX, SPF (with lookup count), DMARC policy, DKIM keys, MTA-STS and TLS-RPT, judged and explained."
-        case .reachability: return "Am I blocked? Probe a few in-scope hosts every N minutes; a red badge in the top bar and a Log entry the moment one stops answering."
-        }
-    }
-}
-
+/// The Tools tab: a sidebar with the modules that are not in the top bar — small tools and
+/// whichever tabs you moved here — and the chosen one on the right. Every module stays mounted.
 struct ToolsView: View {
     @Environment(UIState.self) private var ui
     @Environment(\.luikTheme) private var theme
@@ -45,32 +14,70 @@ struct ToolsView: View {
                     Text("Tools")
                         .font(.headline)
                     Spacer()
+                    Menu {
+                        Text("Right-click a tool to give it its own tab, or a tab to move it here.")
+                        Divider()
+                        Button("Reset tabs and tools") { ui.resetLayout() }
+                            .disabled(ui.isDefaultLayout)
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
-                List(selection: Binding<ToolKind?>(get: { ui.tool }, set: { if let tool = $0 { ui.tool = tool } })) {
-                    ForEach(ToolKind.allCases) { tool in
+                List(selection: Binding<Module?>(get: { ui.toolOrder.contains(ui.module) ? ui.module : nil },
+                                                 set: { if let module = $0 { ui.open(module) } })) {
+                    ForEach(ui.toolOrder) { module in
                         VStack(alignment: .leading, spacing: 2) {
-                            Label(tool.title, systemImage: tool.icon)
-                            Text(tool.summary)
+                            Label(module.title, systemImage: module.icon)
+                            Text(module.summary)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
-                        .tag(tool)
+                        .tag(module)
+                        .contextMenu {
+                            Button("Move up") { ui.moveTool(module, by: -1) }
+                                .disabled(ui.toolOrder.first == module)
+                            Button("Move down") { ui.moveTool(module, by: 1) }
+                                .disabled(ui.toolOrder.last == module)
+                            Divider()
+                            Button("Give it a tab in the top bar") { ui.moveToTabs(module) }
+                        }
+                    }
+                    .onMove { source, destination in
+                        ui.moveTool(from: source, to: destination)
+                    }
+                    if ui.toolOrder.isEmpty {
+                        Text("Everything has its own tab. Right-click a tab and choose “Move into Tools” to park it here.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 .listStyle(.sidebar)
                 .scrollContentBackground(.hidden)
             }
         } trailing: {
-            switch ui.tool {
-            case .versionCheck:
-                VersionCheckView()
-            case .mailSecurity:
-                MailSecurityView()
-            case .reachability:
-                CanaryView()
+            ZStack {
+                ForEach(ui.toolOrder) { module in
+                    ModuleContent(module: module)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .opacity(ui.module == module ? 1 : 0)
+                        .allowsHitTesting(ui.module == module)
+                        .accessibilityHidden(ui.module != module)
+                        .zIndex(ui.module == module ? 1 : 0)
+                }
+                if !ui.toolOrder.contains(ui.module) {
+                    VStack {
+                        Spacer()
+                        Text(ui.toolOrder.isEmpty ? "No tools here." : "Choose a tool in the sidebar.")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
         }
     }

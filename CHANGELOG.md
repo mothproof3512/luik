@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.27.0
+- **Balanced top bar**: Knowledge base, Searchsploit, Chef and Diagram moved into the Tools tab's sidebar by default (once; your own layout is kept afterwards), leaving Terminal, Notes, One-liners, Targets, Findings, Plan, Log and Tools in the top bar. Right-click a tab › **Move into Tools**, right-click a tool › **Give it a tab in the top bar**; tools can be reordered by dragging; **Reset tabs and tools** in the context menus, View menu and Settings › Appearance. The View menu lists the tools below the tabs; ⌘K "Go to" covers both. Every module still stays mounted wherever it lives.
+
 ## 0.26.0
 - **Tools › Reachability canary**: probe in-scope hosts every 1–60 minutes (TCP connect to a port, or ICMP via `ping`), picked from Targets or entered by hand; badge in the top bar (green / red with the number of unreachable targets; click opens the tool), latency, last check, last change and a strip of recent results per target; a change between reachable and unreachable is written to the Log with the time. Off by default, saved per engagement (`canary.json`), stops on engagement switch. Tools menu and ⌘K entries.
 

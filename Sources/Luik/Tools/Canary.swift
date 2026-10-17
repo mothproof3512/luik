@@ -316,8 +316,7 @@ struct CanaryIndicator: View {
         let canary = CanaryStore.shared
         if canary.overall != .off {
             Button {
-                ui.tool = .reachability
-                ui.module = .tools
+                ui.open(.reachability)
             } label: {
                 HStack(spacing: 4) {
                     Circle()

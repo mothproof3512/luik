@@ -145,9 +145,10 @@ struct CommandPalette: View {
         let q = query.trimmingCharacters(in: .whitespaces)
 
         // Actions
-        let actions: [PaletteItem] = ui.tabOrder.map { module in
-            PaletteItem(id: "go-\(module.rawValue)", icon: module.icon, title: "Go to \(module.title)", subtitle: "", group: "Actions") {
-                ui.module = module
+        let actions: [PaletteItem] = (ui.tabOrder + ui.toolOrder).filter { $0 != .tools }.map { module in
+            PaletteItem(id: "go-\(module.rawValue)", icon: module.icon, title: "Go to \(module.title)",
+                        subtitle: ui.toolOrder.contains(module) ? "in Tools" : "", group: "Actions") {
+                ui.open(module)
             }
         } + [
             PaletteItem(id: "new-tab", icon: "plus.rectangle", title: "New terminal tab", subtitle: "⌘T", group: "Actions") {
@@ -178,16 +179,13 @@ struct CommandPalette: View {
                 DiagramStore.shared.newDiagram()
             },
             PaletteItem(id: "version-check", icon: "clock.badge.exclamationmark", title: "Version & end-of-life check", subtitle: "endoflife.date cycles and dates, GitHub release notes", group: "Actions") {
-                ui.tool = .versionCheck
-                ui.module = .tools
+                ui.open(.versionCheck)
             },
             PaletteItem(id: "mail-security", icon: "envelope.badge.shield.half.filled", title: "Mail security check (SPF, DKIM, DMARC)", subtitle: "can this domain be spoofed?", group: "Actions") {
-                ui.tool = .mailSecurity
-                ui.module = .tools
+                ui.open(.mailSecurity)
             },
             PaletteItem(id: "canary", icon: "dot.radiowaves.left.and.right", title: "Reachability canary", subtitle: "am I blocked? probe in-scope hosts every N minutes", group: "Actions") {
-                ui.tool = .reachability
-                ui.module = .tools
+                ui.open(.reachability)
             },
             PaletteItem(id: "new-plan", icon: "list.clipboard", title: "New plan from template", subtitle: "engagement test plan: phases, items, fields", group: "Actions") {
                 ui.module = .plan

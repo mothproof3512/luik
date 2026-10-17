@@ -15,6 +15,9 @@ enum Module: String, CaseIterable, Identifiable {
     case diagram
     case plan
     case tools
+    case versionCheck
+    case mailSecurity
+    case reachability
 
     var id: String { rawValue }
 
@@ -32,6 +35,9 @@ enum Module: String, CaseIterable, Identifiable {
         case .diagram: return "Diagram"
         case .plan: return "Plan"
         case .tools: return "Tools"
+        case .versionCheck: return "Version check"
+        case .mailSecurity: return "Mail security"
+        case .reachability: return "Canary"
         }
     }
 
@@ -49,14 +55,48 @@ enum Module: String, CaseIterable, Identifiable {
         case .diagram: return "point.3.connected.trianglepath.dotted"
         case .plan: return "list.clipboard"
         case .tools: return "wrench.and.screwdriver"
+        case .versionCheck: return "clock.badge.exclamationmark"
+        case .mailSecurity: return "envelope.badge.shield.half.filled"
+        case .reachability: return "dot.radiowaves.left.and.right"
         }
     }
+}
+
+extension Module {
+    /// One line for the Tools sidebar.
+    var summary: String {
+        switch self {
+        case .terminal: return "Shell tabs with command logging and saved connections."
+        case .notes: return "Markdown notes per engagement, plus the library of cheat sheets and documentation."
+        case .snippets: return "One-liners with $RHOST/$LHOST placeholders, multi-step sequences, reverse shell generator."
+        case .targets: return "Hosts, ports and work items from scans, with checklists and suggestions."
+        case .findings: return "Findings with CVSS, evidence and report export."
+        case .knowledgeBase: return "Your findings sheet, searchable across every column; downloadable attack-vectors knowledge base."
+        case .exploits: return "Exploit-DB offline: search by product and version, view, copy, mirror."
+        case .chef: return "Encodings, hashes, JWT, data formats, units — CyberChef-style recipes."
+        case .activity: return "Timestamped log of commands, imports, findings and notes."
+        case .diagram: return "Network architecture drawings; import/export draw.io, Mermaid, PNG, SVG."
+        case .plan: return "The engagement's test plan from a template: phases, items, fields."
+        case .tools: return "The tools that are not in the top bar."
+        case .versionCheck: return "Is this version current, supported or end of life? endoflife.date cycles and dates, GitHub release notes."
+        case .mailSecurity: return "Can this domain be spoofed? MX, SPF (with lookup count), DMARC, DKIM keys, MTA-STS, TLS-RPT — judged and explained."
+        case .reachability: return "Am I blocked? Probe in-scope hosts every N minutes; red badge and a Log entry when one stops answering."
+        }
+    }
+
+    /// Where a module lives when nothing was changed: the top bar, or the Tools tab's sidebar.
+    static let defaultTabs: [Module] = [.terminal, .notes, .snippets, .targets, .findings, .plan, .activity, .tools]
+    static let defaultTools: [Module] = [.knowledgeBase, .exploits, .chef, .diagram, .versionCheck, .mailSecurity, .reachability]
 }
 
 /// Shared UI state (which tab is open, whether settings are visible).
 @Observable
 final class UIState {
     static let shared = UIState()
+
+    init() {
+        loadLayout()
+    }
 
     var module: Module = .terminal
     var showSettings = false
@@ -74,29 +114,56 @@ final class UIState {
     var showLibrarySources = false
     /// The reverse shell generator (One-liners tab, Tools menu, ⌘K).
     var showReverseShell = false
-    /// The tool shown in the Tools tab.
-    var tool: ToolKind = .versionCheck
+    /// The tabs of the top bar, in order (drag a tab to change it); ⌘1–9 follow this order.
+    var tabOrder: [Module] = []
+    /// The modules in the Tools tab's sidebar, in order.
+    var toolOrder: [Module] = []
+    /// The tool shown when the Tools tab is opened.
+    var lastTool: Module? = nil
 
-    /// The tabs in the order of the top bar (drag a tab to change it); ⌘1–9 follow this order.
-    var tabOrder: [Module] = UIState.loadTabOrder()
-
-    static func loadTabOrder() -> [Module] {
-        let stored = UserDefaults.standard.stringArray(forKey: SettingsKey.tabOrder) ?? []
-        var order = stored.compactMap { Module(rawValue: $0) }
-        for module in Module.allCases where !order.contains(module) {
-            order.append(module)
-        }
-        return order
+    /// Which tab the current module belongs to: itself, or Tools when it lives in the sidebar.
+    var currentTab: Module {
+        tabOrder.contains(module) ? module : .tools
     }
 
-    var isDefaultTabOrder: Bool { tabOrder == Module.allCases }
+    var isDefaultLayout: Bool { tabOrder == Module.defaultTabs && toolOrder == Module.defaultTools }
+
+    /// Opens a module wherever it lives (a tab, or a tool in the Tools tab).
+    func open(_ target: Module) {
+        if target == .tools {
+            module = lastTool.flatMap { toolOrder.contains($0) ? $0 : nil } ?? toolOrder.first ?? .tools
+        } else {
+            module = target
+        }
+        if toolOrder.contains(module) { lastTool = module }
+    }
+
+    func loadLayout() {
+        let defaults = UserDefaults.standard
+        var tabs = (defaults.stringArray(forKey: SettingsKey.tabOrder) ?? []).compactMap { Module(rawValue: $0) }
+        var tools = (defaults.stringArray(forKey: SettingsKey.toolOrder) ?? []).compactMap { Module(rawValue: $0) }
+        // 0.27: Searchsploit, Knowledge base, Chef and Diagram moved into Tools once; later changes are the user's.
+        if !defaults.bool(forKey: SettingsKey.toolsLayoutMigrated) {
+            tabs.removeAll { Module.defaultTools.contains($0) }
+            tools = []
+            defaults.set(true, forKey: SettingsKey.toolsLayoutMigrated)
+        }
+        tabs.removeAll { tools.contains($0) }
+        if !tabs.contains(.tools) { tabs.append(.tools) }
+        tools.removeAll { $0 == .tools }
+        for module in Module.allCases where !tabs.contains(module) && !tools.contains(module) {
+            if Module.defaultTools.contains(module) { tools.append(module) } else { tabs.append(module) }
+        }
+        tabOrder = tabs
+        toolOrder = tools
+    }
 
     /// Puts the tab at `from` where the tab at `to` is (the one at `to` shifts aside).
     func moveTab(from: Int, to: Int) {
         guard from != to, tabOrder.indices.contains(from), tabOrder.indices.contains(to) else { return }
         let module = tabOrder.remove(at: from)
         tabOrder.insert(module, at: to)
-        saveTabOrder()
+        saveLayout()
     }
 
     /// Context menu: one position to the left (-1) or right (+1).
@@ -105,16 +172,53 @@ final class UIState {
         let target = index + offset
         guard tabOrder.indices.contains(target) else { return }
         tabOrder.swapAt(index, target)
-        saveTabOrder()
+        saveLayout()
     }
 
-    func resetTabOrder() {
-        tabOrder = Module.allCases
-        saveTabOrder()
+    func moveTool(from source: IndexSet, to destination: Int) {
+        SnippetStore.reorder(&toolOrder, from: source, to: destination)
+        saveLayout()
     }
 
-    private func saveTabOrder() {
+    func moveTool(_ module: Module, by offset: Int) {
+        guard let index = toolOrder.firstIndex(of: module) else { return }
+        let target = index + offset
+        guard toolOrder.indices.contains(target) else { return }
+        toolOrder.swapAt(index, target)
+        saveLayout()
+    }
+
+    /// A top-bar tab becomes a tool in the Tools tab (the Tools tab itself cannot move).
+    func moveToTools(_ target: Module) {
+        guard target != .tools, tabOrder.contains(target) else { return }
+        tabOrder.removeAll { $0 == target }
+        toolOrder.append(target)
+        if module == target { lastTool = target }
+        saveLayout()
+    }
+
+    /// A tool gets its own tab in the top bar (before the Tools tab).
+    func moveToTabs(_ target: Module) {
+        guard toolOrder.contains(target) else { return }
+        toolOrder.removeAll { $0 == target }
+        if let toolsIndex = tabOrder.firstIndex(of: .tools) {
+            tabOrder.insert(target, at: toolsIndex)
+        } else {
+            tabOrder.append(target)
+        }
+        if lastTool == target { lastTool = toolOrder.first }
+        saveLayout()
+    }
+
+    func resetLayout() {
+        tabOrder = Module.defaultTabs
+        toolOrder = Module.defaultTools
+        saveLayout()
+    }
+
+    private func saveLayout() {
         UserDefaults.standard.set(tabOrder.map { $0.rawValue }, forKey: SettingsKey.tabOrder)
+        UserDefaults.standard.set(toolOrder.map { $0.rawValue }, forKey: SettingsKey.toolOrder)
         AppDelegate.shared?.rebuildViewMenu()
     }
 }

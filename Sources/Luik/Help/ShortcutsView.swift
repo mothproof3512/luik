@@ -22,7 +22,8 @@ struct ShortcutsView: View {
     private var groups: [ShortcutGroup] {
         let hotKeyLabel = HotKeyCombo(string: hotKey)?.displayString ?? "none set"
         let tabs = UIState.shared.tabOrder.prefix(9).enumerated().map { index, module in Shortcut(keys: "⌘\(index + 1)", action: module.title) }
-            + [Shortcut(keys: "drag a tab", action: "Reorder the tabs in the top bar (right-click a tab: Move left / right, Reset order); ⌘1–9 follow the new order")]
+            + [Shortcut(keys: "drag a tab", action: "Reorder the tabs in the top bar (right-click: Move left / right, Move into Tools, Reset); ⌘1–9 follow the new order"),
+               Shortcut(keys: "Tools sidebar", action: "Right-click a tool: Move up / down, or give it its own tab in the top bar; drag to reorder")]
         return [
             ShortcutGroup(title: "Panel", shortcuts: [
                 Shortcut(keys: hotKeyLabel, action: "Show / hide Luik from any app (Settings › General to change; paused in the apps you list there)"),

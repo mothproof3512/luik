@@ -2,7 +2,7 @@ import Foundation
 
 /// Version and repository, used by the settings footer, the update check and build.sh.
 enum AppInfo {
-    static let version = "0.26.0"
+    static let version = "0.27.0"
     static let repository = "mothproof3512/luik"
 }
 
@@ -39,6 +39,10 @@ enum SettingsKey {
     static let snippetCategoryOrder = "snippetCategoryOrder"
     /// Order of the tabs in the top bar (array of Module raw values).
     static let tabOrder = "tabOrder"
+    /// Modules in the Tools tab's sidebar, in order.
+    static let toolOrder = "toolOrder"
+    /// Set once Searchsploit, Knowledge base, Chef and Diagram were moved into Tools (0.27).
+    static let toolsLayoutMigrated = "toolsLayoutMigrated"
     /// Apps (name or bundle id, comma-separated) in which the global hotkey is paused,
     /// so that e.g. F12 goes straight to a remote desktop or VM.
     static let hotKeyPauseApps = "hotKeyPauseApps"

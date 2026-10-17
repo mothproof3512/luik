@@ -299,8 +299,7 @@ struct NodeDetailView: View {
                     Button {
                         let product = query.product.isEmpty ? query.knowledgeTerms.joined(separator: " ") : query.product.joined(separator: " ")
                         VersionCheck.shared.prefill(product: product, version: query.version)
-                        ui.tool = .versionCheck
-                        ui.module = .tools
+                        ui.open(.versionCheck)
                     } label: {
                         Label("Version", systemImage: "clock.badge.exclamationmark")
                     }

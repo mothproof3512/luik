@@ -402,20 +402,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func showCanary() {
         showDropdown()
-        UIState.shared.tool = .reachability
-        UIState.shared.module = .tools
+        UIState.shared.open(.reachability)
     }
 
     @objc private func showMailSecurity() {
         showDropdown()
-        UIState.shared.tool = .mailSecurity
-        UIState.shared.module = .tools
+        UIState.shared.open(.mailSecurity)
     }
 
     @objc private func showVersionCheck() {
         showDropdown()
-        UIState.shared.tool = .versionCheck
-        UIState.shared.module = .tools
+        UIState.shared.open(.versionCheck)
     }
 
     @objc private func newPlan() {
@@ -480,17 +477,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             item.representedObject = module.rawValue
             viewMenu.addItem(item)
         }
+        if !UIState.shared.toolOrder.isEmpty {
+            viewMenu.addItem(.separator())
+            for module in UIState.shared.toolOrder {
+                let item = NSMenuItem(title: "Tools › \(module.title)", action: #selector(switchModule(_:)), keyEquivalent: "")
+                item.representedObject = module.rawValue
+                viewMenu.addItem(item)
+            }
+        }
         viewMenu.addItem(.separator())
-        viewMenu.addItem(NSMenuItem(title: "Reset Tab Order", action: #selector(resetTabOrder), keyEquivalent: ""))
+        viewMenu.addItem(NSMenuItem(title: "Reset Tabs and Tools", action: #selector(resetTabOrder), keyEquivalent: ""))
     }
 
     @objc private func resetTabOrder() {
-        UIState.shared.resetTabOrder()
+        UIState.shared.resetLayout()
     }
 
     @objc private func switchModule(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let module = Module(rawValue: raw) else { return }
-        UIState.shared.module = module
+        UIState.shared.open(module)
         if module == .terminal {
             TerminalStore.shared.focusSelected(afterDelay: true)
         }

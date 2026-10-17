@@ -93,13 +93,14 @@ struct RootView: View {
                 // when you come back: scroll position, expanded folders, selection, half-typed
                 // text. (The terminal needed this first: detaching SwiftTerm's view resized the
                 // shell to a zero-size frame and lost the scrollback.)
-                ForEach(Module.allCases) { module in
-                    moduleView(module)
+                // Modules that live in the Tools tab's sidebar are mounted inside ToolsView.
+                ForEach(ui.tabOrder) { module in
+                    ModuleContent(module: module)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .opacity(ui.module == module ? 1 : 0)
-                        .allowsHitTesting(ui.module == module)
-                        .accessibilityHidden(ui.module != module)
-                        .zIndex(ui.module == module ? 1 : 0)
+                        .opacity(ui.currentTab == module ? 1 : 0)
+                        .allowsHitTesting(ui.currentTab == module)
+                        .accessibilityHidden(ui.currentTab != module)
+                        .zIndex(ui.currentTab == module ? 1 : 0)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -147,9 +148,11 @@ struct RootView: View {
     }
 }
 
-extension RootView {
-    @ViewBuilder
-    func moduleView(_ module: Module) -> some View {
+/// The view of a module, wherever it is shown (a tab, or inside the Tools tab).
+struct ModuleContent: View {
+    let module: Module
+
+    var body: some View {
         switch module {
         case .terminal: TerminalModuleView()
         case .notes: NotesView()
@@ -163,6 +166,9 @@ extension RootView {
         case .diagram: DiagramView()
         case .plan: PlanView()
         case .tools: ToolsView()
+        case .versionCheck: VersionCheckView()
+        case .mailSecurity: MailSecurityView()
+        case .reachability: CanaryView()
         }
     }
 }
@@ -179,12 +185,12 @@ struct TopBar: View {
         HStack(spacing: 4) {
             ForEach(Array(ui.tabOrder.enumerated()), id: \.element) { index, module in
                 Button {
-                    ui.module = module
+                    ui.open(module)
                 } label: {
                     Label(module.title, systemImage: module.icon)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .background(ui.module == module ? theme.accentColor.opacity(0.28) : Color.clear,
+                        .background(ui.currentTab == module ? theme.accentColor.opacity(0.28) : Color.clear,
                                     in: RoundedRectangle(cornerRadius: 6))
                         .overlay {
                             if draggingTab == module {
@@ -206,9 +212,12 @@ struct TopBar: View {
                         .disabled(index == 0)
                     Button("Move right") { ui.moveTab(module, by: 1) }
                         .disabled(index == ui.tabOrder.count - 1)
+                    if module != .tools {
+                        Button("Move into Tools") { ui.moveToTools(module) }
+                    }
                     Divider()
-                    Button("Reset tab order") { ui.resetTabOrder() }
-                        .disabled(ui.isDefaultTabOrder)
+                    Button("Reset tabs and tools") { ui.resetLayout() }
+                        .disabled(ui.isDefaultLayout)
                 }
             }
             Spacer()
@@ -526,12 +535,12 @@ struct SettingsView: View {
     private var appearanceTab: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Tabs: drag them in the top bar to change their order (⌘1–9 follow it).")
+                Text("Tabs: drag them to reorder (⌘1–9 follow it); right-click a tab to move it into Tools, or a tool in the Tools sidebar to give it a tab.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Button("Reset order") { ui.resetTabOrder() }
-                    .disabled(ui.isDefaultTabOrder)
+                Button("Reset tabs and tools") { ui.resetLayout() }
+                    .disabled(ui.isDefaultLayout)
             }
             percentRow("Height", value: $heightFraction, range: 0.25...1.0, step: 0.05)
             percentRow("Width", value: $widthFraction, range: 0.4...1.0, step: 0.05)
