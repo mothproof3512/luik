@@ -170,6 +170,28 @@ struct ActivityRow: View {
     let isCopied: Bool
     let copy: () -> Void
     let delete: () -> Void
+    @Environment(UIState.self) private var ui
+
+    private var isCommand: Bool { entry.kind == .command || entry.kind == .typed }
+
+    /// Hands the command to the One-liners editor, with the current $RHOST/$RPORT/$LHOST/$LPORT
+    /// values turned back into placeholders so the one-liner works on the next target.
+    private func saveAsOneLiner() {
+        let snippets = SnippetStore.shared
+        var command = entry.text
+        let substitutions: [(String, String)] = [
+            (snippets.target, "$RHOST"), (snippets.lhost, "$LHOST"), (snippets.rport, "$RPORT"), (snippets.lport, "$LPORT"),
+        ]
+        for (value, placeholder) in substitutions {
+            let trimmed = value.trimmingCharacters(in: .whitespaces)
+            guard trimmed.count >= 2 else { continue }
+            command = command.replacingOccurrences(of: trimmed, with: placeholder)
+        }
+        let firstLine = command.split(separator: "\n").first.map(String.init) ?? command
+        let title = firstLine.split(separator: " ").prefix(4).joined(separator: " ")
+        ui.pendingSnippet = Snippet(title: title, command: command, category: "From log")
+        ui.open(.snippets)
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -195,6 +217,14 @@ struct ActivityRow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            if isCommand {
+                Button(action: saveAsOneLiner) {
+                    Image(systemName: "bookmark")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help("Save as one-liner — opens the One-liners editor with this command ($RHOST etc. put back)")
+            }
             Button(action: copy) {
                 Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
             }
@@ -209,5 +239,12 @@ struct ActivityRow: View {
             .help("Delete this entry")
         }
         .padding(.vertical, 2)
+        .contextMenu {
+            if isCommand {
+                Button("Save as one-liner…") { saveAsOneLiner() }
+            }
+            Button("Copy") { copy() }
+            Button("Delete", role: .destructive) { delete() }
+        }
     }
 }

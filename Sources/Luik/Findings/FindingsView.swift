@@ -215,6 +215,7 @@ struct FindingDetailView: View {
     @State private var affectedText = ""
     @State private var showCVSS = false
     @State private var copied = false
+    @State private var savedToKB = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -230,6 +231,20 @@ struct FindingDetailView: View {
                     Label(copied ? "Copied" : "Markdown", systemImage: copied ? "checkmark" : "doc.on.doc")
                 }
                 .help("Copy this finding as Markdown")
+                Button {
+                    let id = KnowledgeBaseStore.shared.save(finding)
+                    if finding.source.isEmpty || !finding.source.hasPrefix("KB MY-") {
+                        finding.source = "KB \(id)"
+                    }
+                    savedToKB = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { savedToKB = false }
+                } label: {
+                    Image(systemName: savedToKB ? "checkmark" : "books.vertical")
+                }
+                .disabled(finding.title.trimmingCharacters(in: .whitespaces).isEmpty)
+                .help(finding.source.hasPrefix("KB MY-")
+                      ? "Update record \(finding.source.dropFirst(3)) in your own knowledge base with this finding's text"
+                      : "Save this finding (title, severity, CVSS, description, impact, recommendation, references — not the evidence or affected hosts) as a record of your own in the Knowledge base, so it is there for the next engagement")
                 Button {
                     AppDelegate.shared?.captureEvidence(hideLuik: UserDefaults.standard.bool(forKey: SettingsKey.hideWhileCapturing)) { url in
                         var evidence = finding.evidence

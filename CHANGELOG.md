@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.29.0
+- **Finding → own knowledge-base record**: the books button on a finding saves title, severity, CVSS vector, description, impact, recommendation and references as a record of your own (table *My findings*, `my-knowledge.json`, outside any engagement; re-importing or removing the downloaded knowledge base never touches it). The finding's source becomes `KB MY-001`; pressing again updates that record. Own records are searched with the imported sheet (also in port-node suggestions and ⌘K), can be edited and deleted in the Knowledge base tab, and *Create finding* brings them into a new engagement. ⋯ › *Show only my records*; ⌘K "My knowledge-base records".
+- **Log → one-liner**: bookmark button / right-click *Save as one-liner…* on a command in the Log opens the One-liners editor with the command, `$RHOST`/`$RPORT`/`$LHOST`/`$LPORT` put back as placeholders, category *From log*.
+- Knowledge base: column roles (id, title, severity, …) are now detected per sheet instead of on the largest one.
+
 ## 0.28.1
 - Annotator: marks landed at the bottom of the image instead of where you dragged — the drag gesture now uses one named coordinate space for the whole canvas area.
 

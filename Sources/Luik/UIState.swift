@@ -114,6 +114,8 @@ final class UIState {
     var showLibrarySources = false
     /// The reverse shell generator (One-liners tab, Tools menu, ⌘K).
     var showReverseShell = false
+    /// A one-liner handed to the One-liners tab to open in its editor (from the Log, …).
+    var pendingSnippet: Snippet?
     /// The tabs of the top bar, in order (drag a tab to change it); ⌘1–9 follow this order.
     var tabOrder: [Module] = []
     /// The modules in the Tools tab's sidebar, in order.

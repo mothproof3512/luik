@@ -10,24 +10,101 @@ final class KnowledgeBaseStore {
     static let shared = KnowledgeBaseStore()
 
     private static let fileName = "knowledgebase.json"
+    private static let mineFileName = "my-knowledge.json"
     private static let maxResults = 500
 
     var knowledgeBase: KnowledgeBase?
+    /// Your own records — findings saved from the Findings tab, edited by hand. Kept in a separate
+    /// file (my-knowledge.json), so re-importing or removing the downloaded knowledge base never
+    /// touches them.
+    var mine: KBTable
     var search: String = ""
     var scopeFilter: String = ""      // "" = all
     var severityFilter: String = ""   // "" = all
     var phaseFilter: String = ""      // "" = all
+    /// Only your own records (My findings).
+    var onlyMine = false
     var selectedID: UUID? = nil
     var lastError: String? = nil
 
     /// Lower-cased concatenation of all values per record, for fast matching.
     @ObservationIgnored private var haystacks: [UUID: String] = [:]
     @ObservationIgnored private var tableByRecord: [UUID: KBTable] = [:]
+    @ObservationIgnored private var rolesByTable: [UUID: KBColumnRoles] = [:]
 
     init() {
         knowledgeBase = Storage.load(KnowledgeBase.self, from: KnowledgeBaseStore.fileName)
+        mine = Storage.load(KBTable.self, from: KnowledgeBaseStore.mineFileName) ?? KBTable.myFindings()
         rebuildIndex()
     }
+
+    /// Imported tables plus your own records (when there are any).
+    var allTables: [KBTable] {
+        (knowledgeBase?.tables ?? []) + (mine.records.isEmpty ? [] : [mine])
+    }
+
+    var isEmpty: Bool { knowledgeBase == nil && mine.records.isEmpty }
+
+    var recordCount: Int { (knowledgeBase?.recordCount ?? 0) + mine.records.count }
+
+    func isMine(_ table: KBTable) -> Bool { table.id == mine.id }
+
+    // MARK: - Own records
+
+    private func saveMine() {
+        Storage.save(mine, to: KnowledgeBaseStore.mineFileName)
+        rebuildIndex()
+    }
+
+    private func nextMyID() -> String {
+        let numbers = mine.records.compactMap { Int($0.value(KBTable.myIDColumn).replacingOccurrences(of: "MY-", with: "")) }
+        return String(format: "MY-%03d", (numbers.max() ?? 0) + 1)
+    }
+
+    /// Saves a finding as a record of your own. A finding that came from one of your records
+    /// (source "KB MY-…") updates that record instead of adding a second one. Returns the record id.
+    @discardableResult
+    func save(_ finding: Finding) -> String {
+        let existing = finding.source.hasPrefix("KB MY-") ? String(finding.source.dropFirst(3)) : nil
+        let index = existing.flatMap { id in mine.records.firstIndex { $0.value(KBTable.myIDColumn) == id } }
+        let id = index.map { mine.records[$0].value(KBTable.myIDColumn) } ?? nextMyID()
+        var values = index.map { mine.records[$0].values } ?? [:]
+        values[KBTable.myIDColumn] = id
+        values["Title"] = finding.title
+        values["Severity"] = finding.severity.label
+        values["CVSS_Vector"] = finding.cvssVector
+        values["Description"] = finding.description
+        values["Impact"] = finding.impact
+        values["Recommendation"] = finding.recommendation
+        values["References"] = finding.references
+        if existing == nil {
+            values["Origin"] = [finding.source, EngagementStore.shared.current.name].filter { !$0.isEmpty }.joined(separator: " · ")
+            values["Added"] = ISO8601DateFormatter().string(from: Date())
+        }
+        values["Updated"] = ISO8601DateFormatter().string(from: Date())
+        if let index {
+            mine.records[index].values = values
+        } else {
+            mine.records.append(KBRecord(values: values))
+        }
+        saveMine()
+        ActivityLog.shared.record(.action, "\(index == nil ? "Saved" : "Updated") knowledge-base record \(id): \(finding.title)", source: "Findings")
+        return id
+    }
+
+    func update(_ record: KBRecord) {
+        guard let index = mine.records.firstIndex(where: { $0.id == record.id }) else { return }
+        mine.records[index] = record
+        saveMine()
+    }
+
+    func removeMine(_ id: UUID) {
+        mine.records.removeAll { $0.id == id }
+        if selectedID == id { selectedID = nil }
+        saveMine()
+    }
+
+    var mineFileURL: URL { Storage.url(for: KnowledgeBaseStore.mineFileName) }
 
     // MARK: - Import / remove
 
@@ -69,8 +146,9 @@ final class KnowledgeBaseStore {
     private func rebuildIndex() {
         haystacks = [:]
         tableByRecord = [:]
-        guard let knowledgeBase else { return }
-        for table in knowledgeBase.tables {
+        rolesByTable = [:]
+        for table in allTables {
+            rolesByTable[table.id] = KBColumnRoles.detect(in: table.columns)
             for record in table.records {
                 let text = table.columns.compactMap { record.values[$0] }.joined(separator: "\n")
                 haystacks[record.id] = text.lowercased()
@@ -81,14 +159,19 @@ final class KnowledgeBaseStore {
 
     // MARK: - Column roles and filter values
 
-    /// Roles are detected on the largest table (the main sheet).
+    /// Roles are detected on the largest table (the main sheet); the filter menus use these.
     var roles: KBColumnRoles {
         guard let main = mainTable else { return KBColumnRoles() }
         return KBColumnRoles.detect(in: main.columns)
     }
 
+    /// Roles of one table — your own records have different headers than an imported sheet.
+    func roles(for table: KBTable) -> KBColumnRoles {
+        rolesByTable[table.id] ?? KBColumnRoles.detect(in: table.columns)
+    }
+
     var mainTable: KBTable? {
-        knowledgeBase?.tables.max { $0.records.count < $1.records.count }
+        allTables.max { $0.records.count < $1.records.count }
     }
 
     var scopeValues: [String] {
@@ -116,9 +199,9 @@ final class KnowledgeBaseStore {
     }
 
     private func distinctValues(of column: String?) -> [String] {
-        guard let column, let knowledgeBase else { return [] }
+        guard let column else { return [] }
         var seen: [String] = []
-        for table in knowledgeBase.tables {
+        for table in allTables {
             for record in table.records {
                 if let value = record.values[column], !seen.contains(value) {
                     seen.append(value)
@@ -150,12 +233,12 @@ final class KnowledgeBaseStore {
     }
 
     var hits: [KBHit] {
-        guard let knowledgeBase else { return [] }
         let terms = self.terms
-        let roles = self.roles
         var result: [KBHit] = []
 
-        for table in knowledgeBase.tables {
+        for table in allTables {
+            if onlyMine && !isMine(table) { continue }
+            let roles = self.roles(for: table)
             for record in table.records {
                 if let scopeColumn = roles.scopeColumn, !scopeFilter.isEmpty, record.value(scopeColumn) != scopeFilter { continue }
                 if let severityColumn = roles.severityColumn, !severityFilter.isEmpty, record.value(severityColumn) != severityFilter { continue }
@@ -187,10 +270,10 @@ final class KnowledgeBaseStore {
 
     /// Synchronous search with explicit terms and no filters, for the suggestions at a port node.
     func quickSearch(terms: [String], limit: Int) -> [KBHit] {
-        guard let knowledgeBase, !terms.isEmpty else { return [] }
-        let roles = self.roles
+        guard !terms.isEmpty else { return [] }
         var result: [KBHit] = []
-        for table in knowledgeBase.tables {
+        for table in allTables {
+            let roles = self.roles(for: table)
             for record in table.records {
                 guard let haystack = haystacks[record.id] else { continue }
                 var score = 0
@@ -214,8 +297,9 @@ final class KnowledgeBaseStore {
         scopeFilter = ""
         severityFilter = ""
         phaseFilter = ""
+        onlyMine = false
         selectedID = recordID
-        UIState.shared.module = .knowledgeBase
+        UIState.shared.open(.knowledgeBase)
     }
 
     var totalMatching: Int {
@@ -249,7 +333,7 @@ final class KnowledgeBaseStore {
 
     /// A record as Markdown, e.g. to paste into notes or a target node.
     func markdown(for hit: KBHit) -> String {
-        let roles = self.roles
+        let roles = self.roles(for: hit.table)
         let record = hit.record
         var title = roles.titleColumn.map { record.value($0) } ?? ""
         if let id = roles.idColumn, !record.value(id).isEmpty {

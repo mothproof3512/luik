@@ -195,6 +195,15 @@ struct CommandPalette: View {
                 ui.module = .plan
                 PlanStore.shared.showTemplateEditor = true
             },
+            PaletteItem(id: "kb-mine", icon: "person.text.rectangle", title: "My knowledge-base records", subtitle: "findings you saved from the Findings tab (My findings)", group: "Actions") {
+                let kb = KnowledgeBaseStore.shared
+                kb.search = ""
+                kb.scopeFilter = ""
+                kb.severityFilter = ""
+                kb.phaseFilter = ""
+                kb.onlyMine = true
+                ui.open(.knowledgeBase)
+            },
             PaletteItem(id: "reverse-shell", icon: "arrow.uturn.backward.circle", title: "Reverse shell generator", subtitle: "template from the library's cheat sheet, $LHOST/$LPORT, shell, encoding, listener, TTY upgrade", group: "Actions") {
                 ui.showReverseShell = true
             },
@@ -307,8 +316,8 @@ struct CommandPalette: View {
         }
 
         // Knowledge base
-        let roles = knowledge.roles
         items += knowledge.quickSearch(terms: terms, limit: CommandPalette.perSource).map { hit in
+            let roles = knowledge.roles(for: hit.table)
             let id = roles.idColumn.map { hit.record.value($0) } ?? ""
             let title = roles.titleColumn.map { hit.record.value($0) } ?? ""
             return PaletteItem(id: "kb-\(hit.id)", icon: "books.vertical", title: [id, title].filter { !$0.isEmpty }.joined(separator: " — "),

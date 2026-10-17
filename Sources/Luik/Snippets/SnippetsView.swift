@@ -156,6 +156,15 @@ struct SnippetsView: View {
                 store.upsert(saved)
             }
         }
+        .onAppear(perform: takePendingSnippet)
+        .onChange(of: ui.pendingSnippet) { _, _ in takePendingSnippet() }
+    }
+
+    /// A one-liner another tab handed over (Log › Save as one-liner) opens in the editor.
+    private func takePendingSnippet() {
+        guard let pending = ui.pendingSnippet else { return }
+        ui.pendingSnippet = nil
+        editing = pending
     }
 
     /// "$NAME = [field]" with autosave.

@@ -148,7 +148,7 @@ struct SuggestionsPanel: View {
                     Label("Knowledge base", systemImage: "books.vertical")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    if knowledge.knowledgeBase == nil {
+                    if knowledge.isEmpty {
                         Text("No knowledge base imported yet.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -161,8 +161,8 @@ struct SuggestionsPanel: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
-                        let roles = knowledge.roles
                         ForEach(kbHits) { hit in
+                            let roles = knowledge.roles(for: hit.table)
                             Button {
                                 knowledge.show(recordID: hit.record.id, query: kbTerms.joined(separator: " "))
                             } label: {

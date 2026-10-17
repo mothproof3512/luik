@@ -18,6 +18,17 @@ struct KBTable: Identifiable, Codable {
     var records: [KBRecord]
 }
 
+extension KBTable {
+    static let myIDColumn = "ID"
+    static let myColumns = ["ID", "Title", "Severity", "CVSS_Vector", "Description", "Impact", "Recommendation", "References", "Origin", "Added", "Updated"]
+    static let myLongColumns: Set<String> = ["Description", "Impact", "Recommendation", "References"]
+
+    /// The table that holds your own records (my-knowledge.json).
+    static func myFindings() -> KBTable {
+        KBTable(name: "My findings", columns: myColumns, records: [])
+    }
+}
+
 /// Everything imported, stored in knowledgebase.json.
 struct KnowledgeBase: Codable {
     var sourceName: String

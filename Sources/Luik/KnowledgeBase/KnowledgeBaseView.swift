@@ -14,7 +14,7 @@ struct KnowledgeBaseView: View {
         VStack(spacing: 0) {
             toolbar
             Divider()
-            if store.knowledgeBase == nil {
+            if store.isEmpty {
                 emptyState
             } else {
                 let hits = store.hits
@@ -86,12 +86,12 @@ struct KnowledgeBaseView: View {
                 .help("Kill chain phase")
             }
             Spacer()
-            if let kb = store.knowledgeBase {
-                Text("\(store.totalMatching) of \(kb.recordCount)")
+            if !store.isEmpty {
+                Text("\(store.totalMatching) of \(store.recordCount)")
                     .font(.caption)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
-                    .help("\(kb.sourceName), imported \(kb.importedAt.formatted(date: .abbreviated, time: .shortened))")
+                    .help((store.knowledgeBase.map { "\($0.sourceName), imported \($0.importedAt.formatted(date: .abbreviated, time: .shortened))" } ?? "No imported knowledge base") + (store.mine.records.isEmpty ? "" : "\n\(store.mine.records.count) record(s) of your own"))
             }
             Menu {
                 if let kb = store.knowledgeBase {
@@ -99,6 +99,17 @@ struct KnowledgeBaseView: View {
                     Text("Imported \(kb.importedAt.formatted(date: .abbreviated, time: .shortened)) · \(kb.tables.count) sheet(s), \(kb.recordCount) rows")
                     if let source = kb.sourceURL {
                         Text("From \(source)")
+                    }
+                    Divider()
+                }
+                if !store.mine.records.isEmpty {
+                    Text("\(store.mine.records.count) record(s) of your own (My findings)")
+                    Button("Show only my records") {
+                        store.search = ""
+                        store.scopeFilter = ""
+                        store.severityFilter = ""
+                        store.phaseFilter = ""
+                        store.onlyMine = true
                     }
                     Divider()
                 }
@@ -113,7 +124,7 @@ struct KnowledgeBaseView: View {
                 }
                 Divider()
                 Button("Show data folder in Finder") {
-                    NSWorkspace.shared.activateFileViewerSelecting([Storage.url(for: "knowledgebase.json")])
+                    NSWorkspace.shared.activateFileViewerSelecting([store.mine.records.isEmpty ? Storage.url(for: "knowledgebase.json") : store.mineFileURL])
                 }
                 if store.knowledgeBase != nil {
                     Divider()
@@ -165,7 +176,7 @@ struct KnowledgeBaseView: View {
                 .foregroundStyle(.secondary)
             Text("No knowledge base yet.")
                 .font(.headline)
-            Text("Download the attack-vectors knowledge base that comes with Luik (English or Dutch, 349 rows), or import your own findings sheet (.xlsx, .csv or .json). Every sheet becomes searchable, across all columns.\nThe data stays on this Mac, in ~/Library/Application Support/Luik/.")
+            Text("Download the attack-vectors knowledge base that comes with Luik (English or Dutch, 349 rows), or import your own findings sheet (.xlsx, .csv or .json). Every sheet becomes searchable, across all columns.\nFindings you write up can be kept here too: the books button on a finding saves it as a record of your own (My findings), outside any engagement.\nThe data stays on this Mac, in ~/Library/Application Support/Luik/.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -204,15 +215,24 @@ struct KnowledgeBaseView: View {
 
     private func resultList(_ hits: [KBHit]) -> some View {
         @Bindable var store = store
-        let roles = store.roles
-        let multipleTables = (store.knowledgeBase?.tables.count ?? 0) > 1
+        let multipleTables = store.allTables.count > 1
         return List(selection: $store.selectedID) {
+            if store.onlyMine {
+                HStack {
+                    Label("Only your own records", systemImage: "person")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Show all") { store.onlyMine = false }
+                        .controlSize(.small)
+                }
+            }
             if let error = store.lastError {
                 Label(error, systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.orange)
             }
             ForEach(hits) { hit in
-                HitRow(hit: hit, roles: roles, showTable: multipleTables)
+                HitRow(hit: hit, roles: store.roles(for: hit.table), showTable: multipleTables)
                     .tag(hit.id)
             }
             if hits.count >= 500 {
@@ -338,9 +358,11 @@ struct RecordDetailView: View {
     @Environment(UIState.self) private var ui
     @State private var copied = false
     @State private var appended = false
+    @State private var editing = false
+    @State private var confirmDelete = false
 
     var body: some View {
-        let roles = store.roles
+        let roles = store.roles(for: hit.table)
         let record = hit.record
         let id = roles.idColumn.map { record.value($0) } ?? ""
         let title = roles.titleColumn.map { record.value($0) } ?? ""
@@ -384,14 +406,38 @@ struct RecordDetailView: View {
                 }
                 Button {
                     let affected = targets.selectedNode.flatMap { FindingsStore.affectedLabel(for: $0, in: targets) }.map { [$0] } ?? []
-                    findings.create(fromKnowledgeBase: hit, roles: store.roles, affected: affected)
+                    findings.create(fromKnowledgeBase: hit, roles: store.roles(for: hit.table), affected: affected)
                     ui.module = .findings
                 } label: {
                     Label("Create finding", systemImage: "exclamationmark.triangle")
                 }
                 .help("New entry in the Findings tab with the description, impact, recommendation and references from this record" + (targets.selectedNode != nil ? ", affecting the selected target" : ""))
+                if store.isMine(hit.table) {
+                    Button {
+                        editing = true
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
+                    .help("Edit this record of your own")
+                    Button(role: .destructive) {
+                        confirmDelete = true
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                    .help("Delete this record of your own")
+                }
             }
             .padding(12)
+            .sheet(isPresented: $editing) {
+                MyRecordEditor(record: hit.record, columns: hit.table.columns) { saved in
+                    store.update(saved)
+                }
+            }
+            .confirmationDialog("Delete record \(id)?", isPresented: $confirmDelete) {
+                Button("Delete", role: .destructive) { store.removeMine(hit.record.id) }
+            } message: {
+                Text("Findings created from it are not affected.")
+            }
 
             Divider()
 
@@ -412,7 +458,7 @@ struct RecordDetailView: View {
     }
 
     private func appendToTarget(_ node: TargetNode) {
-        let roles = store.roles
+        let roles = store.roles(for: hit.table)
         let id = roles.idColumn.map { hit.record.value($0) } ?? ""
         var notes = node.notes
         if !notes.isEmpty && !notes.hasSuffix("\n") { notes += "\n" }
@@ -429,6 +475,64 @@ struct RecordDetailView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
             flag.wrappedValue = false
         }
+    }
+}
+
+/// Editor for one of your own records: a field per column, long ones as text areas.
+struct MyRecordEditor: View {
+    @State var record: KBRecord
+    let columns: [String]
+    let onSave: (KBRecord) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    private static let readOnly: Set<String> = [KBTable.myIDColumn, "Added", "Updated"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Record \(record.value(KBTable.myIDColumn))")
+                .font(.headline)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(columns.filter { !MyRecordEditor.readOnly.contains($0) }, id: \.self) { column in
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(column.replacingOccurrences(of: "_", with: " "))
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            if KBTable.myLongColumns.contains(column) {
+                                TextEditor(text: binding(column))
+                                    .font(.body)
+                                    .scrollContentBackground(.hidden)
+                                    .padding(4)
+                                    .frame(minHeight: 80, maxHeight: 160)
+                                    .background(Color.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 6))
+                            } else {
+                                TextField(column, text: binding(column))
+                                    .textFieldStyle(.roundedBorder)
+                            }
+                        }
+                    }
+                }
+                .padding(2)
+            }
+            HStack {
+                Spacer()
+                Button("Cancel") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Save") {
+                    record.values["Updated"] = ISO8601DateFormatter().string(from: Date())
+                    onSave(record)
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(16)
+        .frame(width: 560, height: 640)
+    }
+
+    private func binding(_ column: String) -> Binding<String> {
+        Binding(get: { record.values[column] ?? "" }, set: { record.values[column] = $0 })
     }
 }
 

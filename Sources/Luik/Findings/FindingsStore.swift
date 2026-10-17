@@ -219,7 +219,8 @@ final class FindingsStore {
         if !evidence.isEmpty { finding.evidence = evidence }
         // Everything else that has a value is kept in the description, so nothing from the sheet is lost.
         var extra: [String] = []
-        for c in columns where !used.contains(c) && !mapped.contains(c) && c != roles.severityColumn {
+        let meta: Set<String> = KnowledgeBaseStore.shared.isMine(hit.table) ? ["Origin", "Added", "Updated", "CVSS_Vector"] : []
+        for c in columns where !used.contains(c) && !mapped.contains(c) && c != roles.severityColumn && !meta.contains(c) {
             let value = record.value(c)
             if !value.isEmpty { extra.append("**\(c.replacingOccurrences(of: "_", with: " "))**: \(value)") }
         }

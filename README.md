@@ -295,6 +295,16 @@ imports. The ⋯ menu exports the whole set as a **Markdown** or **HTML report**
 one section per finding, most severe first); Word opens the HTML directly (File › Open) and
 `pandoc findings.html -o findings.docx` makes a .docx.
 
+**Keep what you learned.** The books button on a finding saves it as a record of your own in the
+Knowledge base (table *My findings*, file `my-knowledge.json`, outside any engagement and
+untouched by re-importing or removing the downloaded knowledge base): title, severity, CVSS
+vector, description, impact, recommendation and references — not the evidence or the affected
+hosts. The finding's source becomes `KB MY-001`, so pressing the button again updates that record
+instead of adding another. Own records are searched together with the imported sheet, show up in
+the port-node suggestions and ⌘K, can be edited and deleted in the Knowledge base tab (Edit /
+trash on the record; ⋯ › *Show only my records*), and **Create finding** on one brings it back
+into the next engagement.
+
 **Screenshots under Evidence.** Every image linked in the evidence text (the camera button's
 `![evidence](path)` links, **Add image…**, or a pasted path) shows as a thumbnail below the field.
 Click one to open the annotator: arrow, box, circle, text label, highlight, **blur** (pixelated) and
@@ -304,6 +314,14 @@ marks are burnt into the pixels at the original resolution, so a blurred or reda
 recovered from the saved file. **Save** writes `<name>-annotated.png` next to the original and points
 the evidence link at it; tick **Replace original** to overwrite the file instead. Right-click a
 thumbnail for Show in Finder, Copy path or removing the link.
+
+### Log → one-liner
+
+A command in the Log (pasted by Luik or typed in a Luik terminal) that turned out to be worth
+keeping: the bookmark button (or right-click › *Save as one-liner…*) opens the One-liners editor
+with the command, the current `$RHOST`, `$RPORT`, `$LHOST` and `$LPORT` values put back as
+placeholders and the category *From log* — adjust the title and services, save, and it is there
+for the next engagement.
 
 ### Plan — the test plan of the engagement
 
