@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.26.0
+- **Tools › Reachability canary**: probe in-scope hosts every 1–60 minutes (TCP connect to a port, or ICMP via `ping`), picked from Targets or entered by hand; badge in the top bar (green / red with the number of unreachable targets; click opens the tool), latency, last check, last change and a strip of recent results per target; a change between reachable and unreachable is written to the Log with the time. Off by default, saved per engagement (`canary.json`), stops on engagement switch. Tools menu and ⌘K entries.
+
 ## 0.25.0
 - **Tools › Mail security (SPF, DKIM, DMARC)**: for a domain, MX, SPF (single record, `all` qualifier, DNS-lookup count with include expansion, `ptr`, length), DMARC (policy, pct, sp, rua, alignment), DKIM (about thirty common selectors plus your own, RSA key size from the published key, revoked and testing keys), MTA-STS and TLS-RPT — each line judged pass / info / warn / fail with the reason. Only DNS queries via `dig`. Copy as Markdown; **Create finding** with the issues and records. Tools menu and ⌘K entries.
 

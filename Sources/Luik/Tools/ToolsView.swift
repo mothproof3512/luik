@@ -5,6 +5,7 @@ import SwiftUI
 enum ToolKind: String, CaseIterable, Identifiable {
     case versionCheck
     case mailSecurity
+    case reachability
 
     var id: String { rawValue }
 
@@ -12,6 +13,7 @@ enum ToolKind: String, CaseIterable, Identifiable {
         switch self {
         case .versionCheck: return "Version & end-of-life check"
         case .mailSecurity: return "Mail security: SPF, DKIM, DMARC"
+        case .reachability: return "Reachability canary"
         }
     }
 
@@ -19,6 +21,7 @@ enum ToolKind: String, CaseIterable, Identifiable {
         switch self {
         case .versionCheck: return "clock.badge.exclamationmark"
         case .mailSecurity: return "envelope.badge.shield.half.filled"
+        case .reachability: return "dot.radiowaves.left.and.right"
         }
     }
 
@@ -26,6 +29,7 @@ enum ToolKind: String, CaseIterable, Identifiable {
         switch self {
         case .versionCheck: return "Is this version current, supported or end of life? Cycles and dates from endoflife.date, release notes from GitHub."
         case .mailSecurity: return "Can this domain be spoofed? MX, SPF (with lookup count), DMARC policy, DKIM keys, MTA-STS and TLS-RPT, judged and explained."
+        case .reachability: return "Am I blocked? Probe a few in-scope hosts every N minutes; a red badge in the top bar and a Log entry the moment one stops answering."
         }
     }
 }
@@ -65,6 +69,8 @@ struct ToolsView: View {
                 VersionCheckView()
             case .mailSecurity:
                 MailSecurityView()
+            case .reachability:
+                CanaryView()
             }
         }
     }
@@ -593,5 +599,176 @@ struct MailSecurityView: View {
         ActivityLog.shared.record(.action, "Finding “\(finding.title)” created from the mail security check", source: "Tools")
         findingCreated = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { findingCreated = false }
+    }
+}
+
+
+/// Reachability canary: which hosts to probe, how often, and how they are doing.
+struct CanaryView: View {
+    @Environment(TargetStore.self) private var targets
+    @Environment(\.luikTheme) private var theme
+    @State private var address = ""
+    @State private var port = ""
+    @State private var label = ""
+
+    var body: some View {
+        let canary = CanaryStore.shared
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Toggle("Enabled for this engagement", isOn: Binding(get: { canary.config.enabled }, set: { canary.setEnabled($0) }))
+                    .toggleStyle(.switch)
+                    .disabled(canary.config.targets.isEmpty && !canary.config.enabled)
+                Picker("Every", selection: Binding(get: { canary.config.intervalMinutes }, set: { canary.setInterval($0) })) {
+                    ForEach(CanaryStore.intervals, id: \.self) { minutes in
+                        Text(minutes == 60 ? "hour" : "\(minutes) min").tag(minutes)
+                    }
+                }
+                .frame(maxWidth: 160)
+                Button {
+                    canary.checkNow()
+                } label: {
+                    Label("Check now", systemImage: "arrow.clockwise")
+                }
+                .disabled(canary.config.targets.isEmpty || canary.isChecking)
+                if canary.isChecking {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                Spacer()
+                if let last = canary.lastRun {
+                    Text("Last check \(last.formatted(date: .omitted, time: .shortened))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Every probe is traffic to the client's systems: a TCP connect to a port you know is open, or one ICMP echo. Pick one or two hosts that are in scope and expected to answer, keep the interval modest, and switch it off when you stop testing. A change from reachable to unreachable (and back) is written to the Log with the time — that timestamp is what you quote when a block is discussed. The setting is per engagement and off by default.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if canary.config.targets.isEmpty {
+                        Text("No targets yet — add a host below, or pick one from Targets.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(canary.config.targets) { target in
+                            targetRow(target, canary: canary)
+                        }
+                    }
+
+                    Divider()
+                    Text("Add a target")
+                        .font(.subheadline.weight(.semibold))
+                    HStack(spacing: 8) {
+                        TextField("Host or IP", text: $address)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 200)
+                        TextField("Port (empty = ping)", text: $port)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 140)
+                        TextField("Label (optional)", text: $label)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 160)
+                        Button("Add") { addManual(canary) }
+                            .disabled(address.trimmingCharacters(in: .whitespaces).isEmpty)
+                        Menu {
+                            if targets.hosts.isEmpty {
+                                Text("No hosts in Targets")
+                            }
+                            ForEach(targets.hosts) { host in
+                                let ports = host.children.filter { $0.kind == .port }
+                                Menu(host.address.isEmpty ? host.title : host.address) {
+                                    Button("Ping \(host.address)") {
+                                        canary.add(CanaryTarget(address: host.address, port: nil, label: host.subtitle))
+                                    }
+                                    ForEach(ports) { portNode in
+                                        Button("\(host.address):\(portNode.portNumber) \(TargetStore.serviceName(of: portNode))") {
+                                            canary.add(CanaryTarget(address: host.address, port: portNode.portNumber, label: TargetStore.serviceName(of: portNode)))
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            Label("From Targets", systemImage: "network")
+                        }
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
+                    }
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private func addManual(_ canary: CanaryStore) {
+        let host = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !host.isEmpty else { return }
+        let portNumber = Int(port.trimmingCharacters(in: .whitespaces))
+        canary.add(CanaryTarget(address: host, port: portNumber, label: label.trimmingCharacters(in: .whitespaces)))
+        address = ""
+        port = ""
+        label = ""
+    }
+
+    private func targetRow(_ target: CanaryTarget, canary: CanaryStore) -> some View {
+        let state = canary.state(for: target)
+        return HStack(spacing: 10) {
+            Circle()
+                .fill(state.status == .up ? Color.green : (state.status == .down ? Color.red : Color.gray))
+                .frame(width: 10, height: 10)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(target.display)
+                        .font(.callout.weight(.semibold))
+                    if !target.label.isEmpty {
+                        Text(target.label)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Text(statusLine(state))
+                    .font(.caption)
+                    .foregroundStyle(state.status == .down ? Color.red : Color.secondary)
+            }
+            Spacer()
+            HStack(spacing: 2) {
+                ForEach(Array(state.history.enumerated()), id: \.offset) { _, up in
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(up ? Color.green.opacity(0.8) : Color.red.opacity(0.9))
+                        .frame(width: 5, height: 12)
+                }
+            }
+            .help("Recent results, oldest left")
+            Button {
+                canary.check(target)
+            } label: {
+                Image(systemName: "arrow.clockwise")
+            }
+            .buttonStyle(.plain)
+            .help("Check this target now")
+            Button(role: .destructive) {
+                canary.remove(target.id)
+            } label: {
+                Image(systemName: "trash")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+        }
+        .padding(8)
+        .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func statusLine(_ state: CanaryState) -> String {
+        var parts = [state.status.label]
+        if let latency = state.latencyMs { parts.append(String(format: "%.0f ms", latency)) }
+        if let checked = state.lastChecked { parts.append("checked \(checked.formatted(date: .omitted, time: .shortened))") }
+        if let change = state.lastChange { parts.append("since \(change.formatted(date: .omitted, time: .shortened))") }
+        if !state.detail.isEmpty && state.status == .down { parts.append(state.detail) }
+        return parts.joined(separator: " · ")
     }
 }

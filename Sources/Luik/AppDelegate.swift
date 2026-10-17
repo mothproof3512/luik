@@ -88,6 +88,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         LibraryStore.shared.flush()
         DiagramStore.shared.flush()
         PlanStore.shared.flush()
+        CanaryStore.shared.flush()
         SnippetStore.shared.flush()
         TargetStore.shared.flush()
         FindingsStore.shared.flush()
@@ -321,6 +322,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         toolsMenu.addItem(NSMenuItem(title: "Reverse Shell Generator…", action: #selector(showReverseShell), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Version & End-of-life Check…", action: #selector(showVersionCheck), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Mail Security Check (SPF, DKIM, DMARC)…", action: #selector(showMailSecurity), keyEquivalent: ""))
+        toolsMenu.addItem(NSMenuItem(title: "Reachability Canary…", action: #selector(showCanary), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "New Plan from Template…", action: #selector(newPlan), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Plan Templates…", action: #selector(editPlanTemplates), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Import Cheat Sheets into Library…", action: #selector(importCheatSheets), keyEquivalent: ""))
@@ -396,6 +398,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         showDropdown()
         UIState.shared.module = .knowledgeBase
         UIState.shared.showKnowledgeBaseDownload = true
+    }
+
+    @objc private func showCanary() {
+        showDropdown()
+        UIState.shared.tool = .reachability
+        UIState.shared.module = .tools
     }
 
     @objc private func showMailSecurity() {

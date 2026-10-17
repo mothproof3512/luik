@@ -22,7 +22,7 @@ and a panel slides down from the top of the screen with nine tabs:
 | **Knowledge base** | Download the attack-vectors knowledge base that comes with Luik (349 rows, English or Dutch) or import your own findings sheet (.xlsx, .csv or .json) — also straight from your own GitHub repository — and search every column instantly: a product name, version string, CVE, CWE or technique; then read the full finding, with links clickable and matches highlighted |
 | **Log** | Timestamped activity log: commands pasted from One-liners/Searchsploit, every command you run in Luik's terminal tabs (read from the screen when you press Enter — also inside ssh sessions; passwords never appear on screen, so they are never logged), imports and your own notes — exportable as Markdown for the report |
 | **Plan** | The engagement-level test plan from a template (external, internal/AD, web application, minimal, or your own): phases with items to tick off, hints, notes and fill-in fields (client, scope, dates, roles, …), progress per phase, Markdown export for the report — and "Save as template" so a worked plan becomes next time's template |
-| **Tools** | Small utilities with a sidebar. **Mail security**: SPF (with the 10-lookup count and include expansion), DMARC policy, DKIM keys (common selectors, key size), MX, MTA-STS and TLS-RPT for a domain, judged and explained, with Create finding. **Version & end-of-life check**: type a product (or press Version on a port node in Targets), see every release cycle with release, support and end-of-life dates from endoflife.date, a verdict for the version you found (current / behind on patches / security-only / end of life) with **Create finding**, and the release notes from GitHub rendered in place |
+| **Tools** | Small utilities with a sidebar. **Reachability canary**: probe one or two in-scope hosts every N minutes (TCP connect or ping), a badge in the top bar turns red and the Log gets a timestamp the moment one stops answering — off by default, per engagement. **Mail security**: SPF (with the 10-lookup count and include expansion), DMARC policy, DKIM keys (common selectors, key size), MX, MTA-STS and TLS-RPT for a domain, judged and explained, with Create finding. **Version & end-of-life check**: type a product (or press Version on a port node in Targets), see every release cycle with release, support and end-of-life dates from endoflife.date, a verdict for the version you found (current / behind on patches / security-only / end of life) with **Create finding**, and the release notes from GitHub rendered in place |
 | **Diagram** | Network architecture drawings per engagement: devices (firewall, router, switch, servers, DC, clients, cloud, …) as cards with icon, name and address, links with labels, arrows and dashed styles, and zones for segments (DMZ, LAN, VLAN). Built by hand, from the hosts in Targets, or imported from draw.io and Mermaid; exported as PNG (dark or light), SVG, draw.io, Mermaid or JSON |
 | **Chef** | CyberChef-style data kitchen: build a recipe of operations (Base64/Base32/hex/URL/HTML/Unicode, hashes and HMAC, JWT decode, gzip/zlib, JSON, regex, extractors for IPs/URLs/emails/hashes/CVEs, defang, CIDR, timestamps) and the output updates as you type; a magic detector suggests decodings |
 | **Searchsploit** | Exploit-DB search built in: download the official database once, then search it offline like searchsploit, with version-aware matching (`apache 2.4.49` also finds `< 2.4.50` and `2.4.x` entries). Every hit comes with copy-and-paste command lines for the machine where you want the exploit |
@@ -335,6 +335,17 @@ key size from the published key, revoked and testing-mode keys. Every line says 
 **Copy as Markdown** for the report; **Create finding** writes "Weak email authentication for
 <domain>" with the issues and records (severity from the worst issue).
 
+### Tools › Reachability canary ("am I blocked?")
+
+Pick one or two hosts that are in scope and expected to answer — from Targets (host:port with an
+open port, or ping) or by hand — choose the interval (1 min to 1 hour) and enable it for the
+engagement. Luik then does a TCP connect (or one ICMP echo via `ping`) per target on that interval
+and shows a badge in the top bar: green while everything answers, red with the count when something
+does not; the moment a target changes from reachable to unreachable (and back) is written to the
+Log, which is the timestamp to quote when a block is discussed with the client. Each target shows
+latency, last check, last change and a strip of recent results. Every probe is traffic to the
+client's systems, so it is off by default, per engagement, and stops when you switch engagement.
+
 ### Engagements and scope
 
 The briefcase menu in the top bar switches between engagements. Targets, notes, findings, the log and
@@ -483,7 +494,7 @@ Sources/Luik/
   Snippets/                one-liners (multi-step, ordering, $RHOST/$RPORT/$RURL/$LHOST/$LPORT)
   Diagram/                 network diagrams: model and store, rendering, canvas and inspector, import/export
   Plan/                    test plans: model, built-in templates, store, tab and template editor
-  Tools/                   Tools tab: version & end-of-life check (endoflife.date, GitHub releases), mail security (SPF/DKIM/DMARC via dig), public IP
+  Tools/                   Tools tab: version & end-of-life check (endoflife.date, GitHub releases), mail security (SPF/DKIM/DMARC via dig), reachability canary, public IP
   Shells/                  reverse shell generator (templates read from the library's cheat sheet)
   Targets/                 nmap/Nessus/nuclei/masscan parsers, tree model, import/export and UI
   KnowledgeBase/           xlsx/csv/json import, search index, catalogue download and UI

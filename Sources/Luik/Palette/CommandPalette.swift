@@ -185,6 +185,10 @@ struct CommandPalette: View {
                 ui.tool = .mailSecurity
                 ui.module = .tools
             },
+            PaletteItem(id: "canary", icon: "dot.radiowaves.left.and.right", title: "Reachability canary", subtitle: "am I blocked? probe in-scope hosts every N minutes", group: "Actions") {
+                ui.tool = .reachability
+                ui.module = .tools
+            },
             PaletteItem(id: "new-plan", icon: "list.clipboard", title: "New plan from template", subtitle: "engagement test plan: phases, items, fields", group: "Actions") {
                 ui.module = .plan
                 PlanStore.shared.showNewPlan = true

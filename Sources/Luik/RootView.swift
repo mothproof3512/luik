@@ -224,6 +224,8 @@ struct TopBar: View {
                 .help("Logging is paused — nothing is recorded. Click to resume.")
                 .padding(.trailing, 8)
             }
+            CanaryIndicator()
+                .padding(.trailing, 8)
             PublicIPButton()
                 .padding(.trailing, 8)
             EngagementMenu()
