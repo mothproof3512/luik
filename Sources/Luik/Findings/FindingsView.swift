@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct FindingsView: View {
     @Environment(FindingsStore.self) private var store
@@ -331,6 +332,17 @@ struct FindingDetailView: View {
                     section("Description", text: $finding.description, prompt: "What is wrong and where.")
                     section("Impact", text: $finding.impact, prompt: "What an attacker can do with it.")
                     section("Evidence", text: $finding.evidence, prompt: "Commands, output, request/response, screenshots (Markdown links).")
+                    HStack(alignment: .top, spacing: 8) {
+                        EvidenceImageStrip(evidence: $finding.evidence)
+                        Spacer(minLength: 0)
+                        Button {
+                            addImages()
+                        } label: {
+                            Label("Add image…", systemImage: "photo.badge.plus")
+                        }
+                        .controlSize(.small)
+                        .help("Link an existing screenshot or image under Evidence; click a thumbnail to annotate, blur or redact it")
+                    }
                     section("Recommendation", text: $finding.recommendation, prompt: "How to fix it.")
                     section("References", text: $finding.references, prompt: "CVE, advisories, documentation (one per line).")
                 }
@@ -346,6 +358,22 @@ struct FindingDetailView: View {
             let entries = text.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
             if entries != finding.affected { finding.affected = entries }
         }
+    }
+
+    private func addImages() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.png, .jpeg, .gif, .tiff, .heic, .webP]
+        panel.message = "Choose screenshots to link under Evidence"
+        guard panel.runModal() == .OK else { return }
+        var evidence = finding.evidence
+        for url in panel.urls {
+            if evidence.contains(url.path) { continue }
+            if !evidence.isEmpty && !evidence.hasSuffix("\n") { evidence += "\n" }
+            evidence += "![evidence](\(url.path))\n"
+        }
+        finding.evidence = evidence
     }
 
     private func section(_ title: String, text: Binding<String>, prompt: String) -> some View {

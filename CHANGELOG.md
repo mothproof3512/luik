@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.28.0
+- **Screenshot annotation in Findings**: images linked under Evidence show as thumbnails; click one to draw arrows, boxes, circles, text labels and highlights, and to **blur** (pixelate) or **redact** (solid black) credentials, hashes and names before a screenshot goes into the report. Colours, three line widths, drag to move, undo / redo, ⌘⌫ to remove a mark. Marks are rendered into the pixels at full resolution — a blurred or redacted area is not recoverable from the saved file. Saves as `<name>-annotated.png` next to the original and relinks the evidence (or **Replace original**); **Add image…** links existing screenshots; thumbnail context menu with Show in Finder, Copy path, Remove link. Saves are written to the Log.
+
 ## 0.27.0
 - **Balanced top bar**: Knowledge base, Searchsploit, Chef and Diagram moved into the Tools tab's sidebar by default (once; your own layout is kept afterwards), leaving Terminal, Notes, One-liners, Targets, Findings, Plan, Log and Tools in the top bar. Right-click a tab › **Move into Tools**, right-click a tool › **Give it a tab in the top bar**; tools can be reordered by dragging; **Reset tabs and tools** in the context menus, View menu and Settings › Appearance. The View menu lists the tools below the tabs; ⌘K "Go to" covers both. Every module still stays mounted wherever it lives.
 

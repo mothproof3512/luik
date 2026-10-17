@@ -295,6 +295,16 @@ imports. The ⋯ menu exports the whole set as a **Markdown** or **HTML report**
 one section per finding, most severe first); Word opens the HTML directly (File › Open) and
 `pandoc findings.html -o findings.docx` makes a .docx.
 
+**Screenshots under Evidence.** Every image linked in the evidence text (the camera button's
+`![evidence](path)` links, **Add image…**, or a pasted path) shows as a thumbnail below the field.
+Click one to open the annotator: arrow, box, circle, text label, highlight, **blur** (pixelated) and
+**redact** (solid black) for passwords, hashes, names and anything else that must not reach the
+report; colours and line widths, drag to move a mark, ⌘Z / ⌘⇧Z, ⌘⌫ removes the selected mark. The
+marks are burnt into the pixels at the original resolution, so a blurred or redacted area cannot be
+recovered from the saved file. **Save** writes `<name>-annotated.png` next to the original and points
+the evidence link at it; tick **Replace original** to overwrite the file instead. Right-click a
+thumbnail for Show in Finder, Copy path or removing the link.
+
 ### Plan — the test plan of the engagement
 
 1. **+** (or Tools › New Plan from Template…, ⌘K) and choose a template: *External network
@@ -507,7 +517,7 @@ Sources/Luik/
   Engagements/             engagement store (per-engagement files, scope matcher) and manager UI
   Activity/                activity log store, typed-command capture and UI
   Palette/                 ⌘K search over everything
-  Evidence/                screenshot evidence via screencapture
+  Evidence/                screenshot evidence via screencapture, image annotator (blur / redact)
   UpdateCheck.swift        GitHub release check
 Vendor/SwiftTerm/          SwiftTerm 1.11.2 (MIT) as source
 Resources/AppIcon.iconset  app icon
