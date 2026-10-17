@@ -103,13 +103,21 @@ struct DiagramView: View {
                 .toggleStyle(.button)
                 .onChange(of: store.connectMode) { _, _ in store.connectFrom = nil }
                 .help("Click a node, then another, to link them. Or drag the dot on the right of a selected node to another node.")
-                Button {
-                    let added = store.addHostsFromTargets()
-                    status = added == 0 ? "Every host in Targets is in the diagram already (matched on address)." : "Added \(added) host(s) from Targets."
+                Menu {
+                    Button("Add missing hosts to this diagram") {
+                        let added = store.addHostsFromTargets()
+                        status = added == 0 ? "Every host in Targets is in the diagram already (matched on address)." : "Added \(added) host(s) from Targets."
+                    }
+                    Button("Build a network map (new diagram)") {
+                        let placed = store.buildNetworkMap()
+                        status = placed == 0 ? "No hosts in Targets yet." : "Network map: \(placed) host(s) grouped by /24, with gateways and your attacker node."
+                    }
                 } label: {
                     Label("From Targets", systemImage: "network")
                 }
-                .help("Add a node for every host in the Targets tab that is not in the diagram yet; the kind is guessed from its open ports")
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help("Add the hosts of the Targets tab as nodes, or build a complete map: a zone per /24, a gateway per segment, the attacker node linked to the gateways; kinds guessed from the open ports")
                 Button {
                     store.undo()
                 } label: {
@@ -146,6 +154,8 @@ struct DiagramView: View {
                     Divider()
                     Button("Copy image (light)") { copyImage(diagram, light: true) }
                     Button("Copy image (dark)") { copyImage(diagram, light: false) }
+                    Divider()
+                    Button("Save to Library (PNG, light)") { saveToLibrary(diagram) }
                 } label: {
                     Label("Export", systemImage: "square.and.arrow.up")
                 }
@@ -219,6 +229,22 @@ struct DiagramView: View {
     }
 
     @MainActor
+    /// A light PNG of the drawing into the library's Images collection (next to the HLDs).
+    private func saveToLibrary(_ diagram: Diagram) {
+        guard let data = DiagramTransfer.png(diagram, palette: .light(accent: theme.accentColor)) else {
+            status = "Could not render the image."
+            return
+        }
+        let stamp = DateFormatter()
+        stamp.dateFormat = "yyyy-MM-dd"
+        let slug = diagram.name.map { $0.isLetter || $0.isNumber ? String($0) : "-" }.joined()
+        if let id = LibraryStore.shared.saveImage(data: data, name: "\(slug)-\(stamp.string(from: Date())).png") {
+            status = "Saved to the library as \(id)."
+        } else {
+            status = LibraryStore.shared.lastError ?? "Could not save to the library."
+        }
+    }
+
     private func copyImage(_ diagram: Diagram, light: Bool) {
         status = DiagramTransfer.copyImage(diagram, accent: theme.accentColor, light: light)
             ? "Image copied — paste it into a report, mail or chat." : "Could not render the image."
@@ -284,10 +310,9 @@ struct DiagramView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 Button("Start from the example") { store.newDiagram(name: "Example network", sample: true) }
-                Button("From Targets") {
-                    store.newDiagram(name: "Hosts")
-                    let added = store.addHostsFromTargets()
-                    status = added == 0 ? "No hosts in Targets yet." : "Added \(added) host(s) from Targets."
+                Button("Network map from Targets") {
+                    let placed = store.buildNetworkMap()
+                    status = placed == 0 ? "No hosts in Targets yet." : "Network map: \(placed) host(s) grouped by /24."
                 }
                 Button("Import…") { status = DiagramTransfer.importWithPanel(into: store) }
             }

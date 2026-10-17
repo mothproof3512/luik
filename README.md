@@ -315,6 +315,27 @@ recovered from the saved file. **Save** writes `<name>-annotated.png` next to th
 the evidence link at it; tick **Replace original** to overwrite the file instead. Right-click a
 thumbnail for Show in Finder, Copy path or removing the link.
 
+### Images in the library
+
+Pictures belong next to the cheat sheets: an HLD from the client, a network drawing, an
+architecture screenshot. Library ⋯ › **Import images…** (or *Import folder or files…* with images
+among the files; a folder import keeps the images that sit next to its Markdown) puts them into the
+*Images* collection; they show with a photo icon in the outline and open in a viewer with Fit /
+50 / 100 / 200 %, copy, open in Preview and show in Finder. A Markdown page whose line is only an
+image (`![HLD](images/hld.png)`, relative to the page, or an absolute path) now renders that
+image inline — in notes as well — with double-click to open it. Diagram › Export › **Save to
+Library** stores a light PNG of the drawing there, and the evidence thumbnails in Findings offer
+*Save a copy to the Library*.
+
+### Network map from Targets
+
+Diagram › **From Targets › Build a network map** makes a new diagram from everything in Targets:
+one zone per /24 (hostnames and IPv6 in *Other hosts*), a gateway per segment (the `.1` host
+when it is in Targets, else a router placeholder), your attacker node (`$LHOST`) linked to every
+gateway, and the hosts in a grid inside their zone — kind guessed from the open ports, open ports
+in the notes. *Add missing hosts to this diagram* keeps the old behaviour of adding nodes to the
+current drawing. Rearrange, rename zones, export.
+
 ### Log → one-liner
 
 A command in the Log (pasted by Luik or typed in a Luik terminal) that turned out to be worth

@@ -632,6 +632,120 @@ final class DiagramStore {
         return nodes.count
     }
 
+    /// Builds a whole network map from Targets as a new diagram: one zone per /24 (hostnames and
+    /// IPv6 in "Other hosts"), a gateway node per zone (the .1 host when it is in Targets, else a
+    /// router placeholder), an attacker node ($LHOST) linked to every gateway, and the hosts in a
+    /// grid inside their zone with the kind guessed from their open ports. Returns the number of
+    /// hosts placed, or 0 when Targets is empty.
+    @discardableResult
+    func buildNetworkMap(name: String = "Network map") -> Int {
+        let hosts = TargetStore.shared.hosts.filter { $0.kind == .host && !$0.address.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard !hosts.isEmpty else { return 0 }
+
+        // Group by subnet, keep first-seen order of the subnets.
+        var groups: [(subnet: String, hosts: [TargetNode])] = []
+        for host in hosts {
+            let subnet = DiagramStore.subnet(of: host.address)
+            if let index = groups.firstIndex(where: { $0.subnet == subnet }) {
+                groups[index].hosts.append(host)
+            } else {
+                groups.append((subnet, [host]))
+            }
+        }
+        groups.sort { a, b in
+            if a.subnet == "Other hosts" { return false }
+            if b.subnet == "Other hosts" { return true }
+            return a.subnet.compare(b.subnet, options: .numeric) == .orderedAscending
+        }
+
+        var diagram = Diagram(name: uniqueName(name))
+        let columns = 3
+        let cellWidth = 200.0, cellHeight = 100.0
+        let zoneGap = 60.0
+        let zoneTop = 260.0
+        var zoneX = 60.0
+        var gateways: [UUID] = []
+
+        for (zoneIndex, group) in groups.enumerated() {
+            let sorted = group.hosts.sorted { DiagramStore.addressSortKey($0.address).lexicographicallyPrecedes(DiagramStore.addressSortKey($1.address)) }
+            let gatewayAddress = group.subnet.hasSuffix(".0/24") ? String(group.subnet.dropLast(4)) + "1" : ""
+            var members = sorted
+            var gatewayHost: TargetNode? = nil
+            if !gatewayAddress.isEmpty, let index = members.firstIndex(where: { $0.address == gatewayAddress }) {
+                gatewayHost = members.remove(at: index)
+            }
+            let rows = max(1, Int((Double(members.count) / Double(columns)).rounded(.up)))
+            let usedColumns = min(columns, max(members.count, 1))
+            let width = Double(usedColumns) * cellWidth + 40
+            let height = Double(DiagramMetrics.zoneHeaderHeight) + 120 + Double(rows) * cellHeight
+            let zone = DiagramZone(name: group.subnet, x: zoneX, y: zoneTop, width: width, height: height,
+                                   colorHex: DiagramZone.palette[zoneIndex % DiagramZone.palette.count])
+            diagram.zones.append(zone)
+
+            // Gateway at the top of the zone.
+            let gatewayPoint = CGPoint(x: zoneX + width / 2, y: zoneTop + Double(DiagramMetrics.zoneHeaderHeight) + 50)
+            let gateway: DiagramNode
+            if let host = gatewayHost {
+                gateway = DiagramStore.node(for: host, kind: .router, at: gatewayPoint)
+            } else {
+                gateway = DiagramNode(kind: .router, label: group.subnet == "Other hosts" ? "Uplink" : "Gateway", address: gatewayAddress,
+                                      notes: "Placeholder — not seen in Targets", x: gatewayPoint.x, y: gatewayPoint.y)
+            }
+            diagram.nodes.append(gateway)
+            gateways.append(gateway.id)
+
+            for (index, host) in members.enumerated() {
+                let column = index % columns
+                let row = index / columns
+                let point = CGPoint(x: zoneX + 20 + cellWidth / 2 + Double(column) * cellWidth,
+                                    y: zoneTop + Double(DiagramMetrics.zoneHeaderHeight) + 150 + Double(row) * cellHeight)
+                diagram.nodes.append(DiagramStore.node(for: host, kind: nil, at: point))
+            }
+            zoneX += width + zoneGap
+        }
+
+        // Attacker above the middle, linked to every gateway.
+        let totalWidth = zoneX - zoneGap - 60
+        let attacker = DiagramNode(kind: .attacker, label: "Attacker", address: SnippetStore.shared.lhost,
+                                   notes: "Your machine ($LHOST)", x: DiagramMetrics.snap(60 + totalWidth / 2), y: 80)
+        diagram.nodes.append(attacker)
+        for gateway in gateways {
+            diagram.links.append(DiagramLink(from: attacker.id, to: gateway, style: .dashed))
+        }
+        for index in diagram.nodes.indices {
+            diagram.nodes[index].x = DiagramMetrics.snap(diagram.nodes[index].x)
+            diagram.nodes[index].y = DiagramMetrics.snap(diagram.nodes[index].y)
+        }
+        diagrams.append(diagram)
+        select(diagram.id)
+        scheduleSave()
+        ActivityLog.shared.record(.action, "Network map built from Targets: \(hosts.count) host(s) in \(groups.count) segment(s)", source: "Diagram")
+        return hosts.count
+    }
+
+    /// A diagram node for a Targets host; the kind is guessed from the open ports unless given.
+    static func node(for host: TargetNode, kind forced: DiagramNodeKind?, at point: CGPoint) -> DiagramNode {
+        let ports = host.children.filter { $0.kind == .port }
+        let kind = forced ?? DiagramStore.kind(forPorts: ports.map { $0.portNumber }, services: ports.map { TargetStore.serviceName(of: $0) }, name: host.title + " " + host.subtitle)
+        let name = host.subtitle.trimmingCharacters(in: .whitespaces)
+        let label = name.isEmpty || name == host.address ? kind.title : name
+        var notes = ports.isEmpty ? "" : "Open: " + ports.map { "\($0.portNumber)/\($0.portProtocol) \(TargetStore.serviceName(of: $0))" }.joined(separator: ", ")
+        if host.status == .done { notes = (notes.isEmpty ? "" : notes + "\n") + "Status in Targets: done" }
+        return DiagramNode(kind: kind, label: label, address: host.address, notes: notes, x: point.x, y: point.y)
+    }
+
+    /// "10.10.10.0/24" for an IPv4 address, "Other hosts" for names and IPv6.
+    static func subnet(of address: String) -> String {
+        let parts = address.trimmingCharacters(in: .whitespaces).split(separator: ".")
+        guard parts.count == 4, parts.allSatisfy({ Int($0).map { (0...255).contains($0) } ?? false }) else { return "Other hosts" }
+        return parts.prefix(3).joined(separator: ".") + ".0/24"
+    }
+
+    static func addressSortKey(_ address: String) -> [Int] {
+        let parts = address.split(separator: ".").compactMap { Int($0) }
+        return parts.count == 4 ? parts : [Int.max] + Array(address.unicodeScalars.map { Int($0.value) })
+    }
+
     static func kind(forPorts ports: [Int], services: [String], name: String) -> DiagramNodeKind {
         let set = Set(ports)
         let joined = services.joined(separator: " ").lowercased()

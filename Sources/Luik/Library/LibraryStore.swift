@@ -14,6 +14,8 @@ struct LibraryDocument: Identifiable, Hashable, Sendable {
     let folder: String
 
     var fileName: String { url.lastPathComponent }
+    /// A picture (diagram, HLD, screenshot) rather than a Markdown page.
+    var isImage: Bool { LibraryStore.imageExtensions.contains(url.pathExtension.lowercased()) }
     var breadcrumb: String { folder.isEmpty ? collection : "\(collection) › \(folder.replacingOccurrences(of: "/", with: " › "))" }
 }
 
@@ -63,6 +65,9 @@ final class LibraryStore {
 
     static let sourceFileName = ".luik-source.json"
     static let documentExtensions: Set<String> = ["md", "markdown", "txt"]
+    static let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "gif", "webp", "tiff", "tif", "heic", "bmp", "svg"]
+    static var libraryExtensions: Set<String> { documentExtensions.union(imageExtensions) }
+    static let imagesCollection = "Images"
 
     var collections: [LibraryCollection] = []
     var isScanning = false
@@ -126,7 +131,7 @@ final class LibraryStore {
             var documents: [LibraryDocument] = []
             if let enumerator = fm.enumerator(at: folder, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles, .skipsPackageDescendants]) {
                 for case let file as URL in enumerator {
-                    guard documentExtensions.contains(file.pathExtension.lowercased()),
+                    guard libraryExtensions.contains(file.pathExtension.lowercased()),
                           (try? file.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory != true else { continue }
                     let relative = relativePath(of: file, in: root)
                     let inside = relativePath(of: file.deletingLastPathComponent(), in: folder)
@@ -152,6 +157,9 @@ final class LibraryStore {
 
     /// The first "# Heading" in the file, else the folder name for a README, else the file name.
     static func title(of file: URL) -> String {
+        if imageExtensions.contains(file.pathExtension.lowercased()) {
+            return file.deletingPathExtension().lastPathComponent
+        }
         if let handle = try? FileHandle(forReadingFrom: file) {
             let head = handle.readData(ofLength: 4096)
             try? handle.close()
@@ -270,6 +278,7 @@ final class LibraryStore {
     // MARK: - Contents
 
     func text(of document: LibraryDocument) -> String {
+        if document.isImage { return "" }
         if let cached = contents[document.id] { return cached }
         let text = (try? String(contentsOf: document.url, encoding: .utf8))
             ?? (try? String(contentsOf: document.url, encoding: .isoLatin1))
@@ -375,7 +384,7 @@ final class LibraryStore {
                         enumerator.skipDescendants()
                         continue
                     }
-                    guard LibraryStore.documentExtensions.contains(file.pathExtension.lowercased()),
+                    guard LibraryStore.libraryExtensions.contains(file.pathExtension.lowercased()),
                           (try? file.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory != true else { continue }
                     let relative = LibraryStore.relativePath(of: file, in: url)
                     copy(file, to: target.appendingPathComponent(relative))
@@ -383,6 +392,9 @@ final class LibraryStore {
             } else if LibraryStore.documentExtensions.contains(url.pathExtension.lowercased()) {
                 collectionsTouched.insert("Cheatsheets")
                 copy(url, to: LibraryStore.directory.appendingPathComponent("Cheatsheets", isDirectory: true).appendingPathComponent(url.lastPathComponent))
+            } else if LibraryStore.imageExtensions.contains(url.pathExtension.lowercased()) {
+                collectionsTouched.insert(LibraryStore.imagesCollection)
+                copy(url, to: LibraryStore.directory.appendingPathComponent(LibraryStore.imagesCollection, isDirectory: true).appendingPathComponent(url.lastPathComponent))
             } else {
                 skipped += 1
             }
@@ -445,10 +457,60 @@ final class LibraryStore {
         panel.canChooseDirectories = true
         panel.canChooseFiles = true
         panel.allowsMultipleSelection = true
-        panel.message = "Choose a folder of Markdown cheat sheets (subfolders are kept), or individual .md files"
+        panel.message = "Choose a folder of Markdown cheat sheets and images (subfolders are kept), or individual .md / image files"
         panel.prompt = "Import"
         guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
         importItems(panel.urls)
+    }
+
+    /// Copies an image file into a collection ("Images" by default), e.g. an HLD or a diagram
+    /// export. Returns the new document's id, after a rescan.
+    @discardableResult
+    func importImage(_ source: URL, collection: String = LibraryStore.imagesCollection, name: String? = nil) -> String? {
+        let folder = LibraryStore.directory.appendingPathComponent(collection, isDirectory: true)
+        let fileName = name ?? source.lastPathComponent
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            var target = folder.appendingPathComponent(fileName)
+            var counter = 2
+            let stem = target.deletingPathExtension().lastPathComponent
+            let ext = target.pathExtension
+            while FileManager.default.fileExists(atPath: target.path) {
+                target = folder.appendingPathComponent("\(stem)-\(counter)").appendingPathExtension(ext)
+                counter += 1
+            }
+            try FileManager.default.copyItem(at: source, to: target)
+            ActivityLog.shared.record(.action, "Image \(target.lastPathComponent) saved to the library (\(collection))", source: "Library")
+            rescan()
+            return collection + "/" + target.lastPathComponent
+        } catch {
+            lastError = "Could not copy the image: \(error.localizedDescription)"
+            return nil
+        }
+    }
+
+    /// Writes image data (a diagram export, a pasted picture) into a collection.
+    @discardableResult
+    func saveImage(data: Data, name: String, collection: String = LibraryStore.imagesCollection) -> String? {
+        let folder = LibraryStore.directory.appendingPathComponent(collection, isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            var target = folder.appendingPathComponent(name)
+            var counter = 2
+            let stem = target.deletingPathExtension().lastPathComponent
+            let ext = target.pathExtension
+            while FileManager.default.fileExists(atPath: target.path) {
+                target = folder.appendingPathComponent("\(stem)-\(counter)").appendingPathExtension(ext)
+                counter += 1
+            }
+            try data.write(to: target, options: .atomic)
+            ActivityLog.shared.record(.action, "Image \(target.lastPathComponent) saved to the library (\(collection))", source: "Library")
+            rescan()
+            return collection + "/" + target.lastPathComponent
+        } catch {
+            lastError = "Could not save the image: \(error.localizedDescription)"
+            return nil
+        }
     }
 
     /// Deletes a collection folder (the user's own copy only).

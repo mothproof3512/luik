@@ -506,6 +506,10 @@ struct EvidenceImageStrip: View {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(path, forType: .string)
             }
+            Button("Save a copy to the Library (Images)") {
+                LibraryStore.shared.importImage(URL(fileURLWithPath: path))
+            }
+            .disabled(!exists)
             Divider()
             Button("Remove link from evidence", role: .destructive) { removeLink(path) }
         }

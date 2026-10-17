@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.30.0
+- **Images in the library**: png/jpg/gif/webp/tiff/heic/bmp/svg files are library documents too — Library ⋯ › *Import images…* (into the *Images* collection) or a folder import that keeps the images next to its Markdown; photo icon in the outline; viewer with Fit / 50 / 100 / 200 %, copy, open in Preview, show in Finder. Diagram › Export › *Save to Library (PNG)*; Findings evidence thumbnails › *Save a copy to the Library*.
+- **Inline images in Markdown**: a line that is only `![alt](path)` renders the picture (relative to the library page, or an absolute path; in notes too), double-click opens it; remote pictures stay links.
+- **Network map from Targets**: Diagram › From Targets › *Build a network map* — a new diagram with a zone per /24, a gateway per segment (the .1 host if present), the attacker node ($LHOST) linked to the gateways, and the hosts in a grid per zone with kinds guessed from their open ports. The old *Add missing hosts* stays in the same menu.
+
 ## 0.29.0
 - **Finding → own knowledge-base record**: the books button on a finding saves title, severity, CVSS vector, description, impact, recommendation and references as a record of your own (table *My findings*, `my-knowledge.json`, outside any engagement; re-importing or removing the downloaded knowledge base never touches it). The finding's source becomes `KB MY-001`; pressing again updates that record. Own records are searched with the imported sheet (also in port-node suggestions and ⌘K), can be edited and deleted in the Knowledge base tab, and *Create finding* brings them into a new engagement. ⋯ › *Show only my records*; ⌘K "My knowledge-base records".
 - **Log → one-liner**: bookmark button / right-click *Save as one-liner…* on a command in the Log opens the One-liners editor with the command, `$RHOST`/`$RPORT`/`$LHOST`/`$LPORT` put back as placeholders, category *From log*.

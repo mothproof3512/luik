@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Notes of the engagement (Markdown, editable) plus the library: cheat sheets and downloaded
 /// documentation shared by all engagements, in an outline per collection.
@@ -121,10 +122,17 @@ struct NotesView: View {
                             DisclosureGroup {
                                 OutlineGroup(collection.tree, id: \.id, children: \.children) { node in
                                     if let document = node.document {
-                                        Text(node.title)
-                                            .lineLimit(1)
-                                            .tag(NotesSelection.document(document.id))
-                                            .help(document.id)
+                                        if document.isImage {
+                                            Label(node.title, systemImage: "photo")
+                                                .lineLimit(1)
+                                                .tag(NotesSelection.document(document.id))
+                                                .help(document.id)
+                                        } else {
+                                            Text(node.title)
+                                                .lineLimit(1)
+                                                .tag(NotesSelection.document(document.id))
+                                                .help(document.id)
+                                        }
                                     } else {
                                         Label(node.title, systemImage: "folder")
                                             .lineLimit(1)
@@ -164,6 +172,7 @@ struct NotesView: View {
                         Spacer()
                         Menu {
                             Button("Import folder or files…") { importFolder() }
+                            Button("Import images…") { importImages() }
                             Button("Download documentation…") { ui.showLibrarySources = true }
                             Divider()
                             Button("Show library folder in Finder") { library.revealInFinder() }
@@ -204,7 +213,21 @@ struct NotesView: View {
         panel.canChooseDirectories = true
         panel.canChooseFiles = true
         panel.allowsMultipleSelection = true
-        panel.message = "Choose a folder of Markdown cheat sheets (subfolders are kept), or individual .md files"
+        panel.message = "Choose a folder of Markdown cheat sheets and images (subfolders are kept), or individual .md / image files"
+        panel.prompt = "Import"
+        guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
+        importStatus = library.importItems(panel.urls)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6) { importStatus = nil }
+    }
+
+    /// Pictures (HLDs, network diagrams, architecture drawings) go into the Images collection.
+    private func importImages() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowsMultipleSelection = true
+        panel.allowedContentTypes = [.png, .jpeg, .gif, .tiff, .heic, .webP, .svg, .bmp]
+        panel.message = "Choose images for the library (they go into the Images collection)"
         panel.prompt = "Import"
         guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
         importStatus = library.importItems(panel.urls)
@@ -221,8 +244,13 @@ struct NotesView: View {
                 .id(id)
         case .document(let path):
             if let document = library.document(id: path) {
-                LibraryDocumentView(document: document)
-                    .id(document.id)
+                if document.isImage {
+                    LibraryImageView(document: document)
+                        .id(document.id)
+                } else {
+                    LibraryDocumentView(document: document)
+                        .id(document.id)
+                }
             } else {
                 placeholder("That document is no longer in the library.")
             }
@@ -403,7 +431,7 @@ struct LibraryDocumentView: View {
             } else {
                 MarkdownView(text: text, onLink: { url in
                     openLink(url)
-                }, showFind: $showFind)
+                }, showFind: $showFind, baseURL: document.url.deletingLastPathComponent())
                 .background(Color.black.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
             }
         }
@@ -426,5 +454,105 @@ struct LibraryDocumentView: View {
             return .handled
         }
         return .discarded
+    }
+}
+
+
+/// A picture in the library (HLD, network diagram, …): fitted to the pane, zoom with the
+/// slider or ⌘+/⌘−, double-click opens it in Preview.
+struct LibraryImageView: View {
+    let document: LibraryDocument
+    @Environment(LibraryStore.self) private var library
+    @State private var image: NSImage?
+    @State private var zoom: CGFloat = 0   // 0 = fit
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(document.title)
+                        .font(.title2.weight(.semibold))
+                        .lineLimit(1)
+                    HStack(spacing: 6) {
+                        Text(document.breadcrumb)
+                        if let image {
+                            Text("· \(Int(image.size.width)) × \(Int(image.size.height))")
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                }
+                Spacer()
+                Picker("", selection: $zoom) {
+                    Text("Fit").tag(CGFloat(0))
+                    Text("50%").tag(CGFloat(0.5))
+                    Text("100%").tag(CGFloat(1))
+                    Text("200%").tag(CGFloat(2))
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .frame(width: 220)
+                Button {
+                    guard let image else { return }
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.writeObjects([image])
+                } label: {
+                    Image(systemName: "doc.on.doc")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help("Copy the image")
+                Button {
+                    NSWorkspace.shared.open(document.url)
+                } label: {
+                    Image(systemName: "arrow.up.forward.app")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help("Open in Preview")
+                Button {
+                    NSWorkspace.shared.activateFileViewerSelecting([document.url])
+                } label: {
+                    Image(systemName: "folder")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help("Show the file in Finder")
+            }
+            GeometryReader { proxy in
+                ScrollView([.horizontal, .vertical]) {
+                    if let image {
+                        let size = displaySize(image, in: proxy.size)
+                        Image(nsImage: image)
+                            .resizable()
+                            .interpolation(.high)
+                            .frame(width: size.width, height: size.height)
+                            .frame(minWidth: proxy.size.width, minHeight: proxy.size.height)
+                            .onTapGesture(count: 2) { NSWorkspace.shared.open(document.url) }
+                    } else {
+                        Text("Could not open \(document.fileName)")
+                            .foregroundStyle(.secondary)
+                            .frame(width: proxy.size.width, height: proxy.size.height)
+                    }
+                }
+            }
+            .background(Color.black.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task(id: document.id) {
+            let url = document.url
+            image = await Task.detached(priority: .userInitiated) { NSImage(contentsOf: url) }.value
+        }
+    }
+
+    private func displaySize(_ image: NSImage, in available: CGSize) -> CGSize {
+        let size = image.size
+        guard size.width > 0, size.height > 0 else { return available }
+        if zoom > 0 { return CGSize(width: size.width * zoom, height: size.height * zoom) }
+        let scale = min((available.width - 16) / size.width, (available.height - 16) / size.height, 1)
+        return CGSize(width: size.width * scale, height: size.height * scale)
     }
 }

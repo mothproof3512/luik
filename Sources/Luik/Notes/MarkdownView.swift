@@ -11,6 +11,8 @@ struct MarkdownView: View {
     var onLink: ((URL) -> OpenURLAction.Result)?
     /// The find bar (⌘F in Read mode).
     var showFind: Binding<Bool> = .constant(false)
+    /// Folder that relative image paths are resolved against (the document's own folder).
+    var baseURL: URL? = nil
 
     @Environment(\.luikTheme) private var theme
     @State private var elements: [MarkdownElement] = []
@@ -45,7 +47,7 @@ struct MarkdownView: View {
                         cellIndex += 1
                     }
                 }
-            case .thematicBreak:
+            case .thematicBreak, .image:
                 break
             default:
                 for location in MarkdownView.occurrences(of: needle, in: element.plainText) {
@@ -224,6 +226,9 @@ struct MarkdownView: View {
         case .thematicBreak:
             Divider()
                 .padding(.vertical, 4)
+        case .image(let path, let alt):
+            MarkdownImageView(path: path, alt: alt, baseURL: baseURL, maxWidth: max(contentWidth - CGFloat(element.indent) * 18, 80))
+                .padding(.leading, CGFloat(element.indent) * 18)
         case .table(let rows, let hasHeader, let alignments):
             let decoratedRows: [[AttributedString]] = {
                 var index = 0
@@ -485,6 +490,8 @@ struct MarkdownElement: Identifiable, Sendable {
         case code(String?)
         case thematicBreak
         case table(rows: [[AttributedString]], hasHeader: Bool, alignments: [MarkdownColumnAlignment])
+        /// A line that is only an image: `![alt](path)`. Relative paths resolve against the document.
+        case image(path: String, alt: String)
     }
 
     let id: Int
@@ -516,8 +523,11 @@ enum MarkdownParser {
 
     /// Blocks in document order. Falls back to one paragraph per line when the parser rejects
     /// the text (it is lenient, so that is rare).
+    static let imagePlaceholder = "\u{FFFC}LUIK-IMAGE:"
+
     static func parse(_ source: String) -> [MarkdownElement] {
-        let (text, tables) = extractTables(source.replacingOccurrences(of: "\r\n", with: "\n"))
+        let (withoutImages, images) = extractImages(source.replacingOccurrences(of: "\r\n", with: "\n"))
+        let (text, tables) = extractTables(withoutImages)
         let options = AttributedString.MarkdownParsingOptions(allowsExtendedAttributes: true,
                                                               interpretedSyntax: .full,
                                                               failurePolicy: .returnPartiallyParsedIfPossible)
@@ -641,6 +651,18 @@ enum MarkdownParser {
                 continue
             }
 
+            // A placeholder paragraph stands for an image line that was cut out of the source.
+            if case .paragraph = kind, let image = MarkdownParser.image(forPlaceholder: String(block.text.characters), in: images) {
+                var element = MarkdownElement(id: elements.count, kind: .image(path: image.path, alt: image.alt), text: AttributedString())
+                element.indent = indent
+                element.quoteDepth = quoteDepth
+                if let listItem, lastListItemIdentity != listItem.identity {
+                    lastListItemIdentity = listItem.identity
+                }
+                elements.append(element)
+                continue
+            }
+
             // A placeholder paragraph stands for a table that was cut out of the source.
             if case .paragraph = kind, let table = MarkdownParser.table(forPlaceholder: String(block.text.characters), in: tables) {
                 var element = MarkdownElement(id: elements.count, kind: .table(rows: table.rows, hasHeader: table.hasHeader, alignments: table.alignments), text: AttributedString())
@@ -672,6 +694,58 @@ enum MarkdownParser {
         }
         flushTable()
         return elements
+    }
+
+    // MARK: Images
+
+    struct ImageRef: Sendable {
+        var path: String
+        var alt: String
+    }
+
+    static func image(forPlaceholder text: String, in images: [ImageRef]) -> ImageRef? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix(imagePlaceholder), trimmed.hasSuffix("\u{FFFC}") else { return nil }
+        let number = trimmed.dropFirst(imagePlaceholder.count).dropLast()
+        guard let index = Int(number), index >= 0, index < images.count else { return nil }
+        return images[index]
+    }
+
+    /// Replaces every line that is only an image (`![alt](path "title")`, optionally inside a
+    /// list item or quote) by a placeholder paragraph. Fenced code is left alone.
+    static func extractImages(_ text: String) -> (String, [ImageRef]) {
+        let lines = text.components(separatedBy: "\n")
+        var output: [String] = []
+        var images: [ImageRef] = []
+        var fence: String? = nil
+        let pattern = #"^((?:[ \t]*(?:>|[-*+]|\d+\.)[ \t]+)*[ \t]*)!\[([^\]]*)\]\(\s*<?(.+?)>?(?:\s+"[^"]*")?\s*\)[ \t]*$"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return (text, []) }
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if let marker = fenceMarker(trimmed) {
+                if let open = fence {
+                    if marker.hasPrefix(String(open.first!)) && marker.count >= open.count { fence = nil }
+                } else {
+                    fence = marker
+                }
+                output.append(line)
+                continue
+            }
+            if fence == nil, let match = regex.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
+               let prefixRange = Range(match.range(at: 1), in: line),
+               let altRange = Range(match.range(at: 2), in: line),
+               let pathRange = Range(match.range(at: 3), in: line) {
+                let path = String(line[pathRange])
+                // Only file images are drawn; a remote picture stays a link in the text.
+                if !path.lowercased().hasPrefix("http") {
+                    images.append(ImageRef(path: path, alt: String(line[altRange])))
+                    output.append(String(line[prefixRange]) + imagePlaceholder + "\(images.count - 1)\u{FFFC}")
+                    continue
+                }
+            }
+            output.append(line)
+        }
+        return (output.joined(separator: "\n"), images)
     }
 
     // MARK: Pipe tables
@@ -791,5 +865,68 @@ enum MarkdownParser {
             return parsed
         }
         return AttributedString(text)
+    }
+}
+
+
+/// An image inside a rendered Markdown page: scaled to the column, click opens it.
+struct MarkdownImageView: View {
+    let path: String
+    let alt: String
+    let baseURL: URL?
+    let maxWidth: CGFloat
+    @State private var image: NSImage?
+    @State private var failed = false
+
+    private var url: URL? {
+        var raw = path.removingPercentEncoding ?? path
+        if raw.hasPrefix("file://") { raw = String(raw.dropFirst(7)) }
+        raw = (raw as NSString).expandingTildeInPath
+        if raw.hasPrefix("/") { return URL(fileURLWithPath: raw) }
+        guard let baseURL else { return nil }
+        return URL(fileURLWithPath: raw, relativeTo: baseURL).standardizedFileURL
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            if let image {
+                let fitted = min(maxWidth, image.size.width)
+                Image(nsImage: image)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(width: fitted)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.white.opacity(0.1)))
+                    .onTapGesture(count: 2) { if let url { NSWorkspace.shared.open(url) } }
+                    .help(alt.isEmpty ? (url?.lastPathComponent ?? path) : alt)
+                    .contextMenu {
+                        if let url {
+                            Button("Open") { NSWorkspace.shared.open(url) }
+                            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                            Button("Copy image") {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.writeObjects([image])
+                            }
+                        }
+                    }
+            } else {
+                Label(failed ? "Image not found: \(path)" : "Loading \(path)…", systemImage: failed ? "photo.badge.exclamationmark" : "photo")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if !alt.isEmpty, image != nil {
+                Text(alt)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+        .task(id: url?.path ?? path) {
+            guard let url else { failed = true; return }
+            let loaded = await Task.detached(priority: .userInitiated) { NSImage(contentsOf: url) }.value
+            image = loaded
+            failed = loaded == nil
+        }
     }
 }
