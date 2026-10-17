@@ -64,7 +64,8 @@ struct DiagramView: View {
                 }
                 if !store.diagrams.isEmpty { Divider() }
                 Button("New diagram") { store.newDiagram() }
-                Button("New from example") { store.newDiagram(name: "Example network", sample: true) }
+                Button("New from example: network") { store.newDiagram(name: "Example network", sample: true) }
+                Button("New from example: web application") { store.newDiagram(name: "Example web application", webApp: true) }
                 if store.current != nil {
                     Divider()
                     Button("Rename…") {
@@ -82,7 +83,7 @@ struct DiagramView: View {
             if store.current != nil {
                 Divider().frame(height: 18)
                 addMenu
-                ForEach([DiagramNodeKind.firewall, .router, .switchDevice, .server, .workstation], id: \.self) { kind in
+                ForEach([DiagramNodeKind.firewall, .router, .switchDevice, .server, .workstation, .webApp, .api, .identityProvider], id: \.self) { kind in
                     Button {
                         addNode(kind)
                     } label: {
@@ -309,7 +310,8 @@ struct DiagramView: View {
                     Label("New diagram", systemImage: "plus")
                 }
                 .buttonStyle(.borderedProminent)
-                Button("Start from the example") { store.newDiagram(name: "Example network", sample: true) }
+                Button("Start from the network example") { store.newDiagram(name: "Example network", sample: true) }
+                Button("Start from the web application example") { store.newDiagram(name: "Example web application", webApp: true) }
                 Button("Network map from Targets") {
                     let placed = store.buildNetworkMap()
                     status = placed == 0 ? "No hosts in Targets yet." : "Network map: \(placed) host(s) grouped by /24."

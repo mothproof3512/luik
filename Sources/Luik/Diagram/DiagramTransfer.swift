@@ -232,8 +232,9 @@ enum DiagramTransfer {
             if !node.address.isEmpty { text += "<br/>" + node.address }
             let label = "\"\(escape(text))\""
             switch node.kind {
-            case .database: return "\(id)[(\(label))]"
-            case .internet, .cloud: return "\(id)((\(label)))"
+            case .database, .cache, .objectStorage, .sessionStore, .messageQueue: return "\(id)[(\(label))]"
+            case .internet, .cloud, .user, .thirdParty: return "\(id)((\(label)))"
+            case .waf, .cdn, .reverseProxy, .identityProvider, .authorizationServer, .mfa, .secretsVault, .certificateAuthority: return "\(id){{\(label)}}"
             case .firewall, .vpn: return "\(id){{\(label)}}"
             case .router, .switchDevice, .loadBalancer: return "\(id)([\(label)])"
             default: return "\(id)[\(label)]"

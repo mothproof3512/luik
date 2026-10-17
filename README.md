@@ -327,6 +327,18 @@ image inline — in notes as well — with double-click to open it. Diagram › 
 Library** stores a light PNG of the drawing there, and the evidence thumbnails in Findings offer
 *Save a copy to the Library*.
 
+### Web application and identity elements in diagrams
+
+Besides the network devices, the Add menu has a **Web application** group (user / browser, CDN,
+WAF, reverse proxy / API gateway, web application, API, service, message queue, cache, object
+storage, container / cluster, serverless function, third-party API) and an **Identity & auth**
+group (identity provider / SSO, authorization server (OAuth 2.0 / OIDC), MFA, directory (LDAP),
+session / token store, secrets vault, certificate authority). *New from example: web application*
+gives a starting point — user → CDN/WAF → gateway → app/API → data, with the identity side as its
+own zone and the login redirect, code → token and JWKS/introspection flows drawn as directed
+links. draw.io and Mermaid imports recognise the usual names (Okta, Keycloak, Entra, Kong, Redis,
+Kafka, S3, Lambda, …).
+
 ### Network map from Targets
 
 Diagram › **From Targets › Build a network map** makes a new diagram from everything in Targets:

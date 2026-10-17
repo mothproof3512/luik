@@ -24,6 +24,28 @@ enum DiagramNodeKind: String, Codable, CaseIterable, Identifiable {
     case mobile
     case printer
     case iot
+    // Web application
+    case user
+    case cdn
+    case waf
+    case reverseProxy
+    case webApp
+    case api
+    case microservice
+    case messageQueue
+    case cache
+    case objectStorage
+    case container
+    case serverless
+    case thirdParty
+    // Identity and authentication
+    case identityProvider
+    case authorizationServer
+    case mfa
+    case directory
+    case sessionStore
+    case secretsVault
+    case certificateAuthority
     case generic
 
     var id: String { rawValue }
@@ -49,6 +71,26 @@ enum DiagramNodeKind: String, Codable, CaseIterable, Identifiable {
         case .mobile: return "Mobile"
         case .printer: return "Printer"
         case .iot: return "IoT / OT device"
+        case .user: return "User / browser"
+        case .cdn: return "CDN"
+        case .waf: return "WAF"
+        case .reverseProxy: return "Reverse proxy"
+        case .webApp: return "Web application"
+        case .api: return "API"
+        case .microservice: return "Service"
+        case .messageQueue: return "Message queue"
+        case .cache: return "Cache"
+        case .objectStorage: return "Object storage"
+        case .container: return "Container / cluster"
+        case .serverless: return "Function (serverless)"
+        case .thirdParty: return "Third-party API"
+        case .identityProvider: return "Identity provider (SSO)"
+        case .authorizationServer: return "Authorization server (OAuth / OIDC)"
+        case .mfa: return "MFA"
+        case .directory: return "Directory (LDAP)"
+        case .sessionStore: return "Session / token store"
+        case .secretsVault: return "Secrets vault"
+        case .certificateAuthority: return "Certificate authority"
         case .generic: return "Other"
         }
     }
@@ -74,6 +116,26 @@ enum DiagramNodeKind: String, Codable, CaseIterable, Identifiable {
         case .mobile: return "iphone"
         case .printer: return "printer.fill"
         case .iot: return "sensor.fill"
+        case .user: return "person.crop.circle"
+        case .cdn: return "globe.badge.chevron.backward"
+        case .waf: return "shield.lefthalf.filled"
+        case .reverseProxy: return "arrow.triangle.swap"
+        case .webApp: return "macwindow"
+        case .api: return "curlybraces"
+        case .microservice: return "gearshape.2.fill"
+        case .messageQueue: return "tray.full.fill"
+        case .cache: return "bolt.fill"
+        case .objectStorage: return "archivebox.fill"
+        case .container: return "shippingbox.fill"
+        case .serverless: return "function"
+        case .thirdParty: return "link.circle.fill"
+        case .identityProvider: return "person.badge.shield.checkmark.fill"
+        case .authorizationServer: return "key.fill"
+        case .mfa: return "lock.rotation"
+        case .directory: return "person.3.fill"
+        case .sessionStore: return "ticket.fill"
+        case .secretsVault: return "lock.square.stack.fill"
+        case .certificateAuthority: return "checkmark.seal.fill"
         case .generic: return "square.dashed"
         }
     }
@@ -100,6 +162,26 @@ enum DiagramNodeKind: String, Codable, CaseIterable, Identifiable {
         case .mobile: return "MOB"
         case .printer: return "PRN"
         case .iot: return "IoT"
+        case .user: return "USR"
+        case .cdn: return "CDN"
+        case .waf: return "WAF"
+        case .reverseProxy: return "RP"
+        case .webApp: return "APP"
+        case .api: return "API"
+        case .microservice: return "SVC"
+        case .messageQueue: return "MQ"
+        case .cache: return "$"
+        case .objectStorage: return "S3"
+        case .container: return "K8S"
+        case .serverless: return "FN"
+        case .thirdParty: return "3RD"
+        case .identityProvider: return "IdP"
+        case .authorizationServer: return "AS"
+        case .mfa: return "MFA"
+        case .directory: return "DIR"
+        case .sessionStore: return "SES"
+        case .secretsVault: return "KV"
+        case .certificateAuthority: return "CA"
         case .generic: return "•"
         }
     }
@@ -111,12 +193,14 @@ enum DiagramNodeKind: String, Codable, CaseIterable, Identifiable {
         case .firewall, .vpn: return "Perimeter"
         case .router, .switchDevice, .loadBalancer, .accessPoint: return "Network"
         case .server, .webServer, .database, .domainController, .mailServer: return "Servers"
+        case .user, .cdn, .waf, .reverseProxy, .webApp, .api, .microservice, .messageQueue, .cache, .objectStorage, .container, .serverless, .thirdParty: return "Web application"
+        case .identityProvider, .authorizationServer, .mfa, .directory, .sessionStore, .secretsVault, .certificateAuthority: return "Identity & auth"
         case .workstation, .laptop, .mobile, .printer, .iot: return "Clients"
         case .generic: return "Other"
         }
     }
 
-    static let groups = ["Outside", "Perimeter", "Network", "Servers", "Clients", "Other"]
+    static let groups = ["Outside", "Perimeter", "Network", "Servers", "Web application", "Identity & auth", "Clients", "Other"]
 
     /// Colour of the icon disc (hex, also used in SVG and draw.io).
     var hex: String {
@@ -125,6 +209,15 @@ enum DiagramNodeKind: String, Codable, CaseIterable, Identifiable {
         case "Perimeter": return "#F2994A"
         case "Network": return "#2F80ED"
         case "Servers": return self == .database ? "#27AE60" : (self == .domainController ? "#BB6BD9" : "#8E7CF0")
+        case "Web application":
+            switch self {
+            case .user: return "#22B5A6"
+            case .waf, .cdn, .reverseProxy: return "#F2994A"
+            case .cache, .messageQueue, .objectStorage, .sessionStore: return "#27AE60"
+            case .thirdParty: return "#3E9BE8"
+            default: return "#E07A5F"
+            }
+        case "Identity & auth": return self == .secretsVault || self == .certificateAuthority ? "#8E7CF0" : "#BB6BD9"
         case "Clients": return "#22B5A6"
         default: return "#8A8F98"
         }
@@ -137,6 +230,26 @@ enum DiagramNodeKind: String, Codable, CaseIterable, Identifiable {
         let lower = text.lowercased()
         let rules: [(DiagramNodeKind, [String])] = [
             (.attacker, ["attacker", "kali", "pentest", "aanvaller"]),
+            (.waf, ["waf", "cloudflare waf", "akamai", "imperva", "modsecurity"]),
+            (.cdn, ["cdn", "cloudfront", "fastly", "front door"]),
+            (.identityProvider, ["identity provider", "idp", "sso", "entra", "azure ad", "okta", "keycloak", "adfs", "saml", "ping identity", "auth0"]),
+            (.authorizationServer, ["authorization server", "oauth", "oidc", "openid", "token service", "sts"]),
+            (.mfa, ["mfa", "2fa", "totp", "authenticator", "duo"]),
+            (.directory, ["ldap", "directory", "freeipa"]),
+            (.secretsVault, ["vault", "secrets", "key vault", "kms", "hsm"]),
+            (.certificateAuthority, ["certificate authority", "pki", "ca"]),
+            (.sessionStore, ["session", "token store", "jwt"]),
+            (.reverseProxy, ["reverse proxy", "traefik", "envoy", "api gateway", "ingress", "kong"]),
+            (.api, ["api", "rest", "graphql", "grpc", "backend"]),
+            (.messageQueue, ["queue", "kafka", "rabbitmq", "mq", "pubsub", "sqs", "bus"]),
+            (.cache, ["cache", "redis", "memcached"]),
+            (.objectStorage, ["bucket", "s3", "blob", "object storage", "minio"]),
+            (.container, ["kubernetes", "k8s", "docker", "container", "cluster", "pod", "aks", "eks"]),
+            (.serverless, ["lambda", "function", "serverless", "faas"]),
+            (.microservice, ["microservice", "service", "worker"]),
+            (.thirdParty, ["third party", "third-party", "payment", "psp", "external api", "partner"]),
+            (.webApp, ["web app", "webapp", "frontend", "spa", "react", "angular", "portal", "application"]),
+            (.user, ["browser", "end user", "customer", "visitor"]),
             (.firewall, ["firewall", "fortigate", "palo alto", "pfsense", "opnsense", "asa", "checkpoint", "fw"]),
             (.vpn, ["vpn", "ipsec", "wireguard", "openvpn", "anyconnect"]),
             (.loadBalancer, ["load balancer", "loadbalancer", "f5", "haproxy", "big-ip", "lb"]),
@@ -336,9 +449,11 @@ final class DiagramStore {
     // MARK: - Diagrams
 
     @discardableResult
-    func newDiagram(name: String = "Network", sample: Bool = false) -> Diagram {
+    func newDiagram(name: String = "Network", sample: Bool = false, webApp: Bool = false) -> Diagram {
         var diagram = Diagram(name: uniqueName(name))
-        if sample {
+        if webApp {
+            diagram = DiagramStore.sampleWebApp(named: diagram.name)
+        } else if sample {
             diagram = DiagramStore.sampleDiagram(named: diagram.name)
         }
         diagrams.append(diagram)
@@ -762,6 +877,57 @@ final class DiagramStore {
     }
 
     // MARK: - Sample
+
+    /// Example for a web application assessment: user → CDN/WAF → app → API → data, with the
+    /// identity side (IdP, authorization server, MFA, directory) drawn as its own zone.
+    static func sampleWebApp(named name: String) -> Diagram {
+        var diagram = Diagram(name: name)
+        let user = DiagramNode(kind: .user, label: "User", address: "browser / mobile app", x: 100, y: 300)
+        let attacker = DiagramNode(kind: .attacker, label: "Attacker", x: 100, y: 440)
+        let cdn = DiagramNode(kind: .cdn, label: "CDN", address: "static assets", x: 340, y: 240)
+        let waf = DiagramNode(kind: .waf, label: "WAF", address: "www.example.com", x: 340, y: 380)
+        let proxy = DiagramNode(kind: .reverseProxy, label: "API gateway", address: "ingress", x: 580, y: 380)
+        let app = DiagramNode(kind: .webApp, label: "Frontend (SPA)", address: "app.example.com", x: 580, y: 240)
+        let api = DiagramNode(kind: .api, label: "Backend API", address: "api.example.com", x: 820, y: 300)
+        let worker = DiagramNode(kind: .microservice, label: "Worker", address: "jobs", x: 820, y: 440)
+        let queue = DiagramNode(kind: .messageQueue, label: "Queue", x: 1060, y: 440)
+        let db = DiagramNode(kind: .database, label: "Database", address: "PostgreSQL", x: 1060, y: 240)
+        let cache = DiagramNode(kind: .cache, label: "Cache", address: "Redis", x: 1060, y: 320)
+        let storage = DiagramNode(kind: .objectStorage, label: "Uploads", address: "S3 bucket", x: 1060, y: 560)
+        let idp = DiagramNode(kind: .identityProvider, label: "IdP (SSO)", address: "login.example.com", x: 580, y: 640)
+        let authz = DiagramNode(kind: .authorizationServer, label: "Authorization server", address: "OAuth 2.0 / OIDC", x: 820, y: 640)
+        let mfa = DiagramNode(kind: .mfa, label: "MFA", address: "TOTP / push", x: 340, y: 640)
+        let directory = DiagramNode(kind: .directory, label: "Directory", address: "LDAP / AD", x: 1060, y: 640)
+        let psp = DiagramNode(kind: .thirdParty, label: "Payment provider", address: "external", x: 820, y: 120)
+        diagram.nodes = [user, attacker, cdn, waf, proxy, app, api, worker, queue, db, cache, storage, idp, authz, mfa, directory, psp]
+        diagram.links = [
+            DiagramLink(from: user.id, to: cdn.id, label: "443"),
+            DiagramLink(from: user.id, to: waf.id, label: "443"),
+            DiagramLink(from: attacker.id, to: waf.id, style: .dashed),
+            DiagramLink(from: cdn.id, to: app.id),
+            DiagramLink(from: waf.id, to: proxy.id),
+            DiagramLink(from: proxy.id, to: api.id, label: "bearer token", directed: true),
+            DiagramLink(from: app.id, to: api.id),
+            DiagramLink(from: api.id, to: db.id),
+            DiagramLink(from: api.id, to: cache.id),
+            DiagramLink(from: api.id, to: queue.id),
+            DiagramLink(from: queue.id, to: worker.id, directed: true),
+            DiagramLink(from: worker.id, to: storage.id),
+            DiagramLink(from: api.id, to: psp.id, label: "webhooks", style: .dashed),
+            DiagramLink(from: user.id, to: idp.id, label: "login (redirect)", style: .dotted, directed: true),
+            DiagramLink(from: idp.id, to: mfa.id),
+            DiagramLink(from: idp.id, to: authz.id, label: "code → token", directed: true),
+            DiagramLink(from: authz.id, to: directory.id),
+            DiagramLink(from: authz.id, to: api.id, label: "JWKS / introspection", style: .dotted),
+        ]
+        diagram.zones = [
+            DiagramZone(name: "Edge", x: 260, y: 160, width: 180, height: 300, colorHex: "#F2994A"),
+            DiagramZone(name: "Application", x: 500, y: 160, width: 420, height: 360, colorHex: "#E07A5F"),
+            DiagramZone(name: "Data", x: 980, y: 160, width: 180, height: 460, colorHex: "#27AE60"),
+            DiagramZone(name: "Identity", x: 260, y: 580, width: 900, height: 120, colorHex: "#BB6BD9"),
+        ]
+        return diagram
+    }
 
     static func sampleDiagram(named name: String) -> Diagram {
         var diagram = Diagram(name: name)
