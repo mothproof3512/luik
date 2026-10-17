@@ -35,6 +35,16 @@ struct ActivityView: View {
                 .labelsHidden()
                 .frame(maxWidth: 140)
                 Spacer()
+                Button {
+                    if log.isPaused { log.resume() } else { log.pause() }
+                } label: {
+                    Label(log.isPaused ? "Resume logging" : "Pause logging", systemImage: log.isPaused ? "record.circle" : "pause.circle")
+                }
+                .tint(log.isPaused ? Color.red : nil)
+                .buttonStyle(.bordered)
+                .help(log.isPaused
+                      ? "Logging is paused: nothing is recorded. Click to resume."
+                      : "Stop recording commands, imports and actions for a while (client data, secrets); a marker is written now and when you resume")
                 Text("\(log.filtered.count) of \(log.entries.count)")
                     .font(.caption)
                     .monospacedDigit()

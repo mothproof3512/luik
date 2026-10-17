@@ -173,6 +173,10 @@ struct CommandPalette: View {
             PaletteItem(id: "shortcuts", icon: "keyboard", title: "Keyboard shortcuts", subtitle: "⌘/", group: "Actions") {
                 ui.showShortcuts = true
             },
+            PaletteItem(id: "new-diagram", icon: "point.3.connected.trianglepath.dotted", title: "New network diagram", subtitle: "Diagram tab", group: "Actions") {
+                ui.module = .diagram
+                DiagramStore.shared.newDiagram()
+            },
             PaletteItem(id: "reverse-shell", icon: "arrow.uturn.backward.circle", title: "Reverse shell generator", subtitle: "template from the library's cheat sheet, $LHOST/$LPORT, shell, encoding, listener, TTY upgrade", group: "Actions") {
                 ui.showReverseShell = true
             },
@@ -237,6 +241,18 @@ struct CommandPalette: View {
                 notes.selectedID = note.id
                 ui.module = .notes
             }
+        }
+
+        // Diagrams: by name, or by a node's label / address.
+        for diagram in DiagramStore.shared.diagrams {
+            let hit = matches(diagram.name) ? nil : diagram.nodes.first { matches($0.label + " " + $0.address) }
+            guard matches(diagram.name) || hit != nil else { continue }
+            items.append(PaletteItem(id: "diagram-\(diagram.id)", icon: "point.3.connected.trianglepath.dotted", title: diagram.name,
+                                     subtitle: hit.map { "contains \($0.label) \($0.address)" } ?? "\(diagram.nodes.count) nodes", group: "Diagrams") {
+                DiagramStore.shared.select(diagram.id)
+                if let hit { DiagramStore.shared.selection = .node(hit.id) }
+                ui.module = .diagram
+            })
         }
 
         // Library (cheat sheets, PayloadsAllTheThings, …): titles first, then full text.

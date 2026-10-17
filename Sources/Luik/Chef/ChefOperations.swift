@@ -65,7 +65,7 @@ enum ChefText {
 // MARK: - Catalogue
 
 enum ChefCatalogue {
-    static let all: [ChefOperation] = encodings + hashes + text + dataFormats + extract + network + dates
+    static let all: [ChefOperation] = encodings + hashes + text + dataFormats + extract + network + dates + units
 
     static func operation(_ id: String) -> ChefOperation? {
         all.first { $0.id == id }
@@ -235,6 +235,94 @@ enum ChefCatalogue {
                 }
             }
             return out
+        },
+        ChefOperation.text("jwt-sign", "JWT Encode / sign", "Encoding",
+                           params: [ChefParam(id: "secret", label: "Secret", kind: .text, defaultValue: ""),
+                                    ChefParam(id: "alg", label: "Algorithm", kind: .choice(["HS256", "HS384", "HS512", "none"]), defaultValue: "HS256")]) { s, v in
+            // Input: the payload as JSON (or an existing token, whose payload is re-signed).
+            let input = s.trimmingCharacters(in: .whitespacesAndNewlines)
+            var payloadData = Data(input.utf8)
+            if input.split(separator: ".").count >= 2, !input.hasPrefix("{"),
+               let decoded = Base64.decodeLenient(String(input.split(separator: ".")[1])) {
+                payloadData = decoded
+            }
+            guard (try? JSONSerialization.jsonObject(with: payloadData)) != nil else {
+                throw ChefError.invalidInput("The input must be the payload as JSON (e.g. {\"sub\":\"1\",\"admin\":true}) or a JWT.")
+            }
+            let alg = v["alg"] ?? "HS256"
+            let header = "{\"alg\":\"\(alg)\",\"typ\":\"JWT\"}"
+            let signingInput = Base64.urlEncode(Data(header.utf8)) + "." + Base64.urlEncode(payloadData)
+            let secret = Data((v["secret"] ?? "").utf8)
+            let signature: String
+            switch alg {
+            case "none": signature = ""
+            case "HS384": signature = Base64.urlEncode(Data(HMAC<SHA384>.authenticationCode(for: Data(signingInput.utf8), using: SymmetricKey(data: secret))))
+            case "HS512": signature = Base64.urlEncode(Data(HMAC<SHA512>.authenticationCode(for: Data(signingInput.utf8), using: SymmetricKey(data: secret))))
+            default: signature = Base64.urlEncode(Data(HMAC<SHA256>.authenticationCode(for: Data(signingInput.utf8), using: SymmetricKey(data: secret))))
+            }
+            return signingInput + "." + signature
+        },
+        ChefOperation.text("jwt-verify", "JWT Verify (HMAC)", "Encoding",
+                           params: [ChefParam(id: "secret", label: "Secret", kind: .text, defaultValue: "")]) { s, v in
+            let parts = s.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: ".", omittingEmptySubsequences: false)
+            guard parts.count == 3, let headerData = Base64.decodeLenient(String(parts[0])),
+                  let header = try? JSONSerialization.jsonObject(with: headerData) as? [String: Any],
+                  let alg = header["alg"] as? String else {
+                throw ChefError.invalidInput("Not a JWT (header.payload.signature).")
+            }
+            let signingInput = Data((String(parts[0]) + "." + String(parts[1])).utf8)
+            let key = SymmetricKey(data: Data((v["secret"] ?? "").utf8))
+            let expected: Data?
+            switch alg.uppercased() {
+            case "HS256": expected = Data(HMAC<SHA256>.authenticationCode(for: signingInput, using: key))
+            case "HS384": expected = Data(HMAC<SHA384>.authenticationCode(for: signingInput, using: key))
+            case "HS512": expected = Data(HMAC<SHA512>.authenticationCode(for: signingInput, using: key))
+            case "NONE": return parts[2].isEmpty ? "alg none — no signature; accepted only by broken verifiers." : "alg none but a signature is present."
+            default: return "Algorithm \(alg) is not an HMAC; only HS256/384/512 can be checked with a secret here."
+            }
+            let given = Base64.decodeLenient(String(parts[2]))
+            return expected == given ? "Valid: the signature matches the secret (\(alg))." : "Invalid: the signature does not match this secret (\(alg))."
+        },
+        ChefOperation.text("ps-encode", "PowerShell -EncodedCommand", "Encoding") { s, _ in
+            var utf16 = Data()
+            for unit in s.utf16 {
+                utf16.append(UInt8(unit & 0xFF))
+                utf16.append(UInt8(unit >> 8))
+            }
+            return utf16.base64EncodedString()
+        },
+        ChefOperation.text("ps-decode", "PowerShell -EncodedCommand decode", "Encoding") { s, _ in
+            guard let data = Base64.decodeLenient(s) else { throw ChefError.invalidInput("Not Base64.") }
+            return String(data: data, encoding: .utf16LittleEndian) ?? ""
+        },
+        ChefOperation("to-base58", "To Base58", "Encoding") { data, _ in
+            Data(Base58.encode(data).utf8)
+        },
+        ChefOperation("from-base58", "From Base58", "Encoding") { data, _ in
+            guard let decoded = Base58.decode(ChefText.string(data).trimmingCharacters(in: .whitespacesAndNewlines)) else {
+                throw ChefError.invalidInput("Not Base58.")
+            }
+            return decoded
+        },
+        ChefOperation.text("url-encode-double", "URL Encode (double)", "Encoding") { s, _ in
+            let unreserved = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+            let once = s.addingPercentEncoding(withAllowedCharacters: unreserved) ?? s
+            return once.addingPercentEncoding(withAllowedCharacters: unreserved) ?? once
+        },
+        ChefOperation.text("json-escape", "JSON string escape", "Encoding") { s, _ in
+            let data = try JSONSerialization.data(withJSONObject: [s], options: [.withoutEscapingSlashes])
+            let text = ChefText.string(data)
+            return String(text.dropFirst(2).dropLast(2))
+        },
+        ChefOperation.text("json-unescape", "JSON string unescape", "Encoding") { s, _ in
+            let wrapped = "[\"" + s + "\"]"
+            guard let array = try? JSONSerialization.jsonObject(with: Data(wrapped.utf8)) as? [String], let first = array.first else {
+                throw ChefError.invalidInput("Not a JSON-escaped string.")
+            }
+            return first
+        },
+        ChefOperation.text("shell-quote", "Shell single-quote", "Encoding") { s, _ in
+            "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
         },
     ]
 
@@ -505,6 +593,32 @@ enum ChefCatalogue {
 
     // MARK: Dates
 
+    // MARK: Units
+
+    static let units: [ChefOperation] = [
+        ChefOperation.text("convert-bytes", "Convert data size", "Units",
+                           params: [ChefParam(id: "from", label: "Input unit", kind: .choice(["auto", "B", "KB", "MB", "GB", "TB", "KiB", "MiB", "GiB", "TiB"]), defaultValue: "auto")]) { s, v in
+            let (value, unit) = try DataSize.parse(s, defaultUnit: v["from"] ?? "auto")
+            let bytes = value * DataSize.factor(unit)
+            var out = "\(DataSize.format(value)) \(unit) = \(DataSize.format(bytes)) bytes\n\nDecimal (1000):"
+            for name in ["KB", "MB", "GB", "TB"] { out += "\n  \(DataSize.format(bytes / DataSize.factor(name))) \(name)" }
+            out += "\n\nBinary (1024):"
+            for name in ["KiB", "MiB", "GiB", "TiB"] { out += "\n  \(DataSize.format(bytes / DataSize.factor(name))) \(name)" }
+            return out
+        },
+        ChefOperation.text("convert-duration", "Convert duration", "Units") { s, _ in
+            let seconds = try TimeSpan.parseSeconds(s)
+            var out = "\(DataSize.format(seconds)) seconds"
+            out += "\n\(DataSize.format(seconds / 60)) minutes"
+            out += "\n\(DataSize.format(seconds / 3600)) hours"
+            out += "\n\(DataSize.format(seconds / 86400)) days"
+            out += "\n\(DataSize.format(seconds / 604800)) weeks"
+            let days = Int(seconds) / 86400, hours = Int(seconds) % 86400 / 3600, minutes = Int(seconds) % 3600 / 60, rest = Int(seconds) % 60
+            out += "\n= \(days)d \(hours)h \(minutes)m \(rest)s"
+            return out
+        },
+    ]
+
     static let dates: [ChefOperation] = [
         ChefOperation.text("from-unix", "From Unix timestamp", "Dates") { s, _ in
             let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -573,6 +687,142 @@ enum Base64 {
         guard cleaned.count >= 8 else { return false }
         let allowed = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=-_")
         return cleaned.allSatisfy { allowed.contains($0) }
+    }
+}
+
+extension Base64 {
+    /// Base64url without padding (JWT).
+    static func urlEncode(_ data: Data) -> String {
+        data.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
+}
+
+/// Bitcoin-style Base58 (no 0, O, I, l).
+enum Base58 {
+    private static let alphabet = Array("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
+
+    static func encode(_ data: Data) -> String {
+        var digits: [Int] = [0]
+        for byte in data {
+            var carry = Int(byte)
+            for index in digits.indices {
+                carry += digits[index] << 8
+                digits[index] = carry % 58
+                carry /= 58
+            }
+            while carry > 0 {
+                digits.append(carry % 58)
+                carry /= 58
+            }
+        }
+        var out = ""
+        for byte in data {
+            if byte == 0 { out.append(alphabet[0]) } else { break }
+        }
+        for digit in digits.reversed().drop(while: { $0 == 0 }) { out.append(alphabet[digit]) }
+        return out
+    }
+
+    static func decode(_ text: String) -> Data? {
+        var bytes: [UInt8] = [0]
+        for character in text {
+            guard let value = alphabet.firstIndex(of: character) else { return nil }
+            var carry = value
+            for index in bytes.indices {
+                carry += Int(bytes[index]) * 58
+                bytes[index] = UInt8(carry & 0xFF)
+                carry >>= 8
+            }
+            while carry > 0 {
+                bytes.append(UInt8(carry & 0xFF))
+                carry >>= 8
+            }
+        }
+        var leading = 0
+        for character in text {
+            if character == alphabet[0] { leading += 1 } else { break }
+        }
+        let body = bytes.reversed().drop { $0 == 0 }
+        return Data(repeating: 0, count: leading) + Data(body)
+    }
+}
+
+/// "1.5 GB", "1536MiB", "2048" + unit → bytes and back.
+enum DataSize {
+    static func factor(_ unit: String) -> Double {
+        switch unit.uppercased() {
+        case "B": return 1
+        case "KB": return 1e3
+        case "MB": return 1e6
+        case "GB": return 1e9
+        case "TB": return 1e12
+        case "PB": return 1e15
+        case "KIB": return 1024
+        case "MIB": return 1024 * 1024
+        case "GIB": return 1024 * 1024 * 1024
+        case "TIB": return 1024 * 1024 * 1024 * 1024
+        case "PIB": return 1024 * 1024 * 1024 * 1024 * 1024
+        default: return 1
+        }
+    }
+
+    static func parse(_ text: String, defaultUnit: String) throws -> (Double, String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
+        guard let regex = try? NSRegularExpression(pattern: #"^([0-9]*\.?[0-9]+)\s*([A-Za-z]*)$"#),
+              let match = regex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..., in: trimmed)),
+              let numberRange = Range(match.range(at: 1), in: trimmed), let value = Double(trimmed[numberRange]) else {
+            throw ChefError.invalidInput("Enter a number with an optional unit, e.g. 1.5 GB, 1536 MiB or 2048 (then choose the unit).")
+        }
+        var unit = Range(match.range(at: 2), in: trimmed).map { String(trimmed[$0]) } ?? ""
+        if unit.isEmpty { unit = defaultUnit == "auto" ? "B" : defaultUnit }
+        let known = ["B", "KB", "MB", "GB", "TB", "PB", "KIB", "MIB", "GIB", "TIB", "PIB"]
+        guard let canonical = known.first(where: { $0 == unit.uppercased() }) else {
+            throw ChefError.invalidInput("Unknown unit “\(unit)”. Use B, KB, MB, GB, TB or KiB, MiB, GiB, TiB.")
+        }
+        let display = canonical.hasSuffix("IB") ? String(canonical.prefix(1)) + "iB" : canonical
+        return (value, display)
+    }
+
+    static func format(_ value: Double) -> String {
+        if value == value.rounded(), abs(value) < 1e15 { return String(Int64(value)) }
+        let formatter = NumberFormatter()
+        formatter.maximumFractionDigits = 4
+        formatter.minimumFractionDigits = 0
+        formatter.usesGroupingSeparator = false
+        return formatter.string(from: NSNumber(value: value)) ?? String(value)
+    }
+}
+
+/// "90m", "1h 30m", "2d", "3600", "1:30:00" → seconds.
+enum TimeSpan {
+    static func parseSeconds(_ text: String) throws -> Double {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if trimmed.contains(":") {
+            let parts = trimmed.split(separator: ":").map { Double($0.trimmingCharacters(in: .whitespaces)) }
+            guard parts.allSatisfy({ $0 != nil }), !parts.isEmpty else { throw ChefError.invalidInput("Use h:mm:ss, mm:ss, or units like 1h 30m.") }
+            return parts.compactMap { $0 }.reduce(0) { $0 * 60 + $1 }
+        }
+        guard let regex = try? NSRegularExpression(pattern: #"([0-9]*\.?[0-9]+)\s*([a-z]*)"#) else { return 0 }
+        let matches = regex.matches(in: trimmed, range: NSRange(trimmed.startIndex..., in: trimmed))
+        guard !matches.isEmpty else { throw ChefError.invalidInput("Enter a duration: 3600, 90m, 1h 30m, 2d, or h:mm:ss.") }
+        var total = 0.0
+        for match in matches {
+            guard let numberRange = Range(match.range(at: 1), in: trimmed), let value = Double(trimmed[numberRange]) else { continue }
+            let unit = Range(match.range(at: 2), in: trimmed).map { String(trimmed[$0]) } ?? ""
+            switch unit {
+            case "", "s", "sec", "secs", "second", "seconds": total += value
+            case "m", "min", "mins", "minute", "minutes": total += value * 60
+            case "h", "hr", "hrs", "hour", "hours": total += value * 3600
+            case "d", "day", "days": total += value * 86400
+            case "w", "wk", "week", "weeks": total += value * 604800
+            case "ms": total += value / 1000
+            default: throw ChefError.invalidInput("Unknown unit “\(unit)”.")
+            }
+        }
+        return total
     }
 }
 

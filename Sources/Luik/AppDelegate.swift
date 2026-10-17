@@ -40,6 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .environment(FindingsStore.shared)
             .environment(ChecklistStore.shared)
             .environment(LibraryStore.shared)
+            .environment(DiagramStore.shared)
         let controller = DropdownController(rootView: root)
         controller.onDidShow = {
             if UIState.shared.module == .terminal {
@@ -84,6 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func flushAllStores() {
         NotesStore.shared.flush()
         LibraryStore.shared.flush()
+        DiagramStore.shared.flush()
         SnippetStore.shared.flush()
         TargetStore.shared.flush()
         FindingsStore.shared.flush()

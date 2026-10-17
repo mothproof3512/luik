@@ -21,6 +21,7 @@ and a panel slides down from the top of the screen with nine tabs:
 | **Findings** | The findings of the engagement with a CVSS 3.1 calculator, affected hosts/services, description/impact/evidence/recommendation/references and status — created by hand, from a target node, from a knowledge-base record or from a Nessus/nuclei import; exported as a Markdown or HTML report |
 | **Knowledge base** | Download the attack-vectors knowledge base that comes with Luik (349 rows, English or Dutch) or import your own findings sheet (.xlsx, .csv or .json) — also straight from your own GitHub repository — and search every column instantly: a product name, version string, CVE, CWE or technique; then read the full finding, with links clickable and matches highlighted |
 | **Log** | Timestamped activity log: commands pasted from One-liners/Searchsploit, every command you run in Luik's terminal tabs (read from the screen when you press Enter — also inside ssh sessions; passwords never appear on screen, so they are never logged), imports and your own notes — exportable as Markdown for the report |
+| **Diagram** | Network architecture drawings per engagement: devices (firewall, router, switch, servers, DC, clients, cloud, …) as cards with icon, name and address, links with labels, arrows and dashed styles, and zones for segments (DMZ, LAN, VLAN). Built by hand, from the hosts in Targets, or imported from draw.io and Mermaid; exported as PNG (dark or light), SVG, draw.io, Mermaid or JSON |
 | **Chef** | CyberChef-style data kitchen: build a recipe of operations (Base64/Base32/hex/URL/HTML/Unicode, hashes and HMAC, JWT decode, gzip/zlib, JSON, regex, extractors for IPs/URLs/emails/hashes/CVEs, defang, CIDR, timestamps) and the output updates as you type; a magic detector suggests decodings |
 | **Searchsploit** | Exploit-DB search built in: download the official database once, then search it offline like searchsploit, with version-aware matching (`apache 2.4.49` also finds `< 2.4.50` and `2.4.x` entries). Every hit comes with copy-and-paste command lines for the machine where you want the exploit |
 
@@ -108,6 +109,11 @@ Luik has no Dock icon; you find it as a ⌄ icon in the menu bar (show/hide, set
 - **Corners and animation**: Settings › Appearance › *Corner radius* (0 = square) and *Round the
   top corners too*; *Animation* sets how fast the panel slides down (all the way left = instant,
   no animation).
+- Every tab stays exactly as you left it when you switch away and back: scroll position, expanded
+  folders, selection, half-typed text.
+- The **globe** in the top bar asks a lookup service for your public (exit) IP when you click it —
+  never automatically — and shows it next to the engagement; right-click to copy it or to put one
+  of your local interfaces (VPN first) into `$LHOST`. A change of public IP is written to the Log.
 - **Tabs** can be reordered by dragging them in the top bar (or right-click a tab: Move left /
   right, Reset tab order; also View › Reset Tab Order and Settings › Appearance). ⌘1–⌘9 and the
   View menu follow the order you choose; it is remembered.
@@ -136,7 +142,12 @@ The full list, including mouse tricks and your own hotkey, is one keystroke away
 
 - Notes are **Markdown**. The control at the top right switches between **Edit** (plain text,
   monospaced) and **Read** (rendered: headings, lists, tables, quotes, links, and code blocks with
-  a **copy** button). The choice is remembered. Each engagement has its own notes.
+  a **copy** button). The choice is remembered. Each engagement has its own notes. In Read mode
+  **⌘F** (or the magnifier) opens a find bar: matches are highlighted in the page, with next /
+  previous and a counter — also for long library pages.
+- The **books** button on a note saves a copy into the library (collection *Personal*, or one of
+  your own), so what you learned during an engagement stays available in the next one. The note
+  itself stays with the engagement.
 - The **Library** in the sidebar is shared by all engagements and lives as plain `.md` files in
   `~/Library/Application Support/Luik/Library/<collection>/`:
   - **⋯ › Import folder or files…** copies a folder of cheat sheets in one go (subfolders kept; the
@@ -151,6 +162,29 @@ The full list, including mouse tricks and your own hotkey, is one keystroke away
   - The filter box searches notes and the whole library (titles first, then full text); ⌘K finds
     library pages too, and a knowledge-base record that names a PayloadsAllTheThings page gets an
     **Open in the library** link once that documentation is downloaded.
+
+### Diagram
+
+- **New diagram** (or *Start from the example*, or *From Targets*). Click the canvas where the next
+  device should go, then use **Add** (all kinds, grouped) or the quick icons (firewall, router,
+  switch, server, workstation). Drag nodes around — they snap to the grid.
+- **Linking**: select a node and drag the dot on its right onto another node, or switch on
+  **Connect** and click two nodes. Select a link to give it a label (`443/tcp`, `IPsec`, `VLAN 20`),
+  a dashed or dotted line, or an arrow (direction of traffic or trust).
+- **Zones** are network segments drawn behind the nodes: drag to move them (the nodes inside move
+  along), drag the corner to resize, pick a colour, name them `DMZ — 172.16.10.0/24`.
+- **From Targets** adds a node for every host in the Targets tab that is not in the drawing yet,
+  with a kind guessed from its open ports (88 + 389 → domain controller, 1433/3306/5432 → database,
+  80/443 → web server, …) and the open ports in its notes.
+- Right-click for more (change kind, link from here, duplicate, link style, send a zone to the back);
+  ⌫ deletes, esc stops connecting, **Undo** reverts the last change, zoom and **Fit** at the top.
+- **Export**: PNG (dark like the panel, or light for reports), SVG, draw.io (`.drawio`, opens in
+  diagrams.net / draw.io desktop / Confluence), Mermaid (`.mmd`, for Markdown wikis, GitLab and
+  GitHub) and Luik JSON; **Copy image** puts a PNG on the clipboard.
+  **Import**: draw.io files (uncompressed and compressed pages; containers become zones), Mermaid
+  flowcharts (`graph LR`/`TD`, subgraphs become zones, shapes and labels pick the kind, a second line
+  with an IP becomes the address; laid out automatically) and Luik JSON — also straight from the
+  clipboard. Each engagement keeps its own diagrams in `diagrams.json`.
 
 ### One-liners
 
@@ -344,7 +378,9 @@ Kali box, …): each is a command that opens in a new tab, with `$RHOST`/`$LHOST
 Everything that happens during an engagement, with a timestamp: commands pasted into the terminal
 from One-liners or Searchsploit, every command you run in Luik's terminal tabs, scanner and
 knowledge-base imports, findings added to targets, evidence screenshots and notes you add yourself.
-Filter by kind, search, copy or export as Markdown grouped per day.
+Filter by kind, search, copy or export as Markdown grouped per day. **Pause logging** stops all
+recording for a while (client data, secrets); a red "Log paused" badge in the top bar shows it and
+resumes on click; the pause and the resume are themselves logged, with the duration.
 
 Typed commands are taken from the screen at the moment you press Enter: the text on the cursor row
 after the prompt. That makes it work in every shell and interactive program (zsh/bash line editors,
@@ -362,7 +398,10 @@ recalculated on every change. Click an operation to add it as a step; steps have
 or the error after each step. Paste something unknown and the magic bar suggests what it looks
 like (Base64, hex, URL-encoded, JWT, JSON, Unix time, …) — one click adds the decoder. **Use as
 input** feeds the output back in for the next round; recipes can be saved by name. Everything runs
-locally; nothing is sent anywhere.
+locally; nothing is sent anywhere. Besides the usual encodings, hashes, text and data operations
+there are JWT decode / **sign** (HS256/384/512, none) / **verify**, PowerShell `-EncodedCommand`
+encode / decode, Base58, double URL encoding, JSON string escaping, shell single-quoting, and a
+**Units** category: data sizes (`1.5 GB` → MB, GiB, …) and durations (`90m`, `1h 30m`, `h:mm:ss`).
 
 **Identify hash** (one hash or hash-bearing line per input line) names the likely algorithms with
 the hashcat mode and john format, splits them into *likely* and *less likely*, and ends with a
@@ -397,6 +436,7 @@ Sources/Luik/
   Notes/                   Markdown notes, renderer (MarkdownView) and the library sidebar
   Library/                 library store (collections of .md files), GitHub downloads and the sources sheet
   Snippets/                one-liners (multi-step, ordering, $RHOST/$RPORT/$RURL/$LHOST/$LPORT)
+  Diagram/                 network diagrams: model and store, rendering, canvas and inspector, import/export
   Shells/                  reverse shell generator (templates read from the library's cheat sheet)
   Targets/                 nmap/Nessus/nuclei/masscan parsers, tree model, import/export and UI
   KnowledgeBase/           xlsx/csv/json import, search index, catalogue download and UI

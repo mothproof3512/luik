@@ -12,6 +12,7 @@ enum Module: String, CaseIterable, Identifiable {
     case exploits
     case chef
     case activity
+    case diagram
 
     var id: String { rawValue }
 
@@ -26,6 +27,7 @@ enum Module: String, CaseIterable, Identifiable {
         case .exploits: return "Searchsploit"
         case .chef: return "Chef"
         case .activity: return "Log"
+        case .diagram: return "Diagram"
         }
     }
 
@@ -40,6 +42,7 @@ enum Module: String, CaseIterable, Identifiable {
         case .exploits: return "ladybug"
         case .chef: return "wand.and.stars"
         case .activity: return "clock.arrow.circlepath"
+        case .diagram: return "point.3.connected.trianglepath.dotted"
         }
     }
 }

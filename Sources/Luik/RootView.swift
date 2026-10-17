@@ -89,43 +89,30 @@ struct RootView: View {
             TopBar()
             Divider()
             ZStack {
-                // The terminal is never unmounted: detaching SwiftTerm's view and attaching it again
-                // resized the shell to a zero-size frame on the way (losing the scrollback and
-                // redrawing the prompt) and dropped the scroll position. It is only hidden.
-                TerminalModuleView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .opacity(ui.module == .terminal ? 1 : 0)
-                    .allowsHitTesting(ui.module == .terminal)
-                    .accessibilityHidden(ui.module != .terminal)
-                if ui.module != .terminal {
-                    Group {
-                        switch ui.module {
-                        case .terminal:
-                            EmptyView()
-                        case .notes:
-                            NotesView()
-                        case .snippets:
-                            SnippetsView()
-                        case .targets:
-                            TargetsView()
-                        case .findings:
-                            FindingsView()
-                        case .knowledgeBase:
-                            KnowledgeBaseView()
-                        case .exploits:
-                            ExploitsView()
-                        case .chef:
-                            ChefView()
-                        case .activity:
-                            ActivityView()
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // Every tab stays mounted and is only hidden, so a tab is exactly as you left it
+                // when you come back: scroll position, expanded folders, selection, half-typed
+                // text. (The terminal needed this first: detaching SwiftTerm's view resized the
+                // shell to a zero-size frame and lost the scrollback.)
+                ForEach(Module.allCases) { module in
+                    moduleView(module)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .opacity(ui.module == module ? 1 : 0)
+                        .allowsHitTesting(ui.module == module)
+                        .accessibilityHidden(ui.module != module)
+                        .zIndex(ui.module == module ? 1 : 0)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(PanelBackground())
+        // Tabs stay mounted, so a focused control in the tab you leave (the diagram canvas, a text
+        // field) must give up the keyboard, or Delete / typing would still reach it.
+        .onChange(of: ui.module) { old, _ in
+            // The terminal resigns itself (TerminalModuleView); the others are released here.
+            if old != .terminal {
+                NSApp.keyWindow?.makeFirstResponder(nil)
+            }
+        }
         // Rounding/clipping happens at the AppKit level (DropdownController), so the
         // terminal view joins in and the corner radius is adjustable.
         .overlay(alignment: .top) {
@@ -160,8 +147,27 @@ struct RootView: View {
     }
 }
 
+extension RootView {
+    @ViewBuilder
+    func moduleView(_ module: Module) -> some View {
+        switch module {
+        case .terminal: TerminalModuleView()
+        case .notes: NotesView()
+        case .snippets: SnippetsView()
+        case .targets: TargetsView()
+        case .findings: FindingsView()
+        case .knowledgeBase: KnowledgeBaseView()
+        case .exploits: ExploitsView()
+        case .chef: ChefView()
+        case .activity: ActivityView()
+        case .diagram: DiagramView()
+        }
+    }
+}
+
 struct TopBar: View {
     @Environment(UIState.self) private var ui
+    @Environment(ActivityLog.self) private var log
     @Environment(\.luikTheme) private var theme
     /// The tab being dragged to a new position.
     @State private var draggingTab: Module?
@@ -204,6 +210,20 @@ struct TopBar: View {
                 }
             }
             Spacer()
+            if log.isPaused {
+                Button {
+                    log.resume()
+                } label: {
+                    Label("Log paused", systemImage: "pause.circle.fill")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.red)
+                .help("Logging is paused — nothing is recorded. Click to resume.")
+                .padding(.trailing, 8)
+            }
+            PublicIPButton()
+                .padding(.trailing, 8)
             EngagementMenu()
                 .padding(.trailing, 8)
             if let update = ui.updateAvailable {

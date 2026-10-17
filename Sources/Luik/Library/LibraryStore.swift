@@ -394,6 +394,51 @@ final class LibraryStore {
         return summary
     }
 
+    /// Collections you can write a note into: your own folders (not the downloaded ones).
+    var writableCollectionNames: [String] {
+        var names = collections.filter { $0.source == nil }.map { $0.id }
+        if !names.contains(LibraryStore.personalCollection) { names.insert(LibraryStore.personalCollection, at: 0) }
+        return names
+    }
+
+    static let personalCollection = "Personal"
+
+    /// Writes a note as a Markdown file into a collection (default "Personal"); the first heading
+    /// becomes the title. Returns the new document's id, after a rescan.
+    @discardableResult
+    func saveNote(title: String, text: String, collection: String = LibraryStore.personalCollection) -> String? {
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        var body = text
+        let firstLine = body.split(separator: "\n", omittingEmptySubsequences: true).first.map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
+        if !cleanTitle.isEmpty, !firstLine.hasPrefix("# ") {
+            body = "# \(cleanTitle)\n\n" + body
+        }
+        var slug = (cleanTitle.isEmpty ? "note" : cleanTitle)
+            .lowercased()
+            .map { $0.isLetter || $0.isNumber ? String($0) : "-" }
+            .joined()
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+        while slug.contains("--") { slug = slug.replacingOccurrences(of: "--", with: "-") }
+        if slug.isEmpty { slug = "note" }
+        let folder = LibraryStore.directory.appendingPathComponent(collection, isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            var url = folder.appendingPathComponent(slug + ".md")
+            var counter = 2
+            while FileManager.default.fileExists(atPath: url.path) {
+                url = folder.appendingPathComponent("\(slug)-\(counter).md")
+                counter += 1
+            }
+            try body.write(to: url, atomically: true, encoding: .utf8)
+            ActivityLog.shared.record(.action, "Note “\(cleanTitle.isEmpty ? slug : cleanTitle)” saved to the library (\(collection))", source: "Notes")
+            rescan()
+            return collection + "/" + url.lastPathComponent
+        } catch {
+            lastError = "Could not save to the library: \(error.localizedDescription)"
+            return nil
+        }
+    }
+
     /// Open panel for "Import folder…": folders and/or .md files.
     func importWithPanel() {
         let panel = NSOpenPanel()

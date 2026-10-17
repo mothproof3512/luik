@@ -269,8 +269,12 @@ struct NoteModePicker: View {
 struct NoteEditor: View {
     @Binding var note: Note
     let onDelete: () -> Void
+    @Environment(LibraryStore.self) private var library
+    @Environment(UIState.self) private var ui
     @AppStorage("notesDefaultMode") private var defaultMode = NoteMode.edit.rawValue
     @State private var mode: NoteMode = .edit
+    @State private var showFind = false
+    @State private var savedTo: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -278,7 +282,27 @@ struct NoteEditor: View {
                 TextField("Title", text: $note.title)
                     .textFieldStyle(.plain)
                     .font(.title2.weight(.semibold))
+                if let savedTo {
+                    Text("Saved to Library › \(savedTo)")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                }
                 NoteModePicker(mode: $mode)
+                if mode == .read {
+                    FindToggle(isOn: $showFind, active: ui.module == .notes)
+                }
+                Menu {
+                    ForEach(library.writableCollectionNames, id: \.self) { collection in
+                        Button(collection) { saveToLibrary(collection) }
+                    }
+                    Divider()
+                    Text("Writes a copy as a Markdown file; the note stays here too.")
+                } label: {
+                    Image(systemName: "books.vertical")
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help("Keep this note beyond the engagement: save a copy into the library (Personal, or one of your own collections)")
                 Button(role: .destructive, action: onDelete) {
                     Image(systemName: "trash")
                 }
@@ -293,7 +317,7 @@ struct NoteEditor: View {
                     .padding(6)
                     .background(Color.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 8))
             } else {
-                MarkdownView(text: note.body)
+                MarkdownView(text: note.body, showFind: $showFind)
                     .background(Color.black.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
             }
         }
@@ -302,6 +326,31 @@ struct NoteEditor: View {
         .onAppear { mode = NoteMode(rawValue: defaultMode) ?? .edit }
         .onChange(of: mode) { _, newValue in defaultMode = newValue.rawValue }
     }
+
+    private func saveToLibrary(_ collection: String) {
+        guard library.saveNote(title: note.title, text: note.body, collection: collection) != nil else { return }
+        savedTo = collection
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { savedTo = nil }
+    }
+}
+
+/// ⌘F in Read mode: shows the find bar of the rendered Markdown (only while this tab is open,
+/// because every tab stays mounted).
+struct FindToggle: View {
+    @Binding var isOn: Bool
+    let active: Bool
+
+    var body: some View {
+        Button {
+            isOn.toggle()
+        } label: {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(isOn ? Color.accentColor : Color.secondary)
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut(active ? KeyboardShortcut("f", modifiers: .command) : nil)
+        .help("Find in this page (⌘F)")
+    }
 }
 
 /// A library document: read by default, editable in place (saved to the .md file).
@@ -309,9 +358,11 @@ struct LibraryDocumentView: View {
     let document: LibraryDocument
     @Environment(LibraryStore.self) private var library
     @Environment(NotesStore.self) private var notes
+    @Environment(UIState.self) private var ui
     @State private var mode: NoteMode = .read
     @State private var text: String = ""
     @State private var loaded = false
+    @State private var showFind = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -328,6 +379,9 @@ struct LibraryDocumentView: View {
                 }
                 Spacer()
                 NoteModePicker(mode: $mode)
+                if mode == .read {
+                    FindToggle(isOn: $showFind, active: ui.module == .notes)
+                }
                 Button {
                     NSWorkspace.shared.activateFileViewerSelecting([document.url])
                 } label: {
@@ -349,7 +403,7 @@ struct LibraryDocumentView: View {
             } else {
                 MarkdownView(text: text, onLink: { url in
                     openLink(url)
-                })
+                }, showFind: $showFind)
                 .background(Color.black.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
             }
         }

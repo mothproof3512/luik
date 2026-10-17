@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.22.0
+- **Tabs keep their state**: every tab stays mounted and is only hidden, so you come back to the same scroll position, expanded folders, selection and half-typed text.
+- **Pause logging** (Log tab): stops recording commands, imports and actions until you resume; a red "Log paused" badge in the top bar resumes on click; pause and resume are logged with the duration.
+- **Note → Library**: the books button on a note saves a copy as a Markdown file into the *Personal* collection (or one of your own), so it outlives the engagement.
+- **Find in Read mode** (⌘F or the magnifier, notes and library pages): matches highlighted in the rendered page, counter, next / previous, esc to close.
+- **What is my IP**: the globe in the top bar fetches your public address on click (api.ipify.org, ifconfig.me or icanhazip.com — only when you click), shows it next to the engagement, copies it from the context menu, offers your local interfaces for $LHOST, and logs a change of address.
+- **Chef**: JWT sign (HS256/384/512, none) and verify, PowerShell -EncodedCommand encode/decode, Base58, double URL encoding, JSON string escape/unescape, shell single-quoting; new Units category with data-size and duration conversion.
+- Housekeeping: a leftover copy of the first diagram implementation (`Sources/Luik/Diagrams/`) that duplicated the types of the Diagram tab was removed.
+
+## 0.21.0
+- New **Diagram** tab for network architecture drawings, per engagement: devices as cards (icon in the kind's colour, name, address) — internet, cloud, attacker, firewall, VPN, router, switch, load balancer, access point, server, web server, database, domain controller, mail server, workstation, laptop, mobile, printer, IoT — links with labels, arrows and dashed/dotted lines, and zones for network segments that carry their nodes when moved. Drag to move (grid snap), drag the dot on a selected node to link, Connect mode, inspector for label/address/notes, right-click menus, undo, zoom and Fit. **From Targets** adds the hosts of the Targets tab with a kind guessed from their open ports; an example network to start from.
+- **Export** as PNG (dark or light), SVG, draw.io (.drawio), Mermaid (.mmd) and Luik JSON, or copy the image; **import** draw.io (also compressed pages; containers → zones), Mermaid flowcharts (subgraphs → zones, auto layout) and Luik JSON, from a file or the clipboard. ⌘K finds diagrams by name or by a node's label/address and has "New network diagram". The new tab sits at the end of the tab bar; drag it where you want it.
+
 ## 0.20.1
 - **Reorder the tabs**: drag a tab in the top bar to a new position (the others slide aside while you drag), or right-click a tab for Move left / Move right / Reset tab order. ⌘1–⌘9, the View menu, ⌘K's "Go to" actions and the shortcuts sheet follow the new order, which is remembered. Reset is also in View › Reset Tab Order and Settings › Appearance.
 

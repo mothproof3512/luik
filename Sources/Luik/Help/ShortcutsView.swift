@@ -55,6 +55,13 @@ struct ShortcutsView: View {
                 Shortcut(keys: "Copy all", action: "A multi-step one-liner copies every step, one per line; each step also has its own copy and paste buttons"),
                 Shortcut(keys: "Reverse shell", action: "Generator: a template from the cheat sheet in your library (InternalAllTheThings) or your own “Reverse shells” one-liners, with $LHOST/$LPORT, shell, encoding, the listener and the TTY upgrade; Save as one-liner keeps the three steps"),
             ]),
+            ShortcutGroup(title: "Diagram", shortcuts: [
+                Shortcut(keys: "click canvas", action: "Choose where the next added node goes"),
+                Shortcut(keys: "drag", action: "Move a node (snaps to the grid) or a zone (its nodes move along); drag a zone's corner to resize"),
+                Shortcut(keys: "drag the dot", action: "The dot on the right of a selected node: drop it on another node to link them (or use Connect and click two nodes)"),
+                Shortcut(keys: "⌫  esc", action: "Delete the selection · stop connecting / deselect"),
+                Shortcut(keys: "right-click", action: "Change a node's kind, link from here, duplicate; link style and arrow; send a zone to the back"),
+            ]),
             ShortcutGroup(title: "Targets", shortcuts: [
                 Shortcut(keys: "click ◯", action: "Cycle a node's status: to do → in progress → done → N/A"),
                 Shortcut(keys: "right-click", action: "Sub-node, add missing checklist items, set a status, delete"),
@@ -64,8 +71,13 @@ struct ShortcutsView: View {
             ]),
             ShortcutGroup(title: "Notes and library", shortcuts: [
                 Shortcut(keys: "Edit / Read", action: "Notes are Markdown: edit the text, or read it rendered — every code block then has a copy button"),
+                Shortcut(keys: "⌘F", action: "In Read mode: find in the page (highlights, next / previous, esc closes); in Edit mode the normal find panel"),
+                Shortcut(keys: "books button", action: "Save a copy of the note into the library (Personal or one of your collections) so it outlives the engagement"),
                 Shortcut(keys: "⋯ › Import folder", action: "Copy a folder of .md cheat sheets into the library (shared by all engagements); ⋯ › Download documentation fetches PayloadsAllTheThings, InternalAllTheThings or your own repository"),
                 Shortcut(keys: "click a link", action: "Links between pages of a downloaded collection open inside Luik; web links open in the browser"),
+            ]),
+            ShortcutGroup(title: "Log", shortcuts: [
+                Shortcut(keys: "Pause logging", action: "Stop recording for a while; the red badge in the top bar resumes it"),
             ]),
             ShortcutGroup(title: "Editing text", shortcuts: [
                 Shortcut(keys: "⌘Z  ⌘⇧Z", action: "Undo / redo in notes and fields"),

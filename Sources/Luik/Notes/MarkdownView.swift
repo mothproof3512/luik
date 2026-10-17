@@ -9,29 +9,103 @@ struct MarkdownView: View {
     let text: String
     /// Called for links that are not plain http(s) URLs (relative links to other documents).
     var onLink: ((URL) -> OpenURLAction.Result)?
+    /// The find bar (⌘F in Read mode).
+    var showFind: Binding<Bool> = .constant(false)
 
     @Environment(\.luikTheme) private var theme
     @State private var elements: [MarkdownElement] = []
     @State private var parsedText: String?
     @State private var contentWidth: CGFloat = 640
+    @State private var query = ""
+    @State private var currentMatch = 0
+    @FocusState private var findFocused: Bool
 
     private static let horizontalPadding: CGFloat = 14
 
-    var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 6) {
-                ForEach(elements) { element in
-                    render(element)
+    /// One hit of the find query: the element (and table cell) it is in, and where in its text.
+    private struct FindMatch: Hashable {
+        let elementID: Int
+        let cell: Int?
+        let location: Int
+    }
+
+    private var findMatches: [FindMatch] {
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard showFind.wrappedValue, !needle.isEmpty else { return [] }
+        var result: [FindMatch] = []
+        for element in elements {
+            switch element.kind {
+            case .table(let rows, _, _):
+                var cellIndex = 0
+                for row in rows {
+                    for cell in row {
+                        for location in MarkdownView.occurrences(of: needle, in: String(cell.characters)) {
+                            result.append(FindMatch(elementID: element.id, cell: cellIndex, location: location))
+                        }
+                        cellIndex += 1
+                    }
+                }
+            case .thematicBreak:
+                break
+            default:
+                for location in MarkdownView.occurrences(of: needle, in: element.plainText) {
+                    result.append(FindMatch(elementID: element.id, cell: nil, location: location))
                 }
             }
-            .padding(MarkdownView.horizontalPadding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(GeometryReader { proxy in
-                Color.clear.preference(key: MarkdownWidthKey.self, value: proxy.size.width)
-            })
+        }
+        return result
+    }
+
+    /// Character offsets of every case-insensitive occurrence.
+    static func occurrences(of needle: String, in haystack: String) -> [Int] {
+        var result: [Int] = []
+        var searchRange = haystack.startIndex..<haystack.endIndex
+        while let found = haystack.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive], range: searchRange) {
+            result.append(haystack.distance(from: haystack.startIndex, to: found.lowerBound))
+            guard found.upperBound < haystack.endIndex else { break }
+            searchRange = found.upperBound..<haystack.endIndex
+        }
+        return result
+    }
+
+    var body: some View {
+        let matches = findMatches
+        VStack(spacing: 0) {
+            if showFind.wrappedValue {
+                findBar(matches: matches)
+                Divider()
+            }
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 6) {
+                        ForEach(elements) { element in
+                            render(element, matches: matches)
+                                .id(element.id)
+                        }
+                    }
+                    .padding(MarkdownView.horizontalPadding)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(GeometryReader { proxy in
+                        Color.clear.preference(key: MarkdownWidthKey.self, value: proxy.size.width)
+                    })
+                }
+                .onChange(of: currentMatch) { _, index in
+                    guard matches.indices.contains(index) else { return }
+                    withAnimation { proxy.scrollTo(matches[index].elementID, anchor: .center) }
+                }
+                .onChange(of: query) { _, _ in
+                    currentMatch = 0
+                    if let first = findMatches.first {
+                        withAnimation { proxy.scrollTo(first.elementID, anchor: .center) }
+                    }
+                }
+            }
         }
         .onPreferenceChange(MarkdownWidthKey.self) { width in
             if width > 0 { contentWidth = width }
+        }
+        .onChange(of: showFind.wrappedValue) { _, visible in
+            if visible { findFocused = true }
         }
         .environment(\.openURL, OpenURLAction { url in
             if let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" || scheme == "mailto" {
@@ -48,11 +122,77 @@ struct MarkdownView: View {
         }
     }
 
+    private func findBar(matches: [FindMatch]) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("Find in this page", text: $query)
+                .textFieldStyle(.roundedBorder)
+                .frame(maxWidth: 280)
+                .focused($findFocused)
+                .onSubmit { step(1, in: matches) }
+                .onExitCommand {
+                    showFind.wrappedValue = false
+                    query = ""
+                }
+            Text(matches.isEmpty ? (query.isEmpty ? "" : "No matches") : "\(min(currentMatch + 1, matches.count)) of \(matches.count)")
+                .font(.caption)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .frame(minWidth: 70, alignment: .leading)
+            Button {
+                step(-1, in: matches)
+            } label: {
+                Image(systemName: "chevron.up")
+            }
+            .disabled(matches.isEmpty)
+            .help("Previous match")
+            Button {
+                step(1, in: matches)
+            } label: {
+                Image(systemName: "chevron.down")
+            }
+            .disabled(matches.isEmpty)
+            .help("Next match (↩)")
+            Spacer()
+            Button("Done") {
+                showFind.wrappedValue = false
+                query = ""
+            }
+            .help("Close the find bar (esc while typing in the field)")
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+    }
+
+    private func step(_ delta: Int, in matches: [FindMatch]) {
+        guard !matches.isEmpty else { return }
+        currentMatch = ((currentMatch + delta) % matches.count + matches.count) % matches.count
+    }
+
+    /// The element's text with the find hits marked (the current one in the accent colour).
+    private func decorated(_ text: AttributedString, elementID: Int, cell: Int?, matches: [FindMatch]) -> AttributedString {
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !needle.isEmpty, matches.contains(where: { $0.elementID == elementID && $0.cell == cell }) else { return text }
+        var result = text
+        let plain = String(text.characters)
+        let current = matches.indices.contains(currentMatch) ? matches[currentMatch] : nil
+        for location in MarkdownView.occurrences(of: needle, in: plain) {
+            let start = plain.index(plain.startIndex, offsetBy: location)
+            guard let end = plain.index(start, offsetBy: needle.count, limitedBy: plain.endIndex),
+                  let lower = AttributedString.Index(start, within: result),
+                  let upper = AttributedString.Index(end, within: result) else { continue }
+            let isCurrent = current?.elementID == elementID && current?.cell == cell && current?.location == location
+            result[lower..<upper].backgroundColor = isCurrent ? theme.accentColor.opacity(0.75) : Color.yellow.opacity(0.35)
+        }
+        return result
+    }
+
     @ViewBuilder
-    private func render(_ element: MarkdownElement) -> some View {
+    private func render(_ element: MarkdownElement, matches: [FindMatch]) -> some View {
         switch element.kind {
         case .header(let level):
-            Text(element.text)
+            Text(decorated(element.text, elementID: element.id, cell: nil, matches: matches))
                 .font(MarkdownView.headerFont(level))
                 .padding(.top, level <= 2 ? 10 : 6)
                 .padding(.leading, CGFloat(element.indent) * 18)
@@ -68,7 +208,7 @@ struct MarkdownView: View {
                 } else if element.indent > 0 {
                     Color.clear.frame(width: 18, height: 1)
                 }
-                Text(element.text)
+                Text(decorated(element.text, elementID: element.id, cell: nil, matches: matches))
                     .font(.body)
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
@@ -76,14 +216,25 @@ struct MarkdownView: View {
             .padding(.leading, CGFloat(max(element.indent - 1, 0)) * 18)
             .modifier(QuoteStyle(depth: element.quoteDepth, accent: theme.accentColor))
         case .code(let language):
-            CodeBlockView(code: element.plainText, language: language, accent: theme.accentColor)
+            CodeBlockView(code: element.plainText,
+                          display: decorated(AttributedString(element.plainText), elementID: element.id, cell: nil, matches: matches),
+                          language: language, accent: theme.accentColor)
                 .padding(.leading, CGFloat(element.indent) * 18)
                 .modifier(QuoteStyle(depth: element.quoteDepth, accent: theme.accentColor))
         case .thematicBreak:
             Divider()
                 .padding(.vertical, 4)
         case .table(let rows, let hasHeader, let alignments):
-            MarkdownTableView(rows: rows, hasHeader: hasHeader, alignments: alignments,
+            let decoratedRows: [[AttributedString]] = {
+                var index = 0
+                return rows.map { row in
+                    row.map { cell in
+                        defer { index += 1 }
+                        return decorated(cell, elementID: element.id, cell: index, matches: matches)
+                    }
+                }
+            }()
+            MarkdownTableView(rows: decoratedRows, hasHeader: hasHeader, alignments: alignments,
                               availableWidth: max(contentWidth - 2 * MarkdownView.horizontalPadding - CGFloat(element.indent) * 18, 160))
                 .padding(.leading, CGFloat(element.indent) * 18)
                 .padding(.vertical, 4)
@@ -126,14 +277,23 @@ private struct QuoteStyle: ViewModifier {
 /// Monospaced code with a copy button — the point of a cheat sheet.
 struct CodeBlockView: View {
     let code: String
+    /// What is shown (the code, possibly with find hits marked); `code` is what Copy copies.
+    var display: AttributedString
     let language: String?
     let accent: Color
     @State private var copied = false
 
+    init(code: String, display: AttributedString? = nil, language: String?, accent: Color) {
+        self.code = code
+        self.display = display ?? AttributedString(code)
+        self.language = language
+        self.accent = accent
+    }
+
     var body: some View {
         ZStack(alignment: .topTrailing) {
             ScrollView(.horizontal, showsIndicators: false) {
-                Text(code)
+                Text(display)
                     .font(.system(.callout, design: .monospaced))
                     .textSelection(.enabled)
                     .padding(.vertical, 8)

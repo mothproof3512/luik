@@ -55,6 +55,10 @@ final class ActivityLog {
     var entries: [ActivityEntry] = []
     var search: String = ""
     var kindFilter: ActivityEntry.Kind? = nil
+    /// Paused: nothing is recorded (commands, imports, actions) until you resume — for the moments
+    /// client data or secrets go over the screen. Not remembered across launches.
+    var isPaused = false
+    var pausedAt: Date? = nil
     @ObservationIgnored private var saver = Debouncer(delay: 1.0)
 
     init() {
@@ -81,7 +85,23 @@ final class ActivityLog {
         }
     }
 
+    func pause() {
+        guard !isPaused else { return }
+        record(.action, "Logging paused — nothing is recorded until you resume", source: "Log")
+        isPaused = true
+        pausedAt = Date()
+    }
+
+    func resume() {
+        guard isPaused else { return }
+        isPaused = false
+        let since = pausedAt.map { " (paused \(Int(Date().timeIntervalSince($0) / 60)) min)" } ?? ""
+        pausedAt = nil
+        record(.action, "Logging resumed\(since)", source: "Log")
+    }
+
     func record(_ kind: ActivityEntry.Kind, _ text: String, source: String) {
+        guard !isPaused else { return }
         let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return }
         let work = {
