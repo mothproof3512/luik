@@ -80,6 +80,13 @@ struct DiagramView: View {
                 Label(store.current?.name ?? "Diagrams", systemImage: "point.3.connected.trianglepath.dotted")
             }
             .frame(maxWidth: 200)
+            Menu {
+                templateMenu
+            } label: {
+                Label("Templates", systemImage: "square.grid.2x2")
+            }
+            .frame(width: 110)
+            .help("New diagram from a template: web application set-ups, authentication flows, network layouts")
 
             if store.current != nil {
                 Divider().frame(height: 18)
