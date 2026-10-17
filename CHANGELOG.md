@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.28.1
+- Annotator: marks landed at the bottom of the image instead of where you dragged — the drag gesture now uses one named coordinate space for the whole canvas area.
+
 ## 0.28.0
 - **Screenshot annotation in Findings**: images linked under Evidence show as thumbnails; click one to draw arrows, boxes, circles, text labels and highlights, and to **blur** (pixelate) or **redact** (solid black) credentials, hashes and names before a screenshot goes into the report. Colours, three line widths, drag to move, undo / redo, ⌘⌫ to remove a mark. Marks are rendered into the pixels at full resolution — a blurred or redacted area is not recoverable from the saved file. Saves as `<name>-annotated.png` next to the original and relinks the evidence (or **Replace original**); **Add image…** links existing screenshots; thumbnail context menu with Show in Finder, Copy path, Remove link. Saves are written to the Log.
 

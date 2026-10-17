@@ -45,8 +45,7 @@ struct ImageAnnotatorView: View {
                         Color.black.opacity(0.35)
                         canvas(image: image, fit: fit)
                             .frame(width: fit.width, height: fit.height)
-                            .offset(x: fit.minX, y: fit.minY)
-                            .gesture(dragGesture(fit: fit))
+                            .position(x: fit.midX, y: fit.midY)
                         if let editingTextID, let index = annotations.firstIndex(where: { $0.id == editingTextID }) {
                             let point = toView(annotations[index].start, fit: fit)
                             TextField("Label", text: $textDraft)
@@ -59,6 +58,10 @@ struct ImageAnnotatorView: View {
                                 .offset(x: point.x, y: point.y)
                         }
                     }
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .contentShape(Rectangle())
+                    .coordinateSpace(name: "annotator")
+                    .gesture(dragGesture(fit: fit))
                 }
                 .clipped()
             } else {
@@ -259,11 +262,12 @@ struct ImageAnnotatorView: View {
         return CGRect(x: (size.width - width) / 2, y: (size.height - height) / 2, width: width, height: height)
     }
 
+    /// View point (in the "annotator" coordinate space, which holds the whole grey area) → image pixels.
     private func toImage(_ point: CGPoint, fit: CGRect) -> CGPoint {
         guard let image else { return point }
         let scale = CGFloat(image.width) / fit.width
-        return CGPoint(x: min(max(point.x * scale, 0), CGFloat(image.width)),
-                       y: min(max(point.y * scale, 0), CGFloat(image.height)))
+        return CGPoint(x: min(max((point.x - fit.minX) * scale, 0), CGFloat(image.width)),
+                       y: min(max((point.y - fit.minY) * scale, 0), CGFloat(image.height)))
     }
 
     private func toView(_ point: CGPoint, fit: CGRect) -> CGPoint {
@@ -275,7 +279,7 @@ struct ImageAnnotatorView: View {
     // MARK: - Gestures
 
     private func dragGesture(fit: CGRect) -> some Gesture {
-        DragGesture(minimumDistance: 0)
+        DragGesture(minimumDistance: 0, coordinateSpace: .named("annotator"))
             .onChanged { value in
                 let point = toImage(value.location, fit: fit)
                 if dragOrigin == nil {
