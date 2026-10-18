@@ -364,6 +364,19 @@ gateway, and the hosts in a grid inside their zone — kind guessed from the ope
 in the notes. *Add missing hosts to this diagram* keeps the old behaviour of adding nodes to the
 current drawing. Rearrange, rename zones, export.
 
+### The current target
+
+The top bar shows the host you are working on — `$RHOST[:$RPORT]` from the One-liners variables —
+red when it lies outside the engagement's scope. Selecting a host or port in Targets sets it
+(Settings › Logging switches that off); the chip's menu switches host or port, shows it in
+Targets, opens a terminal for it or clears it. *Open a terminal here* (right-click a host or
+port) starts a tab named after the host with `RHOST`, `RPORT`, `LHOST` and `LPORT` in its shell
+environment, so `nmap $RHOST` works without the One-liners tab; every command in that tab is
+tagged with the host in the Log. A host node shows *Activity for this host* (its commands and
+events, with a pin button for outputs), and *Copy host dossier as Markdown* writes one page with
+ports, notes, checklist state, findings, commands and evidence files. A command that names a host
+outside the scope is not blocked, but gets a red note, a beep and a ⚠️ line in the Log.
+
 ### Command output, evidence and automatic imports
 
 Luik already reads the command you run from the screen when you press Enter; since 0.33 it also

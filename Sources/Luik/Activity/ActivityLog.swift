@@ -44,6 +44,8 @@ struct ActivityEntry: Identifiable, Codable, Equatable {
     var outputID: UUID? = nil
     /// Scanner output recognised in that output (ScanFormat raw value).
     var scanFormat: String? = nil
+    /// The host this line is about (bound terminal, or the $RHOST the command names).
+    var host: String? = nil
 }
 
 /// Timestamped record of what happened during an engagement: commands Luik pasted into the
@@ -106,11 +108,12 @@ final class ActivityLog {
 
     /// Returns the new entry's id (nil when paused or empty), so a command's output can be attached later.
     @discardableResult
-    func record(_ kind: ActivityEntry.Kind, _ text: String, source: String) -> UUID? {
+    func record(_ kind: ActivityEntry.Kind, _ text: String, source: String, host: String? = nil) -> UUID? {
         guard !isPaused else { return nil }
         let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return nil }
-        let entry = ActivityEntry(kind: kind, text: cleaned, source: source)
+        var entry = ActivityEntry(kind: kind, text: cleaned, source: source)
+        entry.host = host
         let work = {
             self.entries.append(entry)
             if self.entries.count > ActivityLog.maxEntries {

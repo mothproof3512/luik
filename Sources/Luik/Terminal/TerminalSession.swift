@@ -233,12 +233,18 @@ final class TerminalSession: Identifiable {
     let id = UUID()
     var title: String = "Shell"
     let view: LoggingTerminalView
+    /// Host this tab was opened for (Targets › Open terminal): RHOST/RPORT/LHOST are exported in
+    /// its shell and every command in it is tagged with the host in the Log.
+    var boundHost: String?
+    var boundPort: Int?
     /// Log entry of the command whose output is being collected, and the command itself.
     @ObservationIgnored var pendingEntryID: UUID?
     @ObservationIgnored var pendingCommand = ""
     @ObservationIgnored var pendingTime = Date()
 
-    init(shell: String, fontSize: CGFloat, opacity: CGFloat) {
+    init(shell: String, fontSize: CGFloat, opacity: CGFloat, boundHost: String? = nil, boundPort: Int? = nil) {
+        self.boundHost = boundHost
+        self.boundPort = boundPort
         view = LoggingTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 400))
         applyAppearance(fontSize: fontSize, opacity: opacity)
         view.getTerminal().changeHistorySize(5000)   // SwiftTerm's default of 500 lines is short for scan output
@@ -246,9 +252,11 @@ final class TerminalSession: Identifiable {
         view.processDelegate = self
         view.onTypedLine = { [weak self] line in
             guard let self, UserDefaults.standard.bool(forKey: SettingsKey.logTypedCommands) else { return }
-            self.pendingEntryID = ActivityLog.shared.record(.typed, line, source: "Terminal: \(self.title)")
+            let host = TargetContext.host(for: line, boundHost: self.boundHost)
+            self.pendingEntryID = ActivityLog.shared.record(.typed, line, source: "Terminal: \(self.title)", host: host)
             self.pendingCommand = line
             self.pendingTime = Date()
+            TerminalStore.warnIfOutOfScope(line)
         }
         view.onCommandOutput = { [weak self] output in
             guard let self, UserDefaults.standard.bool(forKey: SettingsKey.captureOutput) else { return }
@@ -258,6 +266,15 @@ final class TerminalSession: Identifiable {
         }
 
         var environment = ProcessInfo.processInfo.environment
+        if let boundHost {
+            // The shell knows the host too: `nmap $RHOST` works straight away in a bound tab.
+            environment["RHOST"] = boundHost
+            if let boundPort { environment["RPORT"] = String(boundPort) }
+            let lhost = SnippetStore.shared.lhost.trimmingCharacters(in: .whitespaces)
+            if !lhost.isEmpty { environment["LHOST"] = lhost }
+            let lport = SnippetStore.shared.lport.trimmingCharacters(in: .whitespaces)
+            if !lport.isEmpty { environment["LPORT"] = lport }
+        }
         environment["TERM"] = "xterm-256color"
         environment["COLORTERM"] = "truecolor"
         environment["TERM_PROGRAM"] = "Luik"
@@ -332,6 +349,8 @@ extension TerminalSession: LocalProcessTerminalViewDelegate {
 
     func setTerminalTitle(source: LocalProcessTerminalView, title: String) {
         DispatchQueue.main.async {
+            // A bound tab keeps the host as its name.
+            if let host = self.boundHost { self.title = host; return }
             self.title = title.isEmpty ? "Shell" : title
         }
     }
@@ -364,7 +383,7 @@ final class TerminalStore {
     }
 
     @discardableResult
-    func newSession() -> TerminalSession {
+    func newSession(boundHost: String? = nil, boundPort: Int? = nil) -> TerminalSession {
         let defaults = UserDefaults.standard
         var shell = defaults.string(forKey: SettingsKey.shellPath) ?? "/bin/zsh"
         if shell.isEmpty || !FileManager.default.isExecutableFile(atPath: shell) {
@@ -372,11 +391,36 @@ final class TerminalStore {
         }
         let session = TerminalSession(shell: shell,
                                       fontSize: CGFloat(defaults.double(forKey: SettingsKey.fontSize)),
-                                      opacity: CGFloat(defaults.double(forKey: SettingsKey.terminalExtraOpacity)))
+                                      opacity: CGFloat(defaults.double(forKey: SettingsKey.terminalExtraOpacity)),
+                                      boundHost: boundHost, boundPort: boundPort)
+        if let boundHost { session.title = boundHost }
         sessions.append(session)
         selectedID = session.id
         focusSelected(afterDelay: true)
         return session
+    }
+
+    /// A terminal tab for a Targets node: the host (and port) become $RHOST/$RPORT in the app and
+    /// RHOST/RPORT/LHOST/LPORT in the shell's environment.
+    @discardableResult
+    func newSession(boundTo node: TargetNode) -> TerminalSession {
+        let host = TargetStore.shared.host(of: node)
+        let address = host?.address.trimmingCharacters(in: .whitespaces) ?? ""
+        TargetContext.use(node)
+        let session = newSession(boundHost: address.isEmpty ? nil : address, boundPort: node.kind == .port ? node.portNumber : nil)
+        ActivityLog.shared.record(.action, "Terminal opened for \(address)\(node.kind == .port ? ":\(node.portNumber)" : "")", source: "Targets", host: address)
+        return session
+    }
+
+    /// A command that names a host outside the engagement's scope gets a red note — in the Log and
+    /// at the bottom of the panel. It is not blocked: the tester decides, Luik remembers.
+    static func warnIfOutOfScope(_ command: String) {
+        let problems = TargetContext.scopeProblems(in: command)
+        guard !problems.isEmpty else { return }
+        let list = problems.joined(separator: ", ")
+        ActivityLog.shared.record(.action, "⚠️ OUT OF SCOPE: \(list) in “\(CommandOutputStore.shortCommand(command))”", source: "Scope")
+        UIState.shared.flash("⚠️ Not in scope: \(list)", seconds: 4)
+        NSSound.beep()
     }
 
     func close(_ session: TerminalSession) {
@@ -441,8 +485,10 @@ final class TerminalStore {
     /// `source` names the tab it came from, for the activity log.
     func sendToSelected(_ text: String, source: String = "Luik") {
         guard let session = selected else { return }
-        let entryID = ActivityLog.shared.record(.command, text, source: "\(source) → Terminal: \(session.title)")
+        let host = TargetContext.host(for: text, boundHost: session.boundHost)
+        let entryID = ActivityLog.shared.record(.command, text, source: "\(source) → Terminal: \(session.title)", host: host)
         session.send(text, entryID: entryID)
+        TerminalStore.warnIfOutOfScope(text)
     }
 
     func applyAppearance() {

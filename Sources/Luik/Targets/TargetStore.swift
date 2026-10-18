@@ -45,7 +45,14 @@ final class TargetStore {
     private static let fileName = "targets.json"
 
     var hosts: [TargetNode] = []
-    var selectedID: UUID? = nil
+    var selectedID: UUID? = nil {
+        didSet {
+            // Selecting a host or port makes it the context ($RHOST / $RPORT) — Settings › Logging.
+            guard selectedID != oldValue, UserDefaults.standard.bool(forKey: SettingsKey.followTargetSelection),
+                  let node = selectedNode, node.kind == .host || node.kind == .port else { return }
+            TargetContext.use(node)
+        }
+    }
     @ObservationIgnored private var saver = Debouncer()
 
     init() {

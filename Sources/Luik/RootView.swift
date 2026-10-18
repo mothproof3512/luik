@@ -247,6 +247,8 @@ struct TopBar: View {
                 .help("Logging is paused — nothing is recorded. Click to resume.")
                 .padding(.trailing, 8)
             }
+            TargetContextChip()
+                .padding(.trailing, 10)
             CanaryIndicator()
                 .padding(.trailing, 8)
             PublicIPButton()
@@ -352,6 +354,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.logTypedCommands) private var logTypedCommands = true
     @AppStorage(SettingsKey.captureOutput) private var captureOutput = true
     @AppStorage(SettingsKey.autoImportScans) private var autoImportScans = true
+    @AppStorage(SettingsKey.followTargetSelection) private var followTargetSelection = true
     @AppStorage(SettingsKey.evidenceFolder) private var evidenceFolder = ""
     @AppStorage(SettingsKey.hideWhileCapturing) private var hideWhileCapturing = true
     @AppStorage(SettingsKey.checkForUpdates) private var checkForUpdates = true
@@ -606,6 +609,8 @@ struct SettingsView: View {
             caption("Every command you run in a Luik terminal tab is recorded with a timestamp — also inside ssh sessions, after tab completion and from history, because Luik reads the command from the screen when you press Enter. Anything that does not appear on screen (passwords for sudo, ssh, su, mysql -p, …) is never recorded; full-screen programs such as vim, less and htop are ignored. Commands pasted from One-liners or Searchsploit are always logged.")
             Toggle("Keep the output of every command", isOn: $captureOutput)
             caption("What a logged command printed is kept next to its Log entry (per engagement, in outputs/, last 1500 commands, 1 MB each). Expand it in the Log, pin command + output as evidence to the selected finding, target or a note (⌘⇧P in the terminal for the last command), or import recognised scanner output into Targets.")
+            Toggle("Selecting a host or port in Targets makes it the current target ($RHOST / $RPORT)", isOn: $followTargetSelection)
+            caption("The current target is shown in the top bar (red when it is outside the engagement's scope) and feeds one-liners, checklists, saved connections and terminals opened for a host. Commands that name it are tagged with the host in the Log, which is what the Activity panel on a host and the host dossier are built from.")
             Toggle("Import nmap / nuclei / masscan output into Targets automatically", isOn: $autoImportScans)
                 .disabled(!captureOutput)
             caption("When a command's output looks like a scan (nmap normal/-oG/-oX, nuclei console or JSON, masscan), the hosts, ports and findings go into Targets as soon as the prompt returns — the same import as pasting it by hand, so nothing is duplicated. Off: the Log shows an Import button instead.")

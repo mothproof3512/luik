@@ -159,6 +159,7 @@ struct NodeRow: View {
     @Bindable var node: TargetNode
     @Environment(TargetStore.self) private var store
     @Environment(EngagementStore.self) private var engagements
+    @Environment(UIState.self) private var ui
 
     var body: some View {
         let scope: ScopeStatus? = node.kind == .host && engagements.hasScope ? engagements.scopeStatus(of: node.address) : nil
@@ -203,6 +204,21 @@ struct NodeRow: View {
             }
         }
         .contextMenu {
+            if node.kind == .host || node.kind == .port {
+                Button(node.kind == .port ? "Use as $RHOST / $RPORT" : "Use as $RHOST") { TargetContext.use(node) }
+                Button("Open a terminal here") {
+                    TerminalStore.shared.newSession(boundTo: node)
+                    ui.open(.terminal)
+                }
+            }
+            if node.kind == .host {
+                Button("Copy host dossier as Markdown") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(TargetContext.dossier(for: node), forType: .string)
+                    ui.flash("Host dossier of \(node.title) copied as Markdown.")
+                }
+            }
+            Divider()
             Button("Add sub-node") {
                 _ = store.addChild(to: node)
             }
@@ -335,6 +351,12 @@ struct NodeDetailView: View {
 
             if node.kind == .port {
                 SuggestionsPanel(node: node)
+                    .padding(8)
+                    .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
+            }
+
+            if node.kind == .host {
+                HostActivityPanel(host: node)
                     .padding(8)
                     .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
             }

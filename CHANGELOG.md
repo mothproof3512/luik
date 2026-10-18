@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.34.0
+- **The current target is one notion for the whole app.** A chip in the top bar shows `$RHOST[:$RPORT]` (red when outside the engagement's scope) with a menu to switch host or port, show it in Targets, open a terminal for it or clear it. Selecting a host or port in Targets sets it (Settings › Logging to switch off); the one-liners, checklists and saved connections follow as before.
+- **Terminals bound to a host**: Targets › right-click › *Open a terminal here* (also from the chip) opens a tab named after the host with `RHOST`, `RPORT`, `LHOST` and `LPORT` exported in its shell, so `nmap $RHOST` works straight away; every command in that tab is tagged with the host in the Log.
+- **Host-tagged log and Activity panel**: commands naming the current target (or a known host) carry the host; a host node in Targets shows *Activity for this host* — its commands and events with a pin button to drop a command's output into the host's notes.
+- **Host dossier**: right-click a host › *Copy host dossier as Markdown* — ports table, notes, per-port checklist state and notes, findings affecting the host, its commands and events, evidence files. One page per host for the report or a hand-over.
+- **Scope warnings**: a typed or pasted command that names a host outside the scope (or in the exclusions) is not blocked, but gets a red note at the bottom of the panel, a beep and a ⚠️ line in the Log.
+
 ## 0.33.0
 - **The terminal keeps what every command printed.** The output of each logged command (typed, or pasted by Luik) is captured when the shell is back at its prompt and stored next to its Log entry (per engagement, `outputs/`, last 1500 commands, 1 MB each; passwords and full-screen programs are excluded like before). The Log shows an *Output · n lines* chevron per command with a monospaced preview, Copy output, Copy as Markdown and Show in Finder.
 - **Pin as evidence**: command + output + time go as a Markdown block into the selected finding's Evidence, the selected target node's notes, or a new note — from the pin button on a Log row, or **⌘⇧P** in the terminal for the last command (destination picked in that order). A short confirmation appears at the bottom of the panel.
