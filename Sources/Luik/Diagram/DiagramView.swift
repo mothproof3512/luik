@@ -426,6 +426,9 @@ struct DiagramCanvas: View {
                         nodeView(node)
                     }
                     selectionHandles
+                    DiagramContextMenuLayer { point in
+                        contextMenu(at: point, diagram: store.current ?? diagram, zoom: zoom, store: store)
+                    }
                 }
                 .frame(width: width, height: height)
                 .coordinateSpace(name: "diagram")
@@ -526,14 +529,6 @@ struct DiagramCanvas: View {
                     }
                     .onEnded { _ in commitDrag() }
             )
-            .contextMenu {
-                Button("Send to back") { store.bringZoneToBack(zone.id) }
-                Divider()
-                Button("Delete zone", role: .destructive) {
-                    store.selection = .zone(zone.id)
-                    store.deleteSelection()
-                }
-            }
             .position(center)
     }
 
@@ -549,27 +544,6 @@ struct DiagramCanvas: View {
             DiagramLinkView(from: from, to: to, link: link, zoom: zoom, palette: palette, selected: store.selection == .link(link.id))
                 .contentShape(DiagramLineShape(from: from, to: to).path(in: .zero).strokedPath(StrokeStyle(lineWidth: 14, lineCap: .round)))
                 .onTapGesture { store.selection = .link(link.id) }
-                .contextMenu {
-                    Picker("Style", selection: Binding(get: { link.style }, set: { style in
-                        store.checkpoint()
-                        store.update { d in
-                            if let i = d.links.firstIndex(where: { $0.id == link.id }) { d.links[i].style = style }
-                        }
-                    })) {
-                        ForEach(DiagramLinkStyle.allCases) { Text($0.title).tag($0) }
-                    }
-                    Button(link.directed ? "Remove arrow" : "Add arrow") {
-                        store.checkpoint()
-                        store.update { d in
-                            if let i = d.links.firstIndex(where: { $0.id == link.id }) { d.links[i].directed.toggle() }
-                        }
-                    }
-                    Divider()
-                    Button("Delete link", role: .destructive) {
-                        store.selection = .link(link.id)
-                        store.deleteSelection()
-                    }
-                }
         }
     }
 
@@ -606,42 +580,7 @@ struct DiagramCanvas: View {
                     }
                     .onEnded { _ in commitDrag() }
             )
-            .contextMenu { nodeMenu(node) }
             .position(geometry.point(displayed(node).x, displayed(node).y))
-    }
-
-    @ViewBuilder
-    private func nodeMenu(_ node: DiagramNode) -> some View {
-        Menu("Kind") {
-            ForEach(DiagramNodeKind.allCases) { kind in
-                Button {
-                    store.checkpoint()
-                    store.update { d in
-                        if let i = d.nodes.firstIndex(where: { $0.id == node.id }) {
-                            // A label that was just the old kind's name follows the new kind.
-                            if d.nodes[i].label == d.nodes[i].kind.title { d.nodes[i].label = kind.title }
-                            d.nodes[i].kind = kind
-                        }
-                    }
-                } label: {
-                    Label(kind.title, systemImage: kind.symbol)
-                }
-            }
-        }
-        Button("Link from here…") {
-            store.connectMode = true
-            store.connectFrom = node.id
-            store.selection = .node(node.id)
-        }
-        Button("Duplicate") {
-            store.selection = .node(node.id)
-            store.duplicateSelectedNode()
-        }
-        Divider()
-        Button("Delete", role: .destructive) {
-            store.selection = .node(node.id)
-            store.deleteSelection()
-        }
     }
 
     /// The link dot on a selected node and the resize grip on a selected zone.
