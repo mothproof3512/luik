@@ -388,6 +388,9 @@ struct DiagramCanvas: View {
     let diagram: Diagram
     /// Only here so the canvas re-renders when the Show setting changes.
     let detail: DiagramDetail
+    @Environment(TargetStore.self) private var targets
+    @Environment(FindingsStore.self) private var findings
+    @Environment(SnippetStore.self) private var snippets
     @Environment(DiagramStore.self) private var store
     @Environment(\.luikTheme) private var theme
 
@@ -424,6 +427,7 @@ struct DiagramCanvas: View {
 
     var body: some View {
         GeometryReader { proxy in
+            let _ = (targets.hosts.count, findings.findings.count, snippets.target)   // badges and the target ring follow these
             let bounds = diagram.bounds
             let natural = CGSize(width: max(proxy.size.width, (bounds.maxX + 400) * zoom),
                                  height: max(proxy.size.height, (bounds.maxY + 300) * zoom))
@@ -580,7 +584,8 @@ struct DiagramCanvas: View {
     private func nodeView(_ node: DiagramNode) -> some View {
         let selected = store.selection == .node(node.id)
         let highlighted = store.connectFrom == node.id || hoverTarget == node.id
-        return DiagramNodeView(node: node, zoom: zoom, palette: palette, selected: selected, highlighted: highlighted)
+        return DiagramNodeView(node: node, zoom: zoom, palette: palette, selected: selected, highlighted: highlighted,
+                               isCurrentTarget: DiagramTargets.isCurrentTarget(node), badges: liveDrag == nil ? DiagramTargets.badges(for: node) : [])
             .onTapGesture {
                 if store.connectMode {
                     store.connectModeTap(node.id)

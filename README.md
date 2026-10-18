@@ -344,6 +344,10 @@ puts the address, the first line of the notes or the kind on the second line of 
 Right-click a node, link, zone or the empty canvas for the context menu (kind, link from here,
 duplicate, style, arrow, send to back, add node / zone here, delete).
 
+Nodes that exist in Targets carry badges (ports, findings — red when high or critical) and a green
+ring when they are the current target; right-click gives *Open in Targets*, *Use as $RHOST*,
+*Open a terminal for …* or *Add to Targets*. From Targets, right-click a host › *Show in diagram*.
+
 ### Diagram templates
 
 **New from template** (diagram menu, or *Start from a template* on an empty tab) offers fifteen

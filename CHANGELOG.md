@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.38.0
+- **Diagram ↔ Targets**: a node whose address (or label) is a host in Targets shows badges with its port count and findings (red when high or critical) and a green ring when it is the current target; right-click › *Open … in Targets*, *Use as $RHOST*, *Open a terminal for …* — or *Add … to Targets* when the host is not there yet. In Targets, right-click a host › *Show in diagram* (selects the node in the diagram that has it, or adds it to the current one).
+
 ## 0.37.0
 - **One-liners, checklist items and library pages know each other.** A one-liner and a checklist item can carry a *Read more* link (a library page picked with the book button, a topic such as "SMB", or a URL); without one, Luik finds the page named after the service (microsoft-ds → SMB, ms-wbt-server → RDP, …). Book icons on one-liner rows (One-liners tab and the port node) and a *Read more* line on port and work-item nodes open the page in the Notes tab. On a library page, a bar lists the one-liners that point here (copy / paste) and the checklist items that link to it.
 

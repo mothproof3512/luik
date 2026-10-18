@@ -55,12 +55,21 @@ struct DiagramGeometry {
 }
 
 /// One device: an icon disc in the kind's colour, the label and the address.
+/// A small count shown on a card: ports / findings of the host in Targets.
+struct DiagramBadge: Hashable {
+    var text: String
+    var warning = false
+}
+
 struct DiagramNodeView: View {
     let node: DiagramNode
     let zoom: CGFloat
     let palette: DiagramPalette
     var selected = false
     var highlighted = false
+    /// The node is the current target ($RHOST): a coloured ring.
+    var isCurrentTarget = false
+    var badges: [DiagramBadge] = []
 
     var body: some View {
         let kind = node.kind
@@ -103,9 +112,25 @@ struct DiagramNodeView: View {
         }
         .overlay(
             RoundedRectangle(cornerRadius: 12 * zoom, style: .continuous)
-                .strokeBorder(selected || highlighted ? palette.accent : palette.cardBorder, lineWidth: selected ? 2 : (highlighted ? 2 : 1))
+                .strokeBorder(selected || highlighted ? palette.accent : (isCurrentTarget ? Color.green.opacity(0.9) : palette.cardBorder),
+                              lineWidth: selected || highlighted || isCurrentTarget ? 2 : 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 12 * zoom, style: .continuous))
+        .overlay(alignment: .topTrailing) {
+            if !badges.isEmpty {
+                HStack(spacing: 3 * zoom) {
+                    ForEach(badges, id: \.self) { badge in
+                        Text(badge.text)
+                            .font(.system(size: 8 * zoom, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 4 * zoom)
+                            .padding(.vertical, 1.5 * zoom)
+                            .background((badge.warning ? Color.red : Color.gray).opacity(0.85), in: Capsule())
+                    }
+                }
+                .offset(x: -4 * zoom, y: -7 * zoom)
+            }
+        }
     }
 }
 

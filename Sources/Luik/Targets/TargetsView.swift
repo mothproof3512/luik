@@ -213,6 +213,7 @@ struct NodeRow: View {
                 }
             }
             if node.kind == .host {
+                Button(DiagramTargets.diagramNode(for: node) == nil ? "Add to diagram" : "Show in diagram") { DiagramTargets.showInDiagram(node) }
                 Button("Copy host dossier as Markdown") {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(TargetContext.dossier(for: node), forType: .string)

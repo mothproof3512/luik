@@ -140,6 +140,22 @@ extension DiagramCanvas {
             let kindItem = NSMenuItem(title: "Kind", action: nil, keyEquivalent: "")
             kindItem.submenu = kindMenu
             menu.addItem(kindItem)
+            if let host = DiagramTargets.host(for: node) {
+                menu.addItem(ClosureMenuItem("Open \(host.address) in Targets") { DiagramTargets.openInTargets(node) })
+                menu.addItem(ClosureMenuItem("Use as $RHOST") { TargetContext.use(host) })
+                menu.addItem(ClosureMenuItem("Open a terminal for \(host.address)") {
+                    TerminalStore.shared.newSession(boundTo: host)
+                    UIState.shared.open(.terminal)
+                })
+                menu.addItem(.separator())
+            } else if !node.address.trimmingCharacters(in: .whitespaces).isEmpty {
+                menu.addItem(ClosureMenuItem("Add \(node.address) to Targets") {
+                    let host = TargetStore.shared.addHost(address: node.address.trimmingCharacters(in: .whitespaces), hostname: node.label == node.kind.title ? "" : node.label)
+                    TargetStore.shared.selectedID = host.id
+                    UIState.shared.open(.targets)
+                })
+                menu.addItem(.separator())
+            }
             menu.addItem(ClosureMenuItem("Link from here…") {
                 store.connectMode = true
                 store.connectFrom = node.id
