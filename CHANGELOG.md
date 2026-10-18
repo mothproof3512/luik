@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.31.2
+- Diagram: smoother dragging of nodes and zones — the move is drawn as a live offset (snapped to the grid) and written to the model once on release, so the canvas no longer rebuilds and resizes on every mouse move; one undo step per drag; links and handles follow the dragged item.
+
+## 0.31.1
+- Diagram: a **Templates** button in the toolbar (next to the diagram menu) so the fifteen templates are one click away.
+
 ## 0.31.0
 - **Diagram templates**: *New from template* with fifteen starting points — five web application set-ups (three-tier, SPA + REST API, microservices on Kubernetes, serverless, monolith with CMS / webshop), five authentication flows (OAuth 2.0 code + PKCE, enterprise SSO SAML / OIDC, session-based login, machine-to-machine, Active Directory Kerberos / NTLM) and five network layouts (small office, DMZ with two firewalls, segmented VLANs, hybrid cloud, remote access with VPN and jump host), each with zones, labelled links and example addresses. The two older examples sit in the same menu.
 

@@ -371,27 +371,45 @@ struct DiagramCanvas: View {
     @Environment(DiagramStore.self) private var store
     @Environment(\.luikTheme) private var theme
 
-    private struct ZoneDrag {
-        let id: UUID
-        let start: CGPoint
-        let nodes: [UUID: CGPoint]
+    /// A drag in progress: the nodes (and zone) that move, and how far — drawn as an offset, written
+    /// to the model once at the end. Writing every frame rebuilt the whole canvas per mouse move.
+    private struct LiveDrag {
+        var nodes: Set<UUID>
+        var zone: UUID?
+        var translation: CGSize = .zero
+        var started = false
+
+        /// Snapped offset in diagram units.
+        func offset(zoom: CGFloat) -> CGSize {
+            CGSize(width: DiagramMetrics.snap(Double(translation.width / zoom)), height: DiagramMetrics.snap(Double(translation.height / zoom)))
+        }
     }
 
-    @State private var nodeDragStart: [UUID: CGPoint] = [:]
-    @State private var zoneDrag: ZoneDrag?
+    @State private var liveDrag: LiveDrag?
     @State private var resizeStart: CGSize?
+    /// Canvas size is only recomputed between drags, so the scroll view does not jump mid-drag.
+    @State private var frozenCanvas: CGSize?
     @State private var pendingLink: (from: UUID, to: CGPoint)?
     @State private var hoverTarget: UUID?
 
     private var zoom: CGFloat { CGFloat(store.zoom) }
     private var geometry: DiagramGeometry { DiagramGeometry(zoom: zoom) }
+
+    private var naturalCanvasSize: CGSize {
+        let bounds = diagram.bounds
+        return CGSize(width: max(store.viewportSize.width, (bounds.maxX + 400) * zoom),
+                      height: max(store.viewportSize.height, (bounds.maxY + 300) * zoom))
+    }
     private var palette: DiagramPalette { .dark(accent: theme.accentColor) }
 
     var body: some View {
         GeometryReader { proxy in
             let bounds = diagram.bounds
-            let width = max(proxy.size.width, (bounds.maxX + 400) * zoom)
-            let height = max(proxy.size.height, (bounds.maxY + 300) * zoom)
+            let natural = CGSize(width: max(proxy.size.width, (bounds.maxX + 400) * zoom),
+                                 height: max(proxy.size.height, (bounds.maxY + 300) * zoom))
+            let size = liveDrag != nil ? (frozenCanvas ?? natural) : natural
+            let width = size.width
+            let height = size.height
             ScrollView([.horizontal, .vertical]) {
                 ZStack(alignment: .topLeading) {
                     background
@@ -411,6 +429,7 @@ struct DiagramCanvas: View {
                 }
                 .frame(width: width, height: height)
                 .coordinateSpace(name: "diagram")
+                .transaction { $0.animation = nil }
             }
             .onAppear { store.viewportSize = proxy.size }
             .onChange(of: proxy.size) { _, size in store.viewportSize = size }
@@ -423,6 +442,45 @@ struct DiagramCanvas: View {
                 store.connectMode = false
             } else {
                 store.selection = nil
+            }
+        }
+    }
+
+    // MARK: Live positions
+
+    /// Where a node is drawn: its model position plus the live drag offset when it is being moved.
+    private func displayed(_ node: DiagramNode) -> CGPoint {
+        if let drag = liveDrag, drag.nodes.contains(node.id) {
+            let offset = drag.offset(zoom: zoom)
+            return CGPoint(x: node.x + offset.width, y: node.y + offset.height)
+        }
+        return CGPoint(x: node.x, y: node.y)
+    }
+
+    private func displayedOrigin(_ zone: DiagramZone) -> CGPoint {
+        if let drag = liveDrag, drag.zone == zone.id {
+            let offset = drag.offset(zoom: zoom)
+            return CGPoint(x: zone.x + offset.width, y: zone.y + offset.height)
+        }
+        return CGPoint(x: zone.x, y: zone.y)
+    }
+
+    /// Writes the drag to the model (one undo step) and clears it.
+    private func commitDrag() {
+        guard let drag = liveDrag else { return }
+        liveDrag = nil
+        frozenCanvas = nil
+        let offset = drag.offset(zoom: zoom)
+        guard offset != .zero, let current = store.current else { return }
+        store.checkpoint()
+        if let zoneID = drag.zone, let zone = current.zones.first(where: { $0.id == zoneID }) {
+            var starts: [UUID: CGPoint] = [:]
+            for node in current.nodes where drag.nodes.contains(node.id) { starts[node.id] = CGPoint(x: node.x, y: node.y) }
+            store.moveZone(zoneID, to: CGPoint(x: zone.x + offset.width, y: zone.y + offset.height), carrying: starts, zoneStart: CGPoint(x: zone.x, y: zone.y))
+        } else {
+            for node in current.nodes where drag.nodes.contains(node.id) {
+                store.moveNode(node.id, to: CGPoint(x: node.x + offset.width, y: node.y + offset.height))
+                store.snapNode(node.id)
             }
         }
     }
@@ -441,7 +499,8 @@ struct DiagramCanvas: View {
 
     private func zoneView(_ zone: DiagramZone) -> some View {
         let selected = store.selection == .zone(zone.id)
-        let center = geometry.point(zone.x + zone.width / 2, zone.y + zone.height / 2)
+        let origin = displayedOrigin(zone)
+        let center = geometry.point(origin.x + zone.width / 2, origin.y + zone.height / 2)
         return DiagramZoneView(zone: zone, zoom: zoom, palette: palette, selected: selected)
             .contentShape(Rectangle())
             .onTapGesture { location in
@@ -451,23 +510,15 @@ struct DiagramCanvas: View {
             .gesture(
                 DragGesture(minimumDistance: 3)
                     .onChanged { value in
-                        if zoneDrag?.id != zone.id {
-                            store.checkpoint()
-                            let current = store.current ?? diagram
-                            let live = current.zones.first { $0.id == zone.id } ?? zone
-                            var inside: [UUID: CGPoint] = [:]
-                            for node in current.nodes where live.contains(x: node.x, y: node.y) {
-                                inside[node.id] = CGPoint(x: node.x, y: node.y)
-                            }
-                            zoneDrag = ZoneDrag(id: zone.id, start: CGPoint(x: live.x, y: live.y), nodes: inside)
+                        if liveDrag?.zone != zone.id {
+                            frozenCanvas = naturalCanvasSize
+                            let inside = Set(diagram.nodes.filter { zone.contains(x: $0.x, y: $0.y) }.map { $0.id })
+                            liveDrag = LiveDrag(nodes: inside, zone: zone.id)
                             store.selection = .zone(zone.id)
                         }
-                        guard let drag = zoneDrag else { return }
-                        let target = CGPoint(x: DiagramMetrics.snap(Double(drag.start.x + value.translation.width / zoom)),
-                                             y: DiagramMetrics.snap(Double(drag.start.y + value.translation.height / zoom)))
-                        store.moveZone(zone.id, to: target, carrying: drag.nodes, zoneStart: drag.start)
+                        liveDrag?.translation = value.translation
                     }
-                    .onEnded { _ in zoneDrag = nil }
+                    .onEnded { _ in commitDrag() }
             )
             .contextMenu {
                 Button("Send to back") { store.bringZoneToBack(zone.id) }
@@ -483,8 +534,10 @@ struct DiagramCanvas: View {
     @ViewBuilder
     private func linkView(_ link: DiagramLink) -> some View {
         if let a = diagram.node(link.from), let b = diagram.node(link.to) {
-            let ca = geometry.point(a.x, a.y)
-            let cb = geometry.point(b.x, b.y)
+            let pa = displayed(a)
+            let pb = displayed(b)
+            let ca = geometry.point(pa.x, pa.y)
+            let cb = geometry.point(pb.x, pb.y)
             let from = geometry.edgePoint(from: ca, toward: cb)
             let to = geometry.edgePoint(from: cb, toward: ca)
             DiagramLinkView(from: from, to: to, link: link, zoom: zoom, palette: palette, selected: store.selection == .link(link.id))
@@ -539,23 +592,17 @@ struct DiagramCanvas: View {
             .gesture(
                 DragGesture(minimumDistance: 3)
                     .onChanged { value in
-                        if nodeDragStart[node.id] == nil {
-                            store.checkpoint()
-                            let live = store.current?.node(node.id) ?? node
-                            nodeDragStart[node.id] = CGPoint(x: live.x, y: live.y)
+                        if liveDrag == nil || liveDrag?.zone != nil || liveDrag?.nodes.contains(node.id) != true {
+                            frozenCanvas = naturalCanvasSize
+                            liveDrag = LiveDrag(nodes: [node.id], zone: nil)
                             store.selection = .node(node.id)
                         }
-                        guard let start = nodeDragStart[node.id] else { return }
-                        store.moveNode(node.id, to: CGPoint(x: start.x + value.translation.width / zoom,
-                                                            y: start.y + value.translation.height / zoom))
+                        liveDrag?.translation = value.translation
                     }
-                    .onEnded { _ in
-                        store.snapNode(node.id)
-                        nodeDragStart[node.id] = nil
-                    }
+                    .onEnded { _ in commitDrag() }
             )
             .contextMenu { nodeMenu(node) }
-            .position(geometry.point(node.x, node.y))
+            .position(geometry.point(displayed(node).x, displayed(node).y))
     }
 
     @ViewBuilder
@@ -598,7 +645,8 @@ struct DiagramCanvas: View {
         switch store.selection {
         case .node(let id):
             if !store.connectMode, let node = diagram.node(id) {
-                let anchor = geometry.point(node.x + Double(DiagramMetrics.nodeWidth) / 2 + 10, node.y)
+                let shown = displayed(node)
+                let anchor = geometry.point(shown.x + Double(DiagramMetrics.nodeWidth) / 2 + 10, shown.y)
                 Circle()
                     .fill(palette.accent)
                     .overlay(Circle().strokeBorder(Color.white.opacity(0.8), lineWidth: 1.5))
@@ -623,7 +671,8 @@ struct DiagramCanvas: View {
             }
         case .zone(let id):
             if let zone = diagram.zones.first(where: { $0.id == id }) {
-                let corner = geometry.point(zone.x + zone.width, zone.y + zone.height)
+                let shownOrigin = displayedOrigin(zone)
+                let corner = geometry.point(shownOrigin.x + zone.width, shownOrigin.y + zone.height)
                 RoundedRectangle(cornerRadius: 3)
                     .fill(zone.color)
                     .frame(width: 12, height: 12)
