@@ -166,6 +166,7 @@ struct NodeRow: View {
         HStack(spacing: 6) {
             Button {
                 node.status = node.status.next
+                store.noteChecklistUse(of: node)
                 store.scheduleSave()
             } label: {
                 Image(systemName: node.status.symbol)
@@ -231,6 +232,7 @@ struct NodeRow: View {
             ForEach(NodeStatus.allCases, id: \.self) { status in
                 Button(status.label) {
                     node.status = status
+                    store.noteChecklistUse(of: node)
                     store.scheduleSave()
                 }
             }

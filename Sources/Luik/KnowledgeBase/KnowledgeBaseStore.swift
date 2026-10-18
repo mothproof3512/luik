@@ -92,6 +92,24 @@ final class KnowledgeBaseStore {
         return id
     }
 
+    /// Adds records from a playbook: fresh ids and MY-numbers; a record with the same title and
+    /// description as one already here is skipped. Returns how many were added.
+    @discardableResult
+    func appendMine(_ records: [KBRecord]) -> Int {
+        var added = 0
+        for record in records {
+            let title = record.value("Title")
+            let description = record.value("Description")
+            if mine.records.contains(where: { $0.value("Title") == title && $0.value("Description") == description }) { continue }
+            var values = record.values
+            values[KBTable.myIDColumn] = nextMyID()
+            mine.records.append(KBRecord(values: values))
+            added += 1
+        }
+        if added > 0 { saveMine() }
+        return added
+    }
+
     func update(_ record: KBRecord) {
         guard let index = mine.records.firstIndex(where: { $0.id == record.id }) else { return }
         mine.records[index] = record

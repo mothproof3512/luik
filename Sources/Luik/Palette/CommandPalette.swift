@@ -195,6 +195,12 @@ struct CommandPalette: View {
                 ui.module = .plan
                 PlanStore.shared.showTemplateEditor = true
             },
+            PaletteItem(id: "playbook-export", icon: "shippingbox", title: "Export playbook", subtitle: "one-liners, checklists, plan templates and your knowledge records in one file", group: "Actions") {
+                ui.showPlaybook = .export
+            },
+            PaletteItem(id: "playbook-import", icon: "shippingbox.and.arrow.backward", title: "Import playbook", subtitle: "merge a colleague's or your own playbook file", group: "Actions") {
+                ui.showPlaybook = .importFile
+            },
             PaletteItem(id: "kb-mine", icon: "person.text.rectangle", title: "My knowledge-base records", subtitle: "findings you saved from the Findings tab (My findings)", group: "Actions") {
                 let kb = KnowledgeBaseStore.shared
                 kb.search = ""

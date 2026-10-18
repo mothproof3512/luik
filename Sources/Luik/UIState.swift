@@ -116,6 +116,8 @@ final class UIState {
     var showReverseShell = false
     /// A one-liner handed to the One-liners tab to open in its editor (from the Log, …).
     var pendingSnippet: Snippet?
+    /// Playbook export / import sheet.
+    var showPlaybook: PlaybookView.Mode?
     /// Short confirmation shown at the bottom of the panel for a moment ("Pinned to finding …").
     var flashMessage: String?
     @ObservationIgnored private var flashToken = 0

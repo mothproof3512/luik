@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.35.0
+- **Luik learns what you use.** Every copy or paste of a one-liner is counted per service (usage.json, global, never exported); the one-liners at a port node are ordered by what you used at that service before (with "· 3×"), and the One-liners tab opens with a *Most used* section. Checklist items marked done / n/a on a port are counted too; the checklist editor shows the totals so items that are mostly n/a can be pruned.
+- **Playbooks**: Tools › *Export Playbook…* writes one-liners, checklists, your own plan templates and your knowledge records (My findings) to one `.luikplaybook.json`; *Import Playbook…* merges one (one-liners and records added, same-named checklists replaced, templates added). Engagement data, usage statistics and credentials are never part of it. Also in ⌘K.
+
 ## 0.34.0
 - **The current target is one notion for the whole app.** A chip in the top bar shows `$RHOST[:$RPORT]` (red when outside the engagement's scope) with a menu to switch host or port, show it in Targets, open a terminal for it or clear it. Selecting a host or port in Targets sets it (Settings › Logging to switch off); the one-liners, checklists and saved connections follow as before.
 - **Terminals bound to a host**: Targets › right-click › *Open a terminal here* (also from the chip) opens a tab named after the host with `RHOST`, `RPORT`, `LHOST` and `LPORT` exported in its shell, so `nmap $RHOST` works straight away; every command in that tab is tagged with the host in the Log.

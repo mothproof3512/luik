@@ -85,6 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func flushAllStores() {
         CommandOutputStore.shared.flush()
+        UsageStore.shared.flush()
         NotesStore.shared.flush()
         LibraryStore.shared.flush()
         DiagramStore.shared.flush()
@@ -321,6 +322,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         toolsMenu.addItem(NSMenuItem(title: "Download Knowledge Base…", action: #selector(downloadKnowledgeBase), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Download Documentation (Library)…", action: #selector(downloadDocumentation), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Reverse Shell Generator…", action: #selector(showReverseShell), keyEquivalent: ""))
+        toolsMenu.addItem(.separator())
+        toolsMenu.addItem(NSMenuItem(title: "Export Playbook…", action: #selector(exportPlaybook), keyEquivalent: ""))
+        toolsMenu.addItem(NSMenuItem(title: "Import Playbook…", action: #selector(importPlaybook), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Version & End-of-life Check…", action: #selector(showVersionCheck), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Mail Security Check (SPF, DKIM, DMARC)…", action: #selector(showMailSecurity), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Reachability Canary…", action: #selector(showCanary), keyEquivalent: ""))
@@ -466,6 +470,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let message = EvidencePin.pin(command: last.command, output: last.output, time: last.time, source: "Terminal: \(session.title)", to: destination)
         UIState.shared.flash(message)
     }
+
+    @objc private func exportPlaybook() { UIState.shared.showPlaybook = .export }
+    @objc private func importPlaybook() { UIState.shared.showPlaybook = .importFile }
 
     @objc private func newTerminalTab() {
         UIState.shared.module = .terminal

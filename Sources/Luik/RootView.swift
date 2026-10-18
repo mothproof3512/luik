@@ -145,6 +145,9 @@ struct RootView: View {
         .sheet(isPresented: $engagements.showManager) {
             EngagementsManager()
         }
+        .sheet(item: $ui.showPlaybook) { mode in
+            PlaybookView(mode: mode)
+        }
         .sheet(isPresented: $checklists.showEditor) {
             ChecklistEditorView()
         }

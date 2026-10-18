@@ -38,8 +38,17 @@ struct OneLinersPanel: View {
         context.kind == .port ? TargetStore.serviceName(of: context) : ""
     }
 
+    /// Matching one-liners, the ones you used before at this service first.
     private var matching: [Snippet] {
-        context.kind == .port ? snippets.snippets(forService: service, port: context.portNumber) : snippets.hostSnippets
+        let base = context.kind == .port ? snippets.snippets(forService: service, port: context.portNumber) : snippets.hostSnippets
+        return UsageStore.shared.ranked(base, service: service)
+    }
+
+    /// Counts a use (copy or paste) of the one-liner that owns `id` (a snippet or one of its steps).
+    private func noteUse(of id: UUID) {
+        let snippet = matching.first { $0.id == id } ?? matching.first { $0.steps.contains { $0.id == id } }
+        guard let snippet else { return }
+        UsageStore.shared.recordSnippet(snippet.id, service: service)
     }
 
     private var contextLabel: String {
@@ -125,6 +134,13 @@ struct OneLinersPanel: View {
         }
     }
 
+    /// "Title · 3×" when you used it at this service before.
+    private func usageTitle(_ snippet: Snippet) -> String {
+        guard let record = UsageStore.shared.usage(of: snippet.id) else { return snippet.title }
+        let here = record.byService[UsageStore.serviceKey(service)] ?? 0
+        return here > 0 ? "\(snippet.title) · \(here)×" : snippet.title
+    }
+
     private func row(for snippet: Snippet) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             if snippet.isMultiStep {
@@ -153,7 +169,7 @@ struct OneLinersPanel: View {
                         .padding(.leading, 10)
                 }
             } else if let step = snippet.steps.first {
-                commandLine(title: snippet.title, command: resolve(step.command), id: snippet.id, titleIsSecondary: false)
+                commandLine(title: usageTitle(snippet), command: resolve(step.command), id: snippet.id, titleIsSecondary: false)
             }
         }
     }
@@ -191,6 +207,7 @@ struct OneLinersPanel: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             Button {
                 copy(command, id: id)
+                noteUse(of: id)
             } label: {
                 Image(systemName: copied ? "checkmark" : "doc.on.doc")
                     .foregroundStyle(copied ? Color.green : theme.accentColor)
@@ -200,6 +217,7 @@ struct OneLinersPanel: View {
             .help("Copy")
             Button {
                 terminals.sendToSelected(command, source: "Targets")
+                noteUse(of: id)
                 ui.module = .terminal
                 terminals.focusSelected(afterDelay: true)
             } label: {

@@ -432,6 +432,12 @@ final class TargetStore {
         }
     }
 
+    /// A checklist item under a port marked done or n/a counts towards what you do at that service.
+    func noteChecklistUse(of node: TargetNode) {
+        guard node.kind == .task, let parent = parent(of: node.id), parent.kind == .port else { return }
+        UsageStore.shared.recordChecklist(itemTitle: node.title, service: TargetStore.serviceName(of: parent), status: node.status)
+    }
+
     // MARK: - Export
 
     func markdown() -> String {

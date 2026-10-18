@@ -364,6 +364,17 @@ gateway, and the hosts in a grid inside their zone — kind guessed from the ope
 in the notes. *Add missing hosts to this diagram* keeps the old behaviour of adding nodes to the
 current drawing. Rearrange, rename zones, export.
 
+### Luik learns, and playbooks travel
+
+Every copy or paste of a one-liner is counted per service (`usage.json`, global). At a port node
+the one-liners you used at that service before come first, marked "· 3×"; the One-liners tab
+opens with a *Most used* section. Checklist items marked done or n/a on a port are counted as
+well, and the checklist editor shows the totals — an item that is mostly n/a probably does not
+belong in the template. Tools › **Export Playbook…** packs one-liners, checklists, your own plan
+templates and your knowledge records into one `.luikplaybook.json` for another Mac, a colleague
+or a team repository; **Import Playbook…** merges one. Engagement data, usage counts and
+credentials never leave with it.
+
 ### The current target
 
 The top bar shows the host you are working on — `$RHOST[:$RPORT]` from the One-liners variables —

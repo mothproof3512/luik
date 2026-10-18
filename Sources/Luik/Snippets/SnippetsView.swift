@@ -78,6 +78,52 @@ struct SnippetsView: View {
                 let searching = !store.search.trimmingCharacters(in: .whitespaces).isEmpty
                 let categories = store.filteredCategories
                 List {
+                    if !searching {
+                        let frequent = UsageStore.shared.mostUsed(from: store.snippets)
+                        if !frequent.isEmpty {
+                            Section("Most used") {
+                                ForEach(frequent) { snippet in
+                                    HStack(spacing: 8) {
+                                        Text(snippet.title)
+                                            .lineLimit(1)
+                                        Text("\(UsageStore.shared.usage(of: snippet.id)?.count ?? 0)×")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .monospacedDigit()
+                                        Spacer()
+                                        Text(store.resolve(snippet.command))
+                                            .font(.system(.caption, design: .monospaced))
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                            .truncationMode(.middle)
+                                            .frame(maxWidth: 360, alignment: .trailing)
+                                        Button {
+                                            store.copyToClipboard(snippet)
+                                            flashCopied(snippet.id)
+                                            UsageStore.shared.recordSnippet(snippet.id, service: currentService)
+                                        } label: {
+                                            Image(systemName: copiedID == snippet.id ? "checkmark" : "doc.on.doc")
+                                        }
+                                        .buttonStyle(.plain)
+                                        .help("Copy")
+                                        Button {
+                                            terminals.sendToSelected(store.resolve(snippet.command), source: "One-liners")
+                                            UsageStore.shared.recordSnippet(snippet.id, service: currentService)
+                                            ui.module = .terminal
+                                            terminals.focusSelected(afterDelay: true)
+                                        } label: {
+                                            Image(systemName: "terminal")
+                                        }
+                                        .buttonStyle(.plain)
+                                        .help("Paste into the active terminal")
+                                    }
+                                    .contextMenu {
+                                        Button("Edit…") { editing = snippet }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     ForEach(categories, id: \.self) { category in
                         Section {
                             ForEach(store.filtered.filter { $0.category == category }) { snippet in
@@ -86,14 +132,17 @@ struct SnippetsView: View {
                                            copyAll: {
                                                store.copyToClipboard(snippet)
                                                flashCopied(snippet.id)
+                                               UsageStore.shared.recordSnippet(snippet.id, service: currentService)
                                            },
                                            copyStep: { step in
                                                store.copyToClipboard(text: store.resolve(step.command))
                                                flashCopied(step.id)
+                                               UsageStore.shared.recordSnippet(snippet.id, service: currentService)
                                            },
                                            stepCopied: { step in copiedID == step.id },
                                            paste: { step in
                                                terminals.sendToSelected(store.resolve(step.command), source: "One-liners")
+                                               UsageStore.shared.recordSnippet(snippet.id, service: currentService)
                                                ui.module = .terminal
                                                terminals.focusSelected(afterDelay: true)
                                            },
@@ -165,6 +214,12 @@ struct SnippetsView: View {
         guard let pending = ui.pendingSnippet else { return }
         ui.pendingSnippet = nil
         editing = pending
+    }
+
+    /// Service of the selected port in Targets (what a use is counted against).
+    private var currentService: String {
+        guard let node = TargetStore.shared.selectedNode, node.kind == .port else { return "" }
+        return TargetStore.serviceName(of: node)
     }
 
     /// "$NAME = [field]" with autosave.

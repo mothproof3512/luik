@@ -374,6 +374,14 @@ struct ChecklistItemRow: View {
                     .lineLimit(1...4)
             }
             Spacer()
+            let counts = UsageStore.shared.checklistTotals(itemTitle: item.title)
+            if counts.done + counts.skipped > 0 {
+                Text("\(counts.done)× done\(counts.skipped > 0 ? " · \(counts.skipped)× n/a" : "")")
+                    .font(.caption2)
+                    .foregroundStyle(counts.skipped > counts.done ? Color.orange : Color.secondary)
+                    .monospacedDigit()
+                    .help("How often this item was marked done or not applicable on ports (all engagements). Items that are mostly n/a may not belong in the template.")
+            }
             Button(action: moveUp) { Image(systemName: "chevron.up") }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
