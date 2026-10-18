@@ -151,6 +151,9 @@ struct RootView: View {
         .sheet(isPresented: $ui.showWelcome) {
             WelcomeView()
         }
+        .sheet(isPresented: $ui.showCloseOut) {
+            CloseOutView()
+        }
         .sheet(isPresented: $checklists.showEditor) {
             ChecklistEditorView()
         }

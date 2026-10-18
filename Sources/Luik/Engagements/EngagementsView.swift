@@ -23,6 +23,7 @@ struct EngagementMenu: View {
                 Divider()
                 Button("New engagement…") { showNew = true }
                 Button("Manage engagements…") { store.showManager = true }
+                Button("Close-out export…") { UIState.shared.showCloseOut = true }
             } label: {
                 Label(shortName(store.current.displayName), systemImage: "briefcase")
             }

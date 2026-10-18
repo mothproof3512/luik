@@ -368,6 +368,14 @@ gateway, and the hosts in a grid inside their zone — kind guessed from the ope
 in the notes. *Add missing hosts to this diagram* keeps the old behaviour of adding nodes to the
 current drawing. Rearrange, rename zones, export.
 
+### Close-out
+
+When the engagement ends, *Close-out export…* (engagement menu, Tools menu, ⌘K) writes
+everything into one folder and a zip: a README with scope and counts, `findings.md` /
+`findings.html`, `targets.md`, `hosts/` with a dossier per host, `plans/`, `activity-log.md`
+with the captured outputs, `notes/`, `diagrams/` (PNG + JSON), `evidence/` and `data/` with the
+raw JSON. Tick what goes in; nothing is removed from Luik.
+
 ### First start and updates
 
 The first start shows a welcome sheet with the four steps that make Luik useful on a new Mac

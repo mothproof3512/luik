@@ -195,6 +195,9 @@ struct CommandPalette: View {
                 ui.module = .plan
                 PlanStore.shared.showTemplateEditor = true
             },
+            PaletteItem(id: "closeout", icon: "archivebox", title: "Close-out export", subtitle: "the whole engagement into one folder and zip: report material, host dossiers, plans, log, notes, diagrams, evidence, raw data", group: "Actions") {
+                ui.showCloseOut = true
+            },
             PaletteItem(id: "welcome", icon: "hand.wave", title: "Welcome to Luik", subtitle: "knowledge base, documentation, shell integration, engagement — the four first steps", group: "Actions") {
                 ui.showWelcome = true
             },

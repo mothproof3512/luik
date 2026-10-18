@@ -116,6 +116,8 @@ final class UIState {
     var showReverseShell = false
     /// A one-liner handed to the One-liners tab to open in its editor (from the Log, …).
     var pendingSnippet: Snippet?
+    /// Close-out export sheet.
+    var showCloseOut = false
     /// First-start welcome sheet (Help › Welcome to Luik…).
     var showWelcome = false
     /// Playbook export / import sheet.

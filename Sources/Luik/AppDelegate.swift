@@ -327,6 +327,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         toolsMenu.addItem(.separator())
         toolsMenu.addItem(NSMenuItem(title: "New Finding", action: #selector(newFinding), keyEquivalent: "n"))
         toolsMenu.addItem(NSMenuItem(title: "Manage Engagements…", action: #selector(manageEngagements), keyEquivalent: ""))
+        toolsMenu.addItem(NSMenuItem(title: "Close-out Export…", action: #selector(showCloseOut), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Edit Checklists…", action: #selector(editChecklists), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Download Knowledge Base…", action: #selector(downloadKnowledgeBase), keyEquivalent: ""))
         toolsMenu.addItem(NSMenuItem(title: "Download Documentation (Library)…", action: #selector(downloadDocumentation), keyEquivalent: ""))
@@ -484,6 +485,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func showWelcome() { UIState.shared.showWelcome = true }
+    @objc private func showCloseOut() { UIState.shared.showCloseOut = true }
     @objc private func checkUpdatesNow() {
         ContentUpdates.shared.checkNow(includeApp: true)
         UIState.shared.flash("Checking GitHub for updates…")

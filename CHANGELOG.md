@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.41.0
+- **Close-out export** (engagement menu, Tools › Close-out Export…, ⌘K): the whole engagement into one folder and zip — README with scope and counts, findings report (Markdown + HTML), targets overview, a dossier per host, plans, the activity log with captured outputs, notes, diagrams (PNG + JSON), evidence files (including images linked from elsewhere) and the raw JSON. Tick what goes in; nothing is removed from Luik.
+
 ## 0.40.0
 - **Six more plan templates**: API assessment (discovery, authentication, object/function/property-level authorisation, input and logic, infrastructure), Cloud configuration review (inventory, identity, network and compute, data, logging), Wireless assessment, Mobile application assessment (static, local data, network and backend, platform interaction), Phishing and awareness campaign (agreements, waves, measurement) and Retest (original findings imported, verification per finding, retest table). Each with its own fill-in fields; titles and hints only, like the existing ones.
 
