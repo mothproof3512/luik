@@ -91,8 +91,11 @@ struct DiagramNodeView: View {
         .padding(.horizontal, 10 * zoom)
         .frame(width: DiagramMetrics.nodeWidth * zoom, height: DiagramMetrics.nodeHeight * zoom)
         .background(
+            // Shadow on the shape only: shadowing the whole card (text included) renders the view
+            // offscreen and blurs it on every move, which is what made dragging stutter.
             RoundedRectangle(cornerRadius: 12 * zoom, style: .continuous)
                 .fill(palette.card)
+                .shadow(color: .black.opacity(0.3), radius: 5 * zoom, y: 2 * zoom)
         )
         .overlay(alignment: .leading) {
             // A thin bar in the kind's colour on the left edge.
@@ -105,7 +108,6 @@ struct DiagramNodeView: View {
                 .strokeBorder(selected || highlighted ? palette.accent : palette.cardBorder, lineWidth: selected ? 2 : (highlighted ? 2 : 1))
         )
         .clipShape(RoundedRectangle(cornerRadius: 12 * zoom, style: .continuous))
-        .shadow(color: .black.opacity(0.28), radius: 7 * zoom, y: 3 * zoom)
     }
 }
 

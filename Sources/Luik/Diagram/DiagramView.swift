@@ -379,9 +379,9 @@ struct DiagramCanvas: View {
         var translation: CGSize = .zero
         var started = false
 
-        /// Snapped offset in diagram units.
+        /// Offset in diagram units — unsnapped while dragging (smooth), snapped on release.
         func offset(zoom: CGFloat) -> CGSize {
-            CGSize(width: DiagramMetrics.snap(Double(translation.width / zoom)), height: DiagramMetrics.snap(Double(translation.height / zoom)))
+            CGSize(width: Double(translation.width / zoom), height: Double(translation.height / zoom))
         }
     }
 
@@ -429,7 +429,6 @@ struct DiagramCanvas: View {
                 }
                 .frame(width: width, height: height)
                 .coordinateSpace(name: "diagram")
-                .transaction { $0.animation = nil }
             }
             .onAppear { store.viewportSize = proxy.size }
             .onChange(of: proxy.size) { _, size in store.viewportSize = size }
@@ -468,21 +467,28 @@ struct DiagramCanvas: View {
     /// Writes the drag to the model (one undo step) and clears it.
     private func commitDrag() {
         guard let drag = liveDrag else { return }
-        liveDrag = nil
-        frozenCanvas = nil
-        let offset = drag.offset(zoom: zoom)
-        guard offset != .zero, let current = store.current else { return }
-        store.checkpoint()
-        if let zoneID = drag.zone, let zone = current.zones.first(where: { $0.id == zoneID }) {
-            var starts: [UUID: CGPoint] = [:]
-            for node in current.nodes where drag.nodes.contains(node.id) { starts[node.id] = CGPoint(x: node.x, y: node.y) }
-            store.moveZone(zoneID, to: CGPoint(x: zone.x + offset.width, y: zone.y + offset.height), carrying: starts, zoneStart: CGPoint(x: zone.x, y: zone.y))
-        } else {
-            for node in current.nodes where drag.nodes.contains(node.id) {
-                store.moveNode(node.id, to: CGPoint(x: node.x + offset.width, y: node.y + offset.height))
-                store.snapNode(node.id)
-            }
+        let raw = drag.offset(zoom: zoom)
+        guard let current = store.current, abs(raw.width) + abs(raw.height) > 0.5 else {
+            liveDrag = nil
+            frozenCanvas = nil
+            return
         }
+        store.checkpoint()
+        // The last few points to the grid are animated, so the snap reads as settling, not jumping.
+        withAnimation(.easeOut(duration: 0.12)) {
+            if let zoneID = drag.zone, let zone = current.zones.first(where: { $0.id == zoneID }) {
+                let target = CGPoint(x: DiagramMetrics.snap(zone.x + raw.width), y: DiagramMetrics.snap(zone.y + raw.height))
+                var starts: [UUID: CGPoint] = [:]
+                for node in current.nodes where drag.nodes.contains(node.id) { starts[node.id] = CGPoint(x: node.x, y: node.y) }
+                store.moveZone(zoneID, to: target, carrying: starts, zoneStart: CGPoint(x: zone.x, y: zone.y))
+            } else {
+                for node in current.nodes where drag.nodes.contains(node.id) {
+                    store.moveNode(node.id, to: CGPoint(x: DiagramMetrics.snap(node.x + raw.width), y: DiagramMetrics.snap(node.y + raw.height)))
+                }
+            }
+            liveDrag = nil
+        }
+        frozenCanvas = nil
     }
 
     // MARK: Layers
@@ -581,7 +587,6 @@ struct DiagramCanvas: View {
         let selected = store.selection == .node(node.id)
         let highlighted = store.connectFrom == node.id || hoverTarget == node.id
         return DiagramNodeView(node: node, zoom: zoom, palette: palette, selected: selected, highlighted: highlighted)
-            .help(node.notes.isEmpty ? "" : node.notes)
             .onTapGesture {
                 if store.connectMode {
                     store.connectModeTap(node.id)

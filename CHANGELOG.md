@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.31.3
+- Diagram: dragging follows the mouse without grid steps and settles onto the grid with a short animation on release; the card shadow is drawn on the shape instead of the whole card (no offscreen blur per move); node tooltips removed from the canvas (notes stay in the inspector).
+
 ## 0.31.2
 - Diagram: smoother dragging of nodes and zones — the move is drawn as a live offset (snapped to the grid) and written to the model once on release, so the canvas no longer rebuilds and resizes on every mouse move; one undo step per drag; links and handles follow the dragged item.
 

@@ -2,7 +2,7 @@ import Foundation
 
 /// Version and repository, used by the settings footer, the update check and build.sh.
 enum AppInfo {
-    static let version = "0.31.2"
+    static let version = "0.31.3"
     static let repository = "mothproof3512/luik"
 }
 
