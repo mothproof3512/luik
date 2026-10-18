@@ -142,6 +142,7 @@ final class EngagementStore {
         PlanStore.shared.reload()
         CanaryStore.shared.reload()
         ActivityLog.shared.reload()
+        CommandOutputStore.shared.reload()
         ActivityLog.shared.record(.action, "Switched to engagement “\(current.displayName)”", source: "Engagements")
     }
 

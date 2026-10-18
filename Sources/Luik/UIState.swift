@@ -116,6 +116,19 @@ final class UIState {
     var showReverseShell = false
     /// A one-liner handed to the One-liners tab to open in its editor (from the Log, …).
     var pendingSnippet: Snippet?
+    /// Short confirmation shown at the bottom of the panel for a moment ("Pinned to finding …").
+    var flashMessage: String?
+    @ObservationIgnored private var flashToken = 0
+
+    func flash(_ message: String, seconds: Double = 2.2) {
+        flashToken += 1
+        let token = flashToken
+        flashMessage = message
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
+            guard let self, self.flashToken == token else { return }
+            self.flashMessage = nil
+        }
+    }
     /// The tabs of the top bar, in order (drag a tab to change it); ⌘1–9 follow this order.
     var tabOrder: [Module] = []
     /// The modules in the Tools tab's sidebar, in order.

@@ -171,8 +171,13 @@ struct ActivityRow: View {
     let copy: () -> Void
     let delete: () -> Void
     @Environment(UIState.self) private var ui
+    @State private var showOutput = false
+    @State private var fullOutput = false
 
     private var isCommand: Bool { entry.kind == .command || entry.kind == .typed }
+    private var output: CommandOutput? { CommandOutputStore.shared.record(id: entry.outputID) }
+
+    private static let previewLines = 60
 
     /// Hands the command to the One-liners editor, with the current $RHOST/$RPORT/$LHOST/$LPORT
     /// values turned back into placeholders so the one-liner works on the next target.
@@ -212,11 +217,54 @@ struct ActivityRow: View {
                         .font(.callout)
                         .textSelection(.enabled)
                 }
-                Text("\(entry.kind.label) · \(entry.source)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    Text("\(entry.kind.label) · \(entry.source)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    if let output {
+                        Button {
+                            showOutput.toggle()
+                        } label: {
+                            Label("Output · \(output.lines) line\(output.lines == 1 ? "" : "s")", systemImage: showOutput ? "chevron.down" : "chevron.right")
+                                .font(.caption2)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        if let format = output.format {
+                            Text(output.imported ? "\(format.shortName) · imported" : format.shortName)
+                                .font(.caption2.weight(.semibold))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background((output.imported ? Color.green : Color.orange).opacity(0.25), in: Capsule())
+                        }
+                    }
+                }
+                if showOutput, let output {
+                    outputView(output)
+                }
             }
             Spacer()
+            if let output {
+                Menu {
+                    pinMenu(output)
+                } label: {
+                    Image(systemName: "pin")
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .foregroundStyle(.secondary)
+                .help("Pin the command and its output as evidence")
+                if let format = output.format {
+                    Button {
+                        importScan(output, format: format)
+                    } label: {
+                        Image(systemName: output.imported ? "checkmark.circle" : "square.and.arrow.down.on.square")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(output.imported ? Color.green : Color.orange)
+                    .help(output.imported ? "\(format.shortName) output was imported into Targets (click to import again)" : "Import this \(format.shortName) output into Targets")
+                }
+            }
             if isCommand {
                 Button(action: saveAsOneLiner) {
                     Image(systemName: "bookmark")
@@ -243,8 +291,59 @@ struct ActivityRow: View {
             if isCommand {
                 Button("Save as one-liner…") { saveAsOneLiner() }
             }
+            if let output {
+                Menu("Pin as evidence") { pinMenu(output) }
+                Button("Copy output") { ActivityLog.shared.copy(CommandOutputStore.shared.text(of: output)) }
+                Button("Copy command and output as Markdown") {
+                    ActivityLog.shared.copy(EvidencePin.markdown(command: output.command, output: CommandOutputStore.shared.text(of: output), time: output.time, source: output.source))
+                }
+                if let format = output.format {
+                    Button("Import \(format.shortName) output into Targets") { importScan(output, format: format) }
+                }
+                Button("Show output file in Finder") {
+                    NSWorkspace.shared.activateFileViewerSelecting([CommandOutputStore.shared.fileURL(of: output)])
+                }
+            }
             Button("Copy") { copy() }
             Button("Delete", role: .destructive) { delete() }
         }
+    }
+
+    @ViewBuilder
+    private func pinMenu(_ output: CommandOutput) -> some View {
+        ForEach(EvidencePin.availableDestinations, id: \.self) { destination in
+            Button(EvidencePin.label(for: destination)) {
+                let message = EvidencePin.pin(command: output.command, output: CommandOutputStore.shared.text(of: output), time: output.time, source: output.source, to: destination)
+                ui.flash(message)
+            }
+        }
+    }
+
+    private func importScan(_ output: CommandOutput, format: ScanFormat) {
+        let result = TargetStore.shared.importScan(CommandOutputStore.shared.text(of: output), options: ScanImportOptions())
+        CommandOutputStore.shared.markImported(output.id)
+        ui.flash("\(format.shortName): \(result.summary)")
+    }
+
+    private func outputView(_ output: CommandOutput) -> some View {
+        let text = CommandOutputStore.shared.text(of: output)
+        let lines = text.components(separatedBy: "\n")
+        let shown = fullOutput || lines.count <= ActivityRow.previewLines ? text : lines.prefix(ActivityRow.previewLines).joined(separator: "\n")
+        return VStack(alignment: .leading, spacing: 4) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                Text(shown)
+                    .font(.system(.caption, design: .monospaced))
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: true, vertical: true)
+            }
+            .padding(6)
+            .background(Color.black.opacity(0.3), in: RoundedRectangle(cornerRadius: 6))
+            if lines.count > ActivityRow.previewLines {
+                Button(fullOutput ? "Show the first \(ActivityRow.previewLines) lines" : "Show all \(lines.count) lines") { fullOutput.toggle() }
+                    .buttonStyle(.link)
+                    .font(.caption)
+            }
+        }
+        .padding(.top, 4)
     }
 }

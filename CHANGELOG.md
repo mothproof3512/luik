@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.33.0
+- **The terminal keeps what every command printed.** The output of each logged command (typed, or pasted by Luik) is captured when the shell is back at its prompt and stored next to its Log entry (per engagement, `outputs/`, last 1500 commands, 1 MB each; passwords and full-screen programs are excluded like before). The Log shows an *Output · n lines* chevron per command with a monospaced preview, Copy output, Copy as Markdown and Show in Finder.
+- **Pin as evidence**: command + output + time go as a Markdown block into the selected finding's Evidence, the selected target node's notes, or a new note — from the pin button on a Log row, or **⌘⇧P** in the terminal for the last command (destination picked in that order). A short confirmation appears at the bottom of the panel.
+- **Scanner output flows into Targets by itself**: nmap (normal / -oG / -oX), nuclei (console lines or JSON) and masscan output recognised in captured output is imported as soon as the prompt returns (same merge as a manual import; off in Settings › Logging, then the Log offers an Import button). nuclei's console output is now a supported import format everywhere.
+- Log export can include the outputs; Settings › Logging has the two new toggles.
+
 ## 0.32.0
 - **Diagram cards grow with their label**: the full name is always visible (width from 160 up to 360 units, snapped to the grid); links, hit-testing, selection handles, bounds and the SVG / draw.io / PNG exports follow the real width.
 - **Show: Addresses / Notes / Kinds** (status bar, remembered): the second line of every card is the address, the first line of the node's notes, or the kind — the network map's "Open: 22/tcp ssh, 80/tcp http" notes can now be read on the canvas.

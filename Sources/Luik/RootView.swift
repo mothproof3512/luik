@@ -116,6 +116,20 @@ struct RootView: View {
         }
         // Rounding/clipping happens at the AppKit level (DropdownController), so the
         // terminal view joins in and the corner radius is adjustable.
+        .overlay(alignment: .bottom) {
+            if let message = ui.flashMessage {
+                Text(message)
+                    .font(.callout)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(.regularMaterial, in: Capsule())
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.15)))
+                    .padding(.bottom, 18)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .allowsHitTesting(false)
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: ui.flashMessage)
         .overlay(alignment: .top) {
             if ui.showPalette {
                 ZStack(alignment: .top) {
@@ -336,6 +350,8 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.showOnLaunch) private var showOnLaunch = true
     @AppStorage(SettingsKey.hotKeyPauseApps) private var hotKeyPauseApps = ""
     @AppStorage(SettingsKey.logTypedCommands) private var logTypedCommands = true
+    @AppStorage(SettingsKey.captureOutput) private var captureOutput = true
+    @AppStorage(SettingsKey.autoImportScans) private var autoImportScans = true
     @AppStorage(SettingsKey.evidenceFolder) private var evidenceFolder = ""
     @AppStorage(SettingsKey.hideWhileCapturing) private var hideWhileCapturing = true
     @AppStorage(SettingsKey.checkForUpdates) private var checkForUpdates = true
@@ -588,6 +604,11 @@ struct SettingsView: View {
 
             Toggle("Log typed commands to the Log tab", isOn: $logTypedCommands)
             caption("Every command you run in a Luik terminal tab is recorded with a timestamp — also inside ssh sessions, after tab completion and from history, because Luik reads the command from the screen when you press Enter. Anything that does not appear on screen (passwords for sudo, ssh, su, mysql -p, …) is never recorded; full-screen programs such as vim, less and htop are ignored. Commands pasted from One-liners or Searchsploit are always logged.")
+            Toggle("Keep the output of every command", isOn: $captureOutput)
+            caption("What a logged command printed is kept next to its Log entry (per engagement, in outputs/, last 1500 commands, 1 MB each). Expand it in the Log, pin command + output as evidence to the selected finding, target or a note (⌘⇧P in the terminal for the last command), or import recognised scanner output into Targets.")
+            Toggle("Import nmap / nuclei / masscan output into Targets automatically", isOn: $autoImportScans)
+                .disabled(!captureOutput)
+            caption("When a command's output looks like a scan (nmap normal/-oG/-oX, nuclei console or JSON, masscan), the hosts, ports and findings go into Targets as soon as the prompt returns — the same import as pasting it by hand, so nothing is duplicated. Off: the Log shows an Import button instead.")
             Spacer(minLength: 0)
         }
         .padding(12)

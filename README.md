@@ -364,6 +364,22 @@ gateway, and the hosts in a grid inside their zone — kind guessed from the ope
 in the notes. *Add missing hosts to this diagram* keeps the old behaviour of adding nodes to the
 current drawing. Rearrange, rename zones, export.
 
+### Command output, evidence and automatic imports
+
+Luik already reads the command you run from the screen when you press Enter; since 0.33 it also
+keeps **what the command printed** (until the next prompt) next to that Log entry — per
+engagement, in `outputs/`, the last 1500 commands, 1 MB each. What never reaches the screen
+(passwords) or lives in the alternate screen (vim, less, htop) is never captured. In the Log,
+*Output · n lines* folds the text open; the pin button (or **⌘⇧P** in the terminal for the last
+command) puts command + output + time as a Markdown block into the selected finding's Evidence,
+the selected target's notes or a new note. A finding thus carries the exact command, its output
+and the moment — reproducible without copy-and-paste.
+
+When the output looks like a scan — nmap (normal, -oG, -oX), nuclei (console lines or JSON),
+masscan — its hosts, ports and findings go into Targets automatically when the prompt returns,
+through the same merge as a manual import (Settings › Logging switches it off; the Log then shows
+an Import button and a badge with the format).
+
 ### Log → one-liner
 
 A command in the Log (pasted by Luik or typed in a Luik terminal) that turned out to be worth

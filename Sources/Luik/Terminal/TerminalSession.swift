@@ -28,8 +28,14 @@ struct TerminalViewRepresentable: NSViewRepresentable {
 final class LoggingTerminalView: LocalProcessTerminalView {
     /// Called on the main thread with every command the user ran.
     var onTypedLine: ((String) -> Void)?
+    /// Called on the main thread with what the previous command printed, once the next command
+    /// line begins (the shell is back at its prompt).
+    var onCommandOutput: ((String) -> Void)?
     /// Set by TerminalSession around text Luik sends itself (one-liners, connections).
     var programmaticInput = false
+
+    /// Screen row where the output of the last command starts; nil when no command is pending.
+    private var outputStartRow: Int?
 
     private var lineActive = false
     private var startRow = 0
@@ -53,6 +59,8 @@ final class LoggingTerminalView: LocalProcessTerminalView {
                 // Luik ran the command itself; it is already in the log as "Command".
                 lineActive = false
                 lastProgrammaticText = ""
+                closeOutput()
+                outputStartRow = getTerminal().cursorScrollInvariantRow + 1
             } else {
                 // Pasted for editing: the line starts here, with the prompt as it is right now.
                 if !lineActive { beginLine() }
@@ -99,6 +107,48 @@ final class LoggingTerminalView: LocalProcessTerminalView {
         inEscape = false
         startRow = terminal.cursorScrollInvariantRow
         promptPrefix = terminal.scrollInvariantLineText(row: startRow, endCol: terminal.cursorColumn) ?? ""
+        closeOutput()
+    }
+
+    /// Hands the rows between the last command and the current prompt to `onCommandOutput`.
+    private func closeOutput() {
+        guard let start = outputStartRow else { return }
+        outputStartRow = nil
+        let terminal = getTerminal()
+        guard !terminal.isCurrentBufferAlternate else { return }
+        let end = terminal.cursorScrollInvariantRow - 1   // the prompt row itself is not output
+        guard end >= start else { return }
+        let text = LoggingTerminalView.rows(start...end, in: terminal)
+        onCommandOutput?(text)
+    }
+
+    /// Output of the running / last command so far (for "pin now", before the next prompt).
+    func currentOutput() -> String? {
+        guard let start = outputStartRow else { return nil }
+        let terminal = getTerminal()
+        guard !terminal.isCurrentBufferAlternate else { return nil }
+        let end = lineActive ? startRow - 1 : terminal.cursorScrollInvariantRow
+        guard end >= start else { return nil }
+        return LoggingTerminalView.rows(start...end, in: terminal)
+    }
+
+    /// Text of scroll-invariant rows, soft-wrapped rows joined. Rows that left the scrollback are skipped.
+    static func rows(_ range: ClosedRange<Int>, in terminal: Terminal) -> String {
+        var lines: [String] = []
+        var current = ""
+        var continuing = false
+        for row in range {
+            guard let text = terminal.scrollInvariantLineText(row: row, trimRight: !terminal.scrollInvariantLineIsWrapped(row: row + 1)) else { continue }
+            if continuing {
+                current += text
+            } else {
+                if !current.isEmpty || !lines.isEmpty { lines.append(current) }
+                current = text
+            }
+            continuing = terminal.scrollInvariantLineIsWrapped(row: row + 1)
+        }
+        lines.append(current)
+        return lines.joined(separator: "\n")
     }
 
     private func finishLine() {
@@ -115,6 +165,9 @@ final class LoggingTerminalView: LocalProcessTerminalView {
         lastProgrammaticText = ""
         // Read the screen a moment later, when the echo of the last keystrokes has arrived
         // (remote shells over ssh answer with a delay).
+        // Whatever follows this row is the command's output, until the next prompt.
+        closeOutput()
+        outputStartRow = end + 1
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
             guard let self, let command = self.command(from: start, to: end, endCol: endCol, prefix: prefix, typed: typed) else { return }
             // Typed, but (almost) nothing of it on screen: a password or other hidden input.
@@ -180,6 +233,10 @@ final class TerminalSession: Identifiable {
     let id = UUID()
     var title: String = "Shell"
     let view: LoggingTerminalView
+    /// Log entry of the command whose output is being collected, and the command itself.
+    @ObservationIgnored var pendingEntryID: UUID?
+    @ObservationIgnored var pendingCommand = ""
+    @ObservationIgnored var pendingTime = Date()
 
     init(shell: String, fontSize: CGFloat, opacity: CGFloat) {
         view = LoggingTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 400))
@@ -189,7 +246,15 @@ final class TerminalSession: Identifiable {
         view.processDelegate = self
         view.onTypedLine = { [weak self] line in
             guard let self, UserDefaults.standard.bool(forKey: SettingsKey.logTypedCommands) else { return }
-            ActivityLog.shared.record(.typed, line, source: "Terminal: \(self.title)")
+            self.pendingEntryID = ActivityLog.shared.record(.typed, line, source: "Terminal: \(self.title)")
+            self.pendingCommand = line
+            self.pendingTime = Date()
+        }
+        view.onCommandOutput = { [weak self] output in
+            guard let self, UserDefaults.standard.bool(forKey: SettingsKey.captureOutput) else { return }
+            guard let entryID = self.pendingEntryID else { return }
+            self.pendingEntryID = nil
+            CommandOutputStore.shared.store(output, for: entryID, command: self.pendingCommand, source: "Terminal: \(self.title)")
         }
 
         var environment = ProcessInfo.processInfo.environment
@@ -229,11 +294,31 @@ final class TerminalSession: Identifiable {
         view.terminate()
     }
 
-    /// Text Luik sends itself (one-liners, Searchsploit commands, connections).
-    func send(_ text: String) {
+    /// Text Luik sends itself (one-liners, Searchsploit commands, connections). `entryID` is the
+    /// Log entry of that command, so its output can be attached.
+    func send(_ text: String, entryID: UUID? = nil) {
         view.programmaticInput = true
-        view.send(txt: text)
+        view.send(txt: text)   // closes the previous command's output first (synchronously)
         view.programmaticInput = false
+        if text.contains("\n") || text.contains("\r") {
+            pendingEntryID = entryID
+            pendingCommand = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            pendingTime = Date()
+        }
+    }
+
+    /// The last command and what it printed so far (or the complete output once it is stored).
+    var lastCommandOutput: (command: String, output: String, time: Date)? {
+        if let live = view.currentOutput(), !pendingCommand.isEmpty {
+            return (pendingCommand, CommandOutputStore.clean(live), pendingTime)
+        }
+        if !pendingCommand.isEmpty, let entryID = pendingEntryID, let record = CommandOutputStore.shared.record(forEntry: entryID) {
+            return (record.command, CommandOutputStore.shared.text(of: record), record.time)
+        }
+        if let record = CommandOutputStore.shared.records.last(where: { $0.source.hasSuffix("Terminal: \(title)") }) {
+            return (record.command, CommandOutputStore.shared.text(of: record), record.time)
+        }
+        return nil
     }
 
     func focus() {
@@ -356,8 +441,8 @@ final class TerminalStore {
     /// `source` names the tab it came from, for the activity log.
     func sendToSelected(_ text: String, source: String = "Luik") {
         guard let session = selected else { return }
-        session.send(text)
-        ActivityLog.shared.record(.command, text, source: "\(source) → Terminal: \(session.title)")
+        let entryID = ActivityLog.shared.record(.command, text, source: "\(source) → Terminal: \(session.title)")
+        session.send(text, entryID: entryID)
     }
 
     func applyAppearance() {

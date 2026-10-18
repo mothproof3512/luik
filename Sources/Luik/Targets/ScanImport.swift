@@ -73,6 +73,7 @@ enum ScanImport {
         if trimmed.contains("<NessusClientData") { return .nessus }
         if trimmed.contains("<nmaprun") || trimmed.contains("Nmap scan report") || NmapParser.isGrepable(trimmed) { return .nmap }
         if trimmed.contains("\"template-id\"") || trimmed.contains("\"templateID\"") || trimmed.contains("\"matched-at\"") { return .nuclei }
+        if nucleiLine.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..., in: trimmed)) != nil { return .nuclei }
         if (trimmed.hasPrefix("[") || trimmed.hasPrefix("{")) && trimmed.contains("\"ports\"") && trimmed.contains("\"ip\"") { return .masscanJSON }
         if masscanListLine.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..., in: trimmed)) != nil { return .masscanList }
         return .nmap
@@ -131,6 +132,10 @@ enum ScanImport {
         }
 
         var result = ScanParseResult(format: .nuclei)
+        if objects.isEmpty {
+            // The terminal output: "[2026-10-18 14:02:11] [template-id:matcher] [http] [medium] https://host/path [extracted]"
+            objects = nucleiCLIObjects(trimmed)
+        }
         for object in objects {
             let templateID = (object["template-id"] as? String) ?? (object["templateID"] as? String) ?? "unknown"
             let info = object["info"] as? [String: Any] ?? [:]
@@ -182,6 +187,38 @@ enum ScanImport {
         return result
     }
 
+    /// One line of nuclei's console output (with or without the timestamp and colour codes).
+    static let nucleiLine = try! NSRegularExpression(pattern: #"(?m)^(?:\[[\d:\-T. ]+\]\s*)?\[([A-Za-z0-9_.\-]+)(?::([A-Za-z0-9_.\-]+))?\]\s+\[([a-z]+)\]\s+\[(info|low|medium|high|critical|unknown)\]\s+(\S+)(?:\s+\[(.*)\])?\s*$"#)
+
+    /// Console lines → the same dictionaries the JSON output would give.
+    static func nucleiCLIObjects(_ text: String) -> [[String: Any]] {
+        let stripped = text.replacingOccurrences(of: #"\x{1B}\[[0-9;]*m"#, with: "", options: .regularExpression)
+        var objects: [[String: Any]] = []
+        for match in nucleiLine.matches(in: stripped, range: NSRange(stripped.startIndex..., in: stripped)) {
+            func group(_ index: Int) -> String {
+                guard let range = Range(match.range(at: index), in: stripped) else { return "" }
+                return String(stripped[range])
+            }
+            let templateID = group(1)
+            let matcher = group(2)
+            let type = group(3)
+            let severity = group(4)
+            let matchedAt = group(5)
+            let extracted = group(6)
+            var object: [String: Any] = [
+                "template-id": templateID,
+                "type": type,
+                "matched-at": matchedAt,
+                "host": matchedAt,
+                "info": ["name": templateID.replacingOccurrences(of: "-", with: " "), "severity": severity] as [String: Any],
+            ]
+            if !matcher.isEmpty { object["matcher-name"] = matcher }
+            if !extracted.isEmpty { object["extracted-results"] = extracted.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) } }
+            objects.append(object)
+        }
+        return objects
+    }
+
     /// "https://app.example.com:8443/path" → ("app.example.com", 8443); "10.0.0.5:22" → ("10.0.0.5", 22).
     static func hostAndPort(from text: String) -> (String, Int) {
         var value = text.trimmingCharacters(in: .whitespaces)
@@ -227,7 +264,7 @@ enum ScanImport {
 
     // MARK: - masscan
 
-    private static let masscanListLine = try! NSRegularExpression(pattern: #"(?m)^(open|closed|banner)[ \t]+(tcp|udp|sctp|icmp)[ \t]+(\d+)[ \t]+(\S+)(?:[ \t]+(\d+))?(?:[ \t]+(.*))?$"#)
+    static let masscanListLine = try! NSRegularExpression(pattern: #"(?m)^(open|closed|banner)[ \t]+(tcp|udp|sctp|icmp)[ \t]+(\d+)[ \t]+(\S+)(?:[ \t]+(\d+))?(?:[ \t]+(.*))?$"#)
 
     /// -oL: "open tcp 80 10.0.0.1 1700000000" (and "banner tcp 80 10.0.0.1 ts service text").
     static func parseMasscanList(_ text: String) -> [ParsedHost] {

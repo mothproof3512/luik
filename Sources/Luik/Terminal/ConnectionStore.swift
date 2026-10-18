@@ -42,8 +42,8 @@ final class ConnectionStore {
         session.title = connection.name
         let command = SnippetStore.shared.resolve(connection.command)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            session.send(command + "\n")
-            ActivityLog.shared.record(.command, command, source: "Connections → Terminal: \(connection.name)")
+            let entryID = ActivityLog.shared.record(.command, command, source: "Connections → Terminal: \(connection.name)")
+            session.send(command + "\n", entryID: entryID)
         }
     }
 

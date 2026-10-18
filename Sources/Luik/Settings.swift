@@ -2,7 +2,7 @@ import Foundation
 
 /// Version and repository, used by the settings footer, the update check and build.sh.
 enum AppInfo {
-    static let version = "0.32.0"
+    static let version = "0.33.0"
     static let repository = "mothproof3512/luik"
 }
 
@@ -48,6 +48,10 @@ enum SettingsKey {
     static let hotKeyPauseApps = "hotKeyPauseApps"
     /// Record lines typed in Luik's terminal tabs in the activity log.
     static let logTypedCommands = "logTypedCommands"
+    /// Keep what every command printed, next to its Log entry (per engagement).
+    static let captureOutput = "captureOutput"
+    /// Scanner output (nmap, nuclei, masscan) recognised in captured output goes into Targets by itself.
+    static let autoImportScans = "autoImportScans"
     /// Folder for evidence screenshots ("" = ~/Documents/Luik Evidence).
     static let evidenceFolder = "evidenceFolder"
     /// Hide the panel while selecting the screenshot area.
@@ -125,6 +129,8 @@ enum SettingsDefaults {
             SettingsKey.snippetRPort: "",
             SettingsKey.hotKeyPauseApps: "",
             SettingsKey.logTypedCommands: true,
+            SettingsKey.captureOutput: true,
+            SettingsKey.autoImportScans: true,
             SettingsKey.evidenceFolder: "",
             SettingsKey.hideWhileCapturing: true,
             SettingsKey.checkForUpdates: true,

@@ -84,6 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var viewMenu: NSMenu?
 
     func flushAllStores() {
+        CommandOutputStore.shared.flush()
         NotesStore.shared.flush()
         LibraryStore.shared.flush()
         DiagramStore.shared.flush()
@@ -339,6 +340,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let previousItem = NSMenuItem(title: "Previous Tab", action: #selector(previousTerminalTab), keyEquivalent: "[")
         previousItem.keyEquivalentModifierMask = [.command, .shift]
         terminalMenu.addItem(previousItem)
+        terminalMenu.addItem(.separator())
+        let pinItem = NSMenuItem(title: "Pin Last Command Output as Evidence", action: #selector(pinLastOutput), keyEquivalent: "p")
+        pinItem.keyEquivalentModifierMask = [.command, .shift]
+        terminalMenu.addItem(pinItem)
         terminalMenuItem.submenu = terminalMenu
         mainMenu.addItem(terminalMenuItem)
 
@@ -448,6 +453,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let url = URL(string: "https://github.com/\(AppInfo.repository)") {
             NSWorkspace.shared.open(url)
         }
+    }
+
+    /// ⌘⇧P: the last command of the selected terminal tab and what it printed go to the selected
+    /// finding, else the selected target node, else a new note.
+    @objc private func pinLastOutput() {
+        guard let session = TerminalStore.shared.selected, let last = session.lastCommandOutput else {
+            NSSound.beep()
+            return
+        }
+        let destination = EvidencePin.availableDestinations.first ?? .newNote
+        let message = EvidencePin.pin(command: last.command, output: last.output, time: last.time, source: "Terminal: \(session.title)", to: destination)
+        UIState.shared.flash(message)
     }
 
     @objc private func newTerminalTab() {

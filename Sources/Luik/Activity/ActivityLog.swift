@@ -40,6 +40,10 @@ struct ActivityEntry: Identifiable, Codable, Equatable {
     var kind: Kind
     var text: String
     var source: String      // e.g. "One-liners", "Terminal: Shell", "Targets"
+    /// The captured output of this command (CommandOutputStore), when there is one.
+    var outputID: UUID? = nil
+    /// Scanner output recognised in that output (ScanFormat raw value).
+    var scanFormat: String? = nil
 }
 
 /// Timestamped record of what happened during an engagement: commands Luik pasted into the
@@ -100,18 +104,34 @@ final class ActivityLog {
         record(.action, "Logging resumed\(since)", source: "Log")
     }
 
-    func record(_ kind: ActivityEntry.Kind, _ text: String, source: String) {
-        guard !isPaused else { return }
+    /// Returns the new entry's id (nil when paused or empty), so a command's output can be attached later.
+    @discardableResult
+    func record(_ kind: ActivityEntry.Kind, _ text: String, source: String) -> UUID? {
+        guard !isPaused else { return nil }
         let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleaned.isEmpty else { return }
+        guard !cleaned.isEmpty else { return nil }
+        let entry = ActivityEntry(kind: kind, text: cleaned, source: source)
         let work = {
-            self.entries.append(ActivityEntry(kind: kind, text: cleaned, source: source))
+            self.entries.append(entry)
             if self.entries.count > ActivityLog.maxEntries {
                 self.entries.removeFirst(self.entries.count - ActivityLog.maxEntries)
             }
             self.scheduleSave()
         }
         if Thread.isMainThread { work() } else { DispatchQueue.main.async(execute: work) }
+        return entry.id
+    }
+
+    func entry(id: UUID) -> ActivityEntry? {
+        entries.first { $0.id == id }
+    }
+
+    /// Links a captured output to its command entry.
+    func attachOutput(_ outputID: UUID, to entryID: UUID, scanFormat: ScanFormat?) {
+        guard let index = entries.lastIndex(where: { $0.id == entryID }) else { return }
+        entries[index].outputID = outputID
+        entries[index].scanFormat = scanFormat?.rawValue
+        scheduleSave()
     }
 
     func delete(_ entry: ActivityEntry) {
@@ -125,7 +145,7 @@ final class ActivityLog {
     }
 
     /// The log as Markdown (oldest first), optionally only the filtered entries.
-    func markdown(filteredOnly: Bool) -> String {
+    func markdown(filteredOnly: Bool, includeOutput: Bool = false) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         let list = filteredOnly ? Array(filtered.reversed()) : entries
@@ -143,6 +163,9 @@ final class ActivityLog {
             switch entry.kind {
             case .command, .typed:
                 out += "- `\(time)` **\(entry.kind.label)** (\(entry.source))\n\n    ```\n    \(entry.text.replacingOccurrences(of: "\n", with: "\n    "))\n    ```\n\n"
+                if includeOutput, let output = CommandOutputStore.shared.text(ofOutput: entry.outputID), !output.isEmpty {
+                    out += "    Output:\n\n    ```\n    \(output.replacingOccurrences(of: "\n", with: "\n    "))\n    ```\n\n"
+                }
             default:
                 out += "- `\(time)` **\(entry.kind.label)** (\(entry.source)): \(entry.text)\n"
             }
