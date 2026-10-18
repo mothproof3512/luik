@@ -192,6 +192,7 @@ struct ModuleContent: View {
         case .versionCheck: VersionCheckView()
         case .mailSecurity: MailSecurityView()
         case .reachability: CanaryView()
+        case .playbooks: PlaybooksView()
         }
     }
 }

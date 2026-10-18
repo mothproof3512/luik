@@ -407,6 +407,16 @@ and a *Read more* line on port and work-item nodes open the page in the Notes ta
 in turn shows the one-liners that point at it (copy / paste) and the checklist items that link
 to it.
 
+### Playbooks
+
+Tools › **Playbooks** holds eight standard playbooks (external network, internal network and AD,
+web application, API, cloud configuration review, wireless, mobile application, retest). Each is
+a bundle of what Luik already has for that kind of engagement — the plan template, the checklists
+and one-liners of the services that matter, a diagram template, the library pages to read — with
+*Use for this engagement* (plan and diagram created) and *Save as playbook file*. Below them your
+own playbook files (`Playbooks/` in the data folder): saved from Luik, added from a colleague,
+merged with one click.
+
 ### Luik learns, and playbooks travel
 
 Every copy or paste of a one-liner is counted per service (`usage.json`, global). At a port node

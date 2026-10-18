@@ -18,6 +18,7 @@ enum Module: String, CaseIterable, Identifiable {
     case versionCheck
     case mailSecurity
     case reachability
+    case playbooks
 
     var id: String { rawValue }
 
@@ -38,6 +39,7 @@ enum Module: String, CaseIterable, Identifiable {
         case .versionCheck: return "Version check"
         case .mailSecurity: return "Mail security"
         case .reachability: return "Canary"
+        case .playbooks: return "Playbooks"
         }
     }
 
@@ -58,6 +60,7 @@ enum Module: String, CaseIterable, Identifiable {
         case .versionCheck: return "clock.badge.exclamationmark"
         case .mailSecurity: return "envelope.badge.shield.half.filled"
         case .reachability: return "dot.radiowaves.left.and.right"
+        case .playbooks: return "shippingbox"
         }
     }
 }
@@ -81,12 +84,13 @@ extension Module {
         case .versionCheck: return "Is this version current, supported or end of life? endoflife.date cycles and dates, GitHub release notes."
         case .mailSecurity: return "Can this domain be spoofed? MX, SPF (with lookup count), DMARC, DKIM keys, MTA-STS, TLS-RPT — judged and explained."
         case .reachability: return "Am I blocked? Probe in-scope hosts every N minutes; red badge and a Log entry when one stops answering."
+        case .playbooks: return "Standard bundles per kind of engagement (plan, checklists, one-liners, diagram, reading) and your own playbook files."
         }
     }
 
     /// Where a module lives when nothing was changed: the top bar, or the Tools tab's sidebar.
     static let defaultTabs: [Module] = [.terminal, .notes, .snippets, .targets, .findings, .plan, .activity, .tools]
-    static let defaultTools: [Module] = [.knowledgeBase, .exploits, .chef, .diagram, .versionCheck, .mailSecurity, .reachability]
+    static let defaultTools: [Module] = [.knowledgeBase, .exploits, .chef, .diagram, .versionCheck, .mailSecurity, .reachability, .playbooks]
 }
 
 /// Shared UI state (which tab is open, whether settings are visible).

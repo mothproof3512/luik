@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.44.0
+- **Tools › Playbooks** with eight **standard playbooks** — External network, Internal network and AD, Web application, API, Cloud configuration review, Wireless, Mobile application, Retest. A standard playbook is a bundle of what Luik already has for that kind of engagement: the plan template, the checklists and one-liners of the services that matter, a diagram template and the library pages to read. *Use for this engagement* creates the plan (and diagram); *Save as playbook file* writes the bundle as a `.luikplaybook.json`. The tab also lists **your playbooks** (`<data folder>/Playbooks/`): save what you know, add files from colleagues, merge one into Luik, remove.
+
 ## 0.43.0
 - **Demo engagement** (welcome sheet, Help › Create Demo Engagement, ⌘K): a fictional "Example Corp" with three hosts, ports, checklists, two findings with evidence, a note, a plan, a diagram and log lines — documentation address ranges only. Delete it from Manage engagements when done.
 - **Diagram groups**: Add › Groups places a ready-made set as one undo step, with its zone — Active Directory set, web application set, identity set, cloud landing zone, DMZ set.
