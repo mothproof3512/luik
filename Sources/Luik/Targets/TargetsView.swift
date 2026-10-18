@@ -253,6 +253,21 @@ struct NodeDetailView: View {
     @Environment(EngagementStore.self) private var engagements
     @State private var showPortSheet = false
 
+    /// The library page for this node: a task's checklist link, else the service's page.
+    private var readMoreDocument: LibraryDocument? {
+        switch node.kind {
+        case .port:
+            return LibraryLink.document(for: nil, service: TargetStore.serviceName(of: node))
+        case .task:
+            let port = store.parent(of: node.id).flatMap { $0.kind == .port ? $0 : nil }
+            let service = port.map { TargetStore.serviceName(of: $0) }
+            let item = ChecklistStore.shared.item(titled: node.title, service: service, port: port?.portNumber)
+            return LibraryLink.document(for: item, service: service)
+        default:
+            return nil
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
@@ -280,6 +295,9 @@ struct NodeDetailView: View {
                 Label(scope.label, systemImage: scope.symbol)
                     .font(.caption)
                     .foregroundStyle(scope.isProblem ? Color.orange : Color.secondary)
+            }
+            if let document = readMoreDocument {
+                LibraryLinkButton(document: document)
             }
 
             HStack(spacing: 8) {

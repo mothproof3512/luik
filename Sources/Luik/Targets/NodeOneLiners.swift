@@ -148,6 +148,10 @@ struct OneLinersPanel: View {
                     Text(snippet.title)
                         .font(.caption.weight(.semibold))
                         .lineLimit(1)
+                    if let document = LibraryLink.document(for: snippet) {
+                        LibraryLinkButton(document: document, compact: true)
+                            .foregroundStyle(.secondary)
+                    }
                     Text("\(snippet.steps.count) steps")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -169,7 +173,13 @@ struct OneLinersPanel: View {
                         .padding(.leading, 10)
                 }
             } else if let step = snippet.steps.first {
-                commandLine(title: usageTitle(snippet), command: resolve(step.command), id: snippet.id, titleIsSecondary: false)
+                HStack(spacing: 4) {
+                    commandLine(title: usageTitle(snippet), command: resolve(step.command), id: snippet.id, titleIsSecondary: false)
+                    if let document = LibraryLink.document(for: snippet) {
+                        LibraryLinkButton(document: document, compact: true)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
         }
     }

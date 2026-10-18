@@ -300,6 +300,10 @@ struct SnippetRow: View {
                                 .background(Color.white.opacity(0.1), in: Capsule())
                                 .help("Shown in Targets under: \(snippet.servicesText)")
                         }
+                        if let document = LibraryLink.document(for: snippet) {
+                            LibraryLinkButton(document: document, compact: true)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     if !snippet.isMultiStep, let step = snippet.steps.first {
                         Text(store.resolve(step.command))
@@ -439,6 +443,10 @@ struct SnippetEditor: View {
                 .onChange(of: servicesText) { _, text in
                     snippet.services = Snippet.parseServices(text)
                 }
+            Text("Read more — a library page (picked with the book, or a topic such as “SMB”) or a URL; empty = Luik looks for a page named after the service")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            LibraryLinkField(link: $snippet.link)
             HStack {
                 Spacer()
                 Button("Cancel") {

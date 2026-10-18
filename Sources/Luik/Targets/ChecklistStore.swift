@@ -9,20 +9,25 @@ struct ChecklistItem: Identifiable, Codable, Equatable {
     var id = UUID()
     var title: String
     var hint = ""
+    /// Where to read more: a library page (its path or a topic name) or a URL. Empty = Luik looks
+    /// for a page with the service's name.
+    var link = ""
 
-    init(id: UUID = UUID(), title: String, hint: String = "") {
+    init(id: UUID = UUID(), title: String, hint: String = "", link: String = "") {
         self.id = id
         self.title = title
         self.hint = hint
+        self.link = link
     }
 
-    private enum CodingKeys: String, CodingKey { case id, title, hint }
+    private enum CodingKeys: String, CodingKey { case id, title, hint, link }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         title = try c.decode(String.self, forKey: .title)
         hint = try c.decodeIfPresent(String.self, forKey: .hint) ?? ""
+        link = try c.decodeIfPresent(String.self, forKey: .link) ?? ""
     }
 }
 
@@ -369,6 +374,33 @@ final class ChecklistStore {
     }
 
     // MARK: - Hints
+
+    /// The checklist item a task node was made from (matched by title, in the list of its service).
+    func item(titled title: String, service: String?, port: Int?) -> ChecklistItem? {
+        let needle = title.trimmingCharacters(in: .whitespaces).lowercased()
+        let pool: [ChecklistItem]
+        if let service, let port {
+            pool = items(forService: service, port: port)
+        } else {
+            pool = hostItems
+        }
+        if let found = pool.first(where: { $0.title.trimmingCharacters(in: .whitespaces).lowercased() == needle }) { return found }
+        for list in lists.services + [lists.port, lists.host] {
+            if let found = list.items.first(where: { $0.title.trimmingCharacters(in: .whitespaces).lowercased() == needle }) { return found }
+        }
+        return nil
+    }
+
+    /// Items (with their list) whose link points at a library document.
+    func items(linkedTo document: LibraryDocument) -> [(list: Checklist, item: ChecklistItem)] {
+        var result: [(Checklist, ChecklistItem)] = []
+        for list in [lists.host, lists.port] + lists.services {
+            for item in list.items where !item.link.isEmpty && LibraryLink.resolve(item.link)?.id == document.id {
+                result.append((list, item))
+            }
+        }
+        return result
+    }
 
     /// Fills $RHOST / $RPORT / $RURL (and $LHOST / $LPORT when set in One-liners) in a hint.
     static func resolve(_ hint: String, address: String, port: Int?, service: String? = nil) -> String {

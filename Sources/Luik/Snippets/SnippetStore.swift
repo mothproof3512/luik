@@ -35,6 +35,9 @@ struct Snippet: Identifiable, Codable, Equatable, Hashable {
     /// it under matching ports, "port" under every port, "host" under every host. Empty = only in
     /// the One-liners tab.
     var services: [String] = []
+    /// Where to read more: a library page (path or topic) or a URL. Empty = Luik tries the
+    /// services and the title as topics.
+    var link: String = ""
 
     init(id: UUID = UUID(), title: String, command: String, category: String, services: [String] = []) {
         self.id = id
@@ -52,7 +55,7 @@ struct Snippet: Identifiable, Codable, Equatable, Hashable {
         self.services = services
     }
 
-    private enum CodingKeys: String, CodingKey { case id, title, command, steps, category, services }
+    private enum CodingKeys: String, CodingKey { case id, title, command, steps, category, services, link }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -66,6 +69,7 @@ struct Snippet: Identifiable, Codable, Equatable, Hashable {
         }
         category = try c.decodeIfPresent(String.self, forKey: .category) ?? "General"
         services = try c.decodeIfPresent([String].self, forKey: .services) ?? []
+        link = try c.decodeIfPresent(String.self, forKey: .link) ?? ""
     }
 
     /// `command` is written too, so a one-liner file still opens in older versions of Luik.
@@ -77,6 +81,7 @@ struct Snippet: Identifiable, Codable, Equatable, Hashable {
         try c.encode(steps, forKey: .steps)
         try c.encode(category, forKey: .category)
         try c.encode(services, forKey: .services)
+        if !link.isEmpty { try c.encode(link, forKey: .link) }
     }
 
     /// The first (or only) command.

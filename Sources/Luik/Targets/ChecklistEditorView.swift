@@ -372,6 +372,8 @@ struct ChecklistItemRow: View {
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)
                     .lineLimit(1...4)
+                LibraryLinkField(link: $item.link)
+                    .controlSize(.small)
             }
             Spacer()
             let counts = UsageStore.shared.checklistTotals(itemTitle: item.title)

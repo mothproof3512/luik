@@ -364,6 +364,15 @@ gateway, and the hosts in a grid inside their zone — kind guessed from the ope
 in the notes. *Add missing hosts to this diagram* keeps the old behaviour of adding nodes to the
 current drawing. Rearrange, rename zones, export.
 
+### Commands, checklists and pages are one thing
+
+A one-liner and a checklist item can carry a *Read more* link: a library page (picked with the
+book button in the editor, or a topic such as "SMB"), or a URL. Without one, Luik finds the page
+named after the service (microsoft-ds → SMB, ms-wbt-server → RDP, …). Book icons on one-liner rows
+and a *Read more* line on port and work-item nodes open the page in the Notes tab; a library page
+in turn shows the one-liners that point at it (copy / paste) and the checklist items that link
+to it.
+
 ### Luik learns, and playbooks travel
 
 Every copy or paste of a one-liner is counted per service (`usage.json`, global). At a port node

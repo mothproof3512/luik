@@ -419,6 +419,7 @@ struct LibraryDocumentView: View {
                 .foregroundStyle(.secondary)
                 .help("Show the file in Finder")
             }
+            RelatedToDocumentBar(document: document)
             if mode == .edit {
                 TextEditor(text: $text)
                     .font(.system(.body, design: .monospaced))
@@ -554,5 +555,79 @@ struct LibraryImageView: View {
         if zoom > 0 { return CGSize(width: size.width * zoom, height: size.height * zoom) }
         let scale = min((available.width - 16) / size.width, (available.height - 16) / size.height, 1)
         return CGSize(width: size.width * scale, height: size.height * scale)
+    }
+}
+
+
+/// On a library page: the one-liners and checklist items that point here, so the page, the
+/// commands and the work items are one thing.
+struct RelatedToDocumentBar: View {
+    let document: LibraryDocument
+    @Environment(SnippetStore.self) private var snippets
+    @Environment(TerminalStore.self) private var terminals
+    @Environment(UIState.self) private var ui
+    @State private var copiedID: UUID?
+
+    var body: some View {
+        let related = LibraryLink.snippets(for: document)
+        let items = ChecklistStore.shared.items(linkedTo: document)
+        if !related.isEmpty || !items.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                if !related.isEmpty {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Label("One-liners", systemImage: "terminal")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 6) {
+                                ForEach(related) { snippet in
+                                    HStack(spacing: 3) {
+                                        Text(snippet.title)
+                                            .font(.caption)
+                                            .lineLimit(1)
+                                        Button {
+                                            snippets.copyToClipboard(snippet)
+                                            copiedID = snippet.id
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { if copiedID == snippet.id { copiedID = nil } }
+                                        } label: {
+                                            Image(systemName: copiedID == snippet.id ? "checkmark" : "doc.on.doc")
+                                                .font(.caption2)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .help(snippets.resolve(snippet.command))
+                                        Button {
+                                            terminals.sendToSelected(snippets.resolve(snippet.command), source: "Library")
+                                            UsageStore.shared.recordSnippet(snippet.id, service: "")
+                                            ui.open(.terminal)
+                                            terminals.focusSelected(afterDelay: true)
+                                        } label: {
+                                            Image(systemName: "terminal")
+                                                .font(.caption2)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .help("Paste into the active terminal")
+                                    }
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.white.opacity(0.08), in: Capsule())
+                                }
+                            }
+                        }
+                    }
+                }
+                if !items.isEmpty {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Label("Checklist items", systemImage: "checklist")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text(items.map { "\($0.item.title) (\($0.list.name))" }.joined(separator: " · "))
+                            .font(.caption)
+                            .lineLimit(2)
+                    }
+                }
+            }
+            .padding(8)
+            .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
+        }
     }
 }

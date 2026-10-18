@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.37.0
+- **One-liners, checklist items and library pages know each other.** A one-liner and a checklist item can carry a *Read more* link (a library page picked with the book button, a topic such as "SMB", or a URL); without one, Luik finds the page named after the service (microsoft-ds → SMB, ms-wbt-server → RDP, …). Book icons on one-liner rows (One-liners tab and the port node) and a *Read more* line on port and work-item nodes open the page in the Notes tab. On a library page, a bar lists the one-liners that point here (copy / paste) and the checklist items that link to it.
+
 ## 0.36.0
 - **Shell integration (OSC 133 prompt markers)**: Settings › Logging › *Install for zsh / bash* adds one `source` line to the rc file; the script (in Luik's data folder, rewritten at launch) only acts inside Luik's tabs. With it, output boundaries come from the shell instead of the Enter-key heuristic — exact with two-line prompts (powerlevel10k and friends) and when you type the next command while the previous one still prints — and every command's **exit status** is recorded (red `exit n` badge in the Log). Without it everything keeps working as before. The status of the current tab is shown in Settings.
 

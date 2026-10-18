@@ -112,6 +112,7 @@ final class LibraryStore {
                 self.searchIndex = [:]
                 self.contents = [:]
                 self.isScanning = false
+                LibraryLink.invalidate()
             }
         }
     }
