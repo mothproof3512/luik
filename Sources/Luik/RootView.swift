@@ -432,7 +432,7 @@ struct SettingsView: View {
             }
         }
         .padding(16)
-        .frame(width: 520, height: 600)
+        .frame(width: 540, height: 640)
     }
 
     // MARK: Tabs
@@ -500,6 +500,7 @@ struct SettingsView: View {
     }
 
     private var toolsTab: some View {
+        ScrollView {
         VStack(alignment: .leading, spacing: 12) {
             Text("Evidence screenshots")
                 .font(.subheadline.weight(.semibold))
@@ -532,13 +533,13 @@ struct SettingsView: View {
 
             Text("Updates")
                 .font(.subheadline.weight(.semibold))
+            Toggle("Check for a new Luik release at launch (once a day)", isOn: $checkForUpdates)
+            Toggle("Check downloaded content for updates at launch (once a day)", isOn: $checkContentUpdates)
+            caption("Library sources (PayloadsAllTheThings, InternalAllTheThings, your repositories) and the knowledge-base catalogue are compared with what you have; a green “Updates (n)” badge in the top bar lists what is new. Nothing is downloaded by itself. Both checks talk to GitHub only; switch them off and Luik makes no network requests on its own.")
             HStack {
-                Toggle("Check for a new Luik release at launch (once a day)", isOn: $checkForUpdates)
-                Toggle("Check downloaded content for updates at launch (once a day)", isOn: $checkContentUpdates)
-                caption("Library sources (PayloadsAllTheThings, InternalAllTheThings, your repositories) and the knowledge-base catalogue are compared with what you have; a green “Updates (n)” badge in the top bar lists what is new. Nothing is downloaded by itself. Both checks talk to GitHub only; switch them off and Luik makes no network requests on its own.")
                 Button("Check content now") { ContentUpdates.shared.checkNow(includeApp: checkForUpdates) }
                 Spacer()
-                Button("Check now") { runUpdateCheck() }
+                Button("Check for a new release now") { runUpdateCheck() }
                     .disabled(checkingUpdates)
             }
             if let updateMessage {
@@ -549,9 +550,10 @@ struct SettingsView: View {
                     .textSelection(.enabled)
             }
             caption("Looks at the latest release of \(AppInfo.repository) on GitHub. Nothing else is sent.")
-            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
+        }
     }
 
     private func runUpdateCheck() {
@@ -613,6 +615,7 @@ struct SettingsView: View {
     }
 
     private var terminalTab: some View {
+        ScrollView {
         VStack(alignment: .leading, spacing: 12) {
             LabeledContent("Font size") {
                 Stepper(value: $fontSize, in: 9...24, step: 1) {
@@ -641,9 +644,10 @@ struct SettingsView: View {
             Toggle("Import nmap / nuclei / masscan output into Targets automatically", isOn: $autoImportScans)
                 .disabled(!captureOutput)
             caption("When a command's output looks like a scan (nmap normal/-oG/-oX, nuclei console or JSON, masscan), the hosts, ports and findings go into Targets as soon as the prompt returns — the same import as pasting it by hand, so nothing is duplicated. Off: the Log shows an Import button instead.")
-            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
+        }
     }
 
     private var targetsTab: some View {
@@ -726,14 +730,16 @@ struct SettingsView: View {
             HStack(spacing: 8) {
                 ForEach(ShellIntegration.Shell.allCases) { shell in
                     let installed = ShellIntegration.isInstalled(shell)
-                    Button(installed ? "Remove from \(shell.rcFile.lastPathComponent)" : "Install for \(shell.rawValue) (\(shell.rcFile.lastPathComponent))") {
+                    Button(installed ? "Remove (\(shell.rcFile.lastPathComponent))" : "Install for \(shell.rawValue)") {
                         shellMessage = installed ? ShellIntegration.uninstall(shell) : ShellIntegration.install(shell)
                     }
+                    .help(installed ? "Remove the source line from \(shell.rcFile.lastPathComponent)" : "Add one source line to \(shell.rcFile.lastPathComponent)")
                 }
-                Button("Copy the source line") {
+                Button("Copy source line") {
                     ShellIntegration.copySnippet(.zsh)
                     shellMessage = "Source line copied — paste it into the rc file of your shell."
                 }
+                .help("For a shell rc file you manage yourself")
             }
             if let shellMessage {
                 Text(shellMessage)

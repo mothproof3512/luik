@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.47.1
+- Settings: the Terminal and Tools tabs had outgrown the window — they scroll now, the window is slightly larger, the update checks are laid out properly and the shell-integration buttons fit.
+
 ## 0.47.0
 - **Themed entrance of the panel itself** for the Screens and consoles schemes: instead of the plain slide from the top, the panel (terminal included) arrives the way its scheme does — Bridge sweeps in from the left; Chevron opens from a point in the centre; Rebel console jumps in stretched thin and snaps to size; WOPR and Basement switch on like a CRT, a thin line opening vertically with a flicker; Gibson swings open like a door; Digital rain fades in under the rain; Section 9 unrolls from the top edge; The Grid tilts up from the floor; Fifth of November breaks through in three hard cuts; Incubator pops in with an overshoot. The overlay effect of 0.46.0 now plays during the entrance. One toggle in Settings › Colours switches both off.
 
