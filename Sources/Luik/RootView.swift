@@ -670,20 +670,33 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Colour scheme")
                 .font(.subheadline.weight(.semibold))
-            caption("Ten combinations from Sanzo Wada's A Dictionary of Color Combinations (1933). From each, the darkest colour becomes the panel tint, the lightest the terminal text and the most saturated one the accent (buttons, selection, cursor). Background opacity and blur from the Appearance tab apply on top.")
+            caption("The panel tint, the terminal text and the accent (buttons, selection, cursor). Background opacity and blur from the Appearance tab apply on top.")
             ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 8)], alignment: .leading, spacing: 8) {
-                    ForEach(LuikTheme.all) { scheme in
-                        ThemeCard(scheme: scheme, isSelected: scheme.id == colorScheme) {
-                            colorScheme = scheme.id
-                        }
-                    }
+                VStack(alignment: .leading, spacing: 12) {
+                    themeGroup("Luik and Sanzo Wada", caption: "Ten combinations from Sanzo Wada's A Dictionary of Color Combinations (1933): the darkest colour is the tint, the lightest the text, the most saturated the accent.", schemes: [LuikTheme.luik] + LuikTheme.wada)
+                    themeGroup("Screens and consoles", caption: "Palettes in the spirit of famous screens from film and TV — the bridge console, the stone ring, the war room, the mainframe, the rain, the grid, the basement, the incubator. Colours only; no artwork or lettering.", schemes: LuikTheme.screens)
                 }
                 .padding(.vertical, 2)
             }
             Spacer(minLength: 0)
         }
         .padding(12)
+    }
+
+    private func themeGroup(_ title: String, caption text: String, schemes: [LuikTheme]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            caption(text)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 8)], alignment: .leading, spacing: 8) {
+                ForEach(schemes) { scheme in
+                    ThemeCard(scheme: scheme, isSelected: scheme.id == colorScheme) {
+                        colorScheme = scheme.id
+                    }
+                }
+            }
+        }
     }
 
     // MARK: Helper views

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.45.0
+- **Eleven "Screens and consoles" colour schemes** (Settings › Colours): Bridge, Chevron, Rebel console, WOPR, Gibson, Digital rain, Section 9, The Grid, Fifth of November, Basement, Incubator — palettes in the spirit of famous screens from film and TV: tint, terminal text and accent only, no artwork or lettering. The colour settings are now grouped.
+
 ## 0.44.0
 - **Tools › Playbooks** with eight **standard playbooks** — External network, Internal network and AD, Web application, API, Cloud configuration review, Wireless, Mobile application, Retest. A standard playbook is a bundle of what Luik already has for that kind of engagement: the plan template, the checklists and one-liners of the services that matter, a diagram template and the library pages to read. *Use for this engagement* creates the plan (and diagram); *Save as playbook file* writes the bundle as a `.luikplaybook.json`. The tab also lists **your playbooks** (`<data folder>/Playbooks/`): save what you know, add files from colleagues, merge one into Luik, remove.
 

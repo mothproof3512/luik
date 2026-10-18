@@ -75,7 +75,45 @@ struct LuikTheme: Identifiable, Equatable {
                   background: "#43061c", foreground: "#e4d0a0", accent: "#6186b5"),
     ]
 
-    static let all: [LuikTheme] = [luik] + wada
+    /// Screens and consoles from films and series, as colour palettes: the panel tint, the
+    /// terminal text and the accent carry the mood; no artwork, logos or lettering are used.
+    static let screens: [LuikTheme] = [
+        LuikTheme(id: "screen-bridge", name: "Bridge", detail: "Starfleet console: black with salmon, lilac and amber panels",
+                  swatches: [Swatch("Black", "#000000"), Swatch("Salmon", "#ff9966"), Swatch("Lilac", "#cc99cc"), Swatch("Amber", "#ffcc66")],
+                  background: "#07070b", foreground: "#f5d5b0", accent: "#ff9966"),
+        LuikTheme(id: "screen-chevron", name: "Chevron", detail: "Stone ring and event horizon: slate with ice blue",
+                  swatches: [Swatch("Slate", "#1b2430"), Swatch("Naquadah", "#4a5a6a"), Swatch("Event horizon", "#7fd4ff"), Swatch("Chevron", "#ff8c42")],
+                  background: "#0d141c", foreground: "#d8e9f3", accent: "#7fd4ff"),
+        LuikTheme(id: "screen-rebel", name: "Rebel console", detail: "Targeting computer: deep space, red grid, cyan trace",
+                  swatches: [Swatch("Space", "#0a0a12"), Swatch("Grid red", "#ff3b3b"), Swatch("Trace", "#5ee6ff"), Swatch("Yellow", "#ffe81f")],
+                  background: "#0a0a12", foreground: "#e6e6f0", accent: "#ffe81f"),
+        LuikTheme(id: "screen-wopr", name: "WOPR", detail: "1983 war room: near-black with phosphor blue-white and alert red",
+                  swatches: [Swatch("Room", "#0b0f14"), Swatch("Phosphor", "#9fd3ff"), Swatch("Alert", "#ff4040"), Swatch("Map", "#2b6cb0")],
+                  background: "#0b0f14", foreground: "#cfe6ff", accent: "#4fa3ff"),
+        LuikTheme(id: "screen-gibson", name: "Gibson", detail: "1995 mainframe cityscape: violet dark with neon cyan and magenta",
+                  swatches: [Swatch("Night", "#120c1f"), Swatch("Neon cyan", "#2ee6d6"), Swatch("Magenta", "#ff2bd6"), Swatch("Lime", "#b6ff3b")],
+                  background: "#120c1f", foreground: "#e8dcff", accent: "#2ee6d6"),
+        LuikTheme(id: "screen-rain", name: "Digital rain", detail: "Falling glyphs: black with phosphor green",
+                  swatches: [Swatch("Black", "#000000"), Swatch("Dark green", "#003b00"), Swatch("Phosphor", "#00ff41"), Swatch("Pale", "#cfffd8")],
+                  background: "#030803", foreground: "#9dff9d", accent: "#00ff41"),
+        LuikTheme(id: "screen-section9", name: "Section 9", detail: "Cyberbrain interface: graphite with teal data and orange warnings",
+                  swatches: [Swatch("Graphite", "#101418"), Swatch("Teal", "#1fb8a6"), Swatch("Orange", "#ff7a1a"), Swatch("Pale teal", "#bfeee8")],
+                  background: "#101418", foreground: "#d5e6e3", accent: "#1fb8a6"),
+        LuikTheme(id: "screen-grid", name: "The Grid", detail: "Light cycles: black with electric blue lines and an orange rival",
+                  swatches: [Swatch("Black", "#000000"), Swatch("Electric blue", "#00d4ff"), Swatch("Rival orange", "#ff6a00"), Swatch("White", "#eaffff")],
+                  background: "#02060a", foreground: "#dff8ff", accent: "#00d4ff"),
+        LuikTheme(id: "screen-november", name: "Fifth of November", detail: "Masked broadcast: charcoal with blood red and gold",
+                  swatches: [Swatch("Charcoal", "#161215"), Swatch("Red", "#c1121f"), Swatch("Gold", "#d4a017"), Swatch("Bone", "#efe6dc")],
+                  background: "#161215", foreground: "#efe6dc", accent: "#c1121f"),
+        LuikTheme(id: "screen-basement", name: "Basement", detail: "IT department under the stairs: beige CRT, brown desks, a red phone",
+                  swatches: [Swatch("Desk", "#2a2119"), Swatch("CRT beige", "#e8dcc3"), Swatch("Phone red", "#d62828"), Swatch("Monitor green", "#7bb661")],
+                  background: "#2a2119", foreground: "#e8dcc3", accent: "#d62828"),
+        LuikTheme(id: "screen-incubator", name: "Incubator", detail: "Startup house: off-black with mint green and the whiteboard's blue marker",
+                  swatches: [Swatch("Off-black", "#14181a"), Swatch("Mint", "#3ddc84"), Swatch("Marker blue", "#2d7ff9"), Swatch("Paper", "#f2f4f3")],
+                  background: "#14181a", foreground: "#f2f4f3", accent: "#3ddc84"),
+    ]
+
+    static let all: [LuikTheme] = [luik] + wada + screens
 
     static func theme(id: String?) -> LuikTheme {
         all.first { $0.id == id } ?? luik
