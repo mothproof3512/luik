@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.32.0
+- **Diagram cards grow with their label**: the full name is always visible (width from 160 up to 360 units, snapped to the grid); links, hit-testing, selection handles, bounds and the SVG / draw.io / PNG exports follow the real width.
+- **Show: Addresses / Notes / Kinds** (status bar, remembered): the second line of every card is the address, the first line of the node's notes, or the kind — the network map's "Open: 22/tcp ssh, 80/tcp http" notes can now be read on the canvas.
+- Toolbar tidied: zoom and the Show picker moved to the status bar, Import / Export are icon buttons, six quick-add icons (firewall, switch, server, web app, IdP, workstation) — the rest is in Add and in the right-click menu.
+
 ## 0.31.5
 - Diagram: node, zone and resize drags now measure in the canvas coordinate space instead of the moving view's own — that feedback loop was the jitter ("vibrating" nodes) while dragging.
 

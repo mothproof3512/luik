@@ -16,7 +16,7 @@ struct DiagramView: View {
             Divider()
             if let diagram = store.current {
                 HStack(spacing: 0) {
-                    DiagramCanvas(diagram: diagram)
+                    DiagramCanvas(diagram: diagram, detail: store.detail)
                     if store.selection != nil {
                         Divider()
                         DiagramInspector(diagram: diagram)
@@ -91,7 +91,7 @@ struct DiagramView: View {
             if store.current != nil {
                 Divider().frame(height: 18)
                 addMenu
-                ForEach([DiagramNodeKind.firewall, .router, .switchDevice, .server, .workstation, .webApp, .api, .identityProvider], id: \.self) { kind in
+                ForEach([DiagramNodeKind.firewall, .switchDevice, .server, .webApp, .identityProvider, .workstation], id: \.self) { kind in
                     Button {
                         addNode(kind)
                     } label: {
@@ -138,9 +138,6 @@ struct DiagramView: View {
 
             Spacer()
 
-            if store.current != nil {
-                zoomControls
-            }
             Menu {
                 Button("Import file…") {
                     status = DiagramTransfer.importWithPanel(into: store)
@@ -150,9 +147,10 @@ struct DiagramView: View {
                 }
             } label: {
                 Label("Import", systemImage: "square.and.arrow.down")
+                    .labelStyle(.iconOnly)
             }
-            .frame(width: 92)
-            .help("draw.io (.drawio, also compressed), Mermaid flowcharts and Luik JSON")
+            .frame(width: 44)
+            .help("Import: draw.io (.drawio, also compressed), Mermaid flowcharts and Luik JSON")
             if let diagram = store.current {
                 Menu {
                     ForEach(DiagramTransfer.ExportFormat.allCases) { format in
@@ -167,8 +165,10 @@ struct DiagramView: View {
                     Button("Save to Library (PNG, light)") { saveToLibrary(diagram) }
                 } label: {
                     Label("Export", systemImage: "square.and.arrow.up")
+                        .labelStyle(.iconOnly)
                 }
-                .frame(width: 92)
+                .frame(width: 44)
+                .help("Export: PNG, SVG, draw.io, Mermaid, JSON · copy as image · save to the Library")
             }
         }
         .padding(.horizontal, 12)
@@ -215,6 +215,19 @@ struct DiagramView: View {
         }
         .frame(width: 70)
         .help("Add a device. It appears where you last clicked on the canvas.")
+    }
+
+    /// Addresses / notes / kinds on the second line of every card.
+    private var detailPicker: some View {
+        @Bindable var store = store
+        return Picker("Show", selection: $store.detail) {
+            ForEach(DiagramDetail.allCases) { detail in
+                Text(detail.title).tag(detail)
+            }
+        }
+        .labelsHidden()
+        .frame(width: 100)
+        .help("Second line on every card: the address, the first line of the notes, or the kind")
     }
 
     private var zoomControls: some View {
@@ -301,9 +314,14 @@ struct DiagramView: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .monospacedDigit()
+            Divider().frame(height: 14)
+            detailPicker
+                .controlSize(.small)
+            zoomControls
+                .controlSize(.small)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 5)
+        .padding(.vertical, 4)
     }
 
     private var hint: String {
@@ -368,6 +386,8 @@ struct DiagramView: View {
 
 struct DiagramCanvas: View {
     let diagram: Diagram
+    /// Only here so the canvas re-renders when the Show setting changes.
+    let detail: DiagramDetail
     @Environment(DiagramStore.self) private var store
     @Environment(\.luikTheme) private var theme
 
@@ -539,8 +559,8 @@ struct DiagramCanvas: View {
             let pb = displayed(b)
             let ca = geometry.point(pa.x, pa.y)
             let cb = geometry.point(pb.x, pb.y)
-            let from = geometry.edgePoint(from: ca, toward: cb)
-            let to = geometry.edgePoint(from: cb, toward: ca)
+            let from = geometry.edgePoint(from: ca, toward: cb, width: a.width)
+            let to = geometry.edgePoint(from: cb, toward: ca, width: b.width)
             DiagramLinkView(from: from, to: to, link: link, zoom: zoom, palette: palette, selected: store.selection == .link(link.id))
                 .contentShape(DiagramLineShape(from: from, to: to).path(in: .zero).strokedPath(StrokeStyle(lineWidth: 14, lineCap: .round)))
                 .onTapGesture { store.selection = .link(link.id) }
@@ -551,7 +571,7 @@ struct DiagramCanvas: View {
     private var pendingLinkView: some View {
         if let pending = pendingLink, let node = diagram.node(pending.from) {
             let center = geometry.point(node.x, node.y)
-            DiagramLineShape(from: geometry.edgePoint(from: center, toward: pending.to), to: pending.to)
+            DiagramLineShape(from: geometry.edgePoint(from: center, toward: pending.to, width: node.width), to: pending.to)
                 .stroke(palette.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [6, 4]))
                 .allowsHitTesting(false)
         }
@@ -590,7 +610,7 @@ struct DiagramCanvas: View {
         case .node(let id):
             if !store.connectMode, let node = diagram.node(id) {
                 let shown = displayed(node)
-                let anchor = geometry.point(shown.x + Double(DiagramMetrics.nodeWidth) / 2 + 10, shown.y)
+                let anchor = geometry.point(shown.x + node.width / 2 + 10, shown.y)
                 Circle()
                     .fill(palette.accent)
                     .overlay(Circle().strokeBorder(Color.white.opacity(0.8), lineWidth: 1.5))
@@ -652,7 +672,7 @@ struct DiagramCanvas: View {
         let current = store.current ?? diagram
         return current.nodes.last { node in
             node.id != excluding
-                && abs(node.x - Double(p.x)) <= Double(DiagramMetrics.nodeWidth) / 2
+                && abs(node.x - Double(p.x)) <= node.width / 2
                 && abs(node.y - Double(p.y)) <= Double(DiagramMetrics.nodeHeight) / 2
         }?.id
     }

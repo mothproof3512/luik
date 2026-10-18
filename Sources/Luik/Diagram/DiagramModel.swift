@@ -351,8 +351,9 @@ struct Diagram: Identifiable, Codable, Hashable {
     var bounds: CGRect {
         var rect: CGRect? = nil
         for node in nodes {
-            let r = CGRect(x: CGFloat(node.x) - DiagramMetrics.nodeWidth / 2, y: CGFloat(node.y) - DiagramMetrics.nodeHeight / 2,
-                           width: DiagramMetrics.nodeWidth, height: DiagramMetrics.nodeHeight)
+            let w = CGFloat(node.width)
+            let r = CGRect(x: CGFloat(node.x) - w / 2, y: CGFloat(node.y) - DiagramMetrics.nodeHeight / 2,
+                           width: w, height: DiagramMetrics.nodeHeight)
             rect = rect.map { $0.union(r) } ?? r
         }
         for zone in zones {
@@ -368,14 +369,89 @@ struct Diagram: Identifiable, Codable, Hashable {
     }
 }
 
+/// What the second line of a card shows.
+enum DiagramDetail: String, CaseIterable, Identifiable {
+    case address, notes, kind
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .address: return "Addresses"
+        case .notes: return "Notes"
+        case .kind: return "Kinds"
+        }
+    }
+
+    static let defaultsKey = "diagramDetail"
+}
+
 enum DiagramMetrics {
+    /// Minimum card width; cards grow with their label (and shown detail) up to `maxNodeWidth`.
     static let nodeWidth: CGFloat = 156
+    static let maxNodeWidth: CGFloat = 360
     static let nodeHeight: CGFloat = 54
     static let grid: Double = 20
     static let zoneHeaderHeight: CGFloat = 26
 
+    /// Icon disc, paddings and the colour bar — everything on the card except the text.
+    static let nodeChrome: CGFloat = 10 + 34 + 9 + 12
+
+    /// The detail shown on cards (set by the store, read by every renderer and exporter).
+    static var detail: DiagramDetail = DiagramDetail(rawValue: UserDefaults.standard.string(forKey: DiagramDetail.defaultsKey) ?? "") ?? .address
+
+    static let labelFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
+    static let detailFont = NSFont.systemFont(ofSize: 10)
+    static let detailMonoFont = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
+
+    private static var widthCache: [String: CGFloat] = [:]
+
+    static func textWidth(_ text: String, font: NSFont) -> CGFloat {
+        let key = "\(font.pointSize)|\(font.fontName)|\(text)"
+        if let cached = widthCache[key] { return cached }
+        let width = (text as NSString).size(withAttributes: [.font: font]).width
+        if widthCache.count > 4000 { widthCache.removeAll() }
+        widthCache[key] = width
+        return width
+    }
+
+    /// Width of a node's card at zoom 1: the full label always fits; the detail line fits up to the maximum.
+    static func width(of node: DiagramNode) -> CGFloat {
+        let label = node.label.isEmpty ? node.kind.title : node.label
+        let detail = node.detailText
+        let detailFontUsed = DiagramMetrics.detail == .address && !node.address.isEmpty ? detailMonoFont : detailFont
+        let labelWidth = textWidth(label, font: labelFont)
+        let detailWidth = detail.isEmpty ? 0 : textWidth(detail, font: detailFontUsed)
+        let needed = max(labelWidth, min(detailWidth, maxNodeWidth - nodeChrome)) + nodeChrome
+        return snap(Double(min(max(needed, nodeWidth), maxNodeWidth + 60)))
+    }
+
     static func snap(_ value: Double) -> Double {
         (value / grid).rounded() * grid
+    }
+}
+
+extension DiagramNode {
+    /// Card width in diagram units.
+    var width: Double { Double(DiagramMetrics.width(of: self)) }
+
+    /// Second line of the card for the current detail setting; falls back to the kind.
+    var detailText: String {
+        switch DiagramMetrics.detail {
+        case .address:
+            return address.isEmpty ? kind.title : address
+        case .notes:
+            let first = notes.split(whereSeparator: { $0.isNewline }).first.map { String($0).trimmingCharacters(in: .whitespaces) } ?? ""
+            return first.isEmpty ? (address.isEmpty ? kind.title : address) : first
+        case .kind:
+            return kind.title
+        }
+    }
+
+    /// True when the detail line is an address (drawn monospaced).
+    var detailIsAddress: Bool {
+        DiagramMetrics.detail == .address && !address.isEmpty
+            || (DiagramMetrics.detail == .notes && notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !address.isEmpty)
     }
 }
 
@@ -401,6 +477,13 @@ final class DiagramStore {
     /// First node clicked in connect mode.
     var connectFrom: UUID?
     var zoom: Double = 1.0
+    /// What the second line of every card shows (addresses, first line of notes, or the kind).
+    var detail: DiagramDetail = DiagramMetrics.detail {
+        didSet {
+            DiagramMetrics.detail = detail
+            UserDefaults.standard.set(detail.rawValue, forKey: DiagramDetail.defaultsKey)
+        }
+    }
     /// Changes whenever the undo stack does (so the Undo button follows).
     var undoDepth = 0
     /// Where the last click on the canvas was (diagram units): new nodes go there.
@@ -645,7 +728,7 @@ final class DiagramStore {
     func moveNode(_ id: UUID, to point: CGPoint) {
         update { diagram in
             guard let index = diagram.nodes.firstIndex(where: { $0.id == id }) else { return }
-            diagram.nodes[index].x = max(Double(point.x), Double(DiagramMetrics.nodeWidth) / 2 + 10)
+            diagram.nodes[index].x = max(Double(point.x), diagram.nodes[index].width / 2 + 10)
             diagram.nodes[index].y = max(Double(point.y), Double(DiagramMetrics.nodeHeight) / 2 + 10)
         }
     }

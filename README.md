@@ -339,6 +339,11 @@ own zone and the login redirect, code → token and JWKS/introspection flows dra
 links. draw.io and Mermaid imports recognise the usual names (Okta, Keycloak, Entra, Kong, Redis,
 Kafka, S3, Lambda, …).
 
+Cards grow with their label so the full name is always readable; the status bar's **Show** picker
+puts the address, the first line of the notes or the kind on the second line of every card.
+Right-click a node, link, zone or the empty canvas for the context menu (kind, link from here,
+duplicate, style, arrow, send to back, add node / zone here, delete).
+
 ### Diagram templates
 
 **New from template** (diagram menu, or *Start from a template* on an empty tab) offers fifteen

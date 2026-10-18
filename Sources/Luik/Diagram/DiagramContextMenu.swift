@@ -86,14 +86,14 @@ extension DiagramCanvas {
         let geometry = DiagramGeometry(zoom: zoom)
         let p = geometry.toDiagram(point)
         if let node = diagram.nodes.last(where: { node in
-            abs(node.x - p.x) <= Double(DiagramMetrics.nodeWidth) / 2 && abs(node.y - p.y) <= Double(DiagramMetrics.nodeHeight) / 2
+            abs(node.x - p.x) <= node.width / 2 && abs(node.y - p.y) <= Double(DiagramMetrics.nodeHeight) / 2
         }) {
             return .node(node)
         }
         for link in diagram.links.reversed() {
             guard let a = diagram.node(link.from), let b = diagram.node(link.to) else { continue }
             let ca = geometry.point(a.x, a.y), cb = geometry.point(b.x, b.y)
-            if DiagramCanvas.distance(from: point, toSegment: geometry.edgePoint(from: ca, toward: cb), geometry.edgePoint(from: cb, toward: ca)) <= 8 {
+            if DiagramCanvas.distance(from: point, toSegment: geometry.edgePoint(from: ca, toward: cb, width: a.width), geometry.edgePoint(from: cb, toward: ca, width: b.width)) <= 8 {
                 return .link(link)
             }
         }

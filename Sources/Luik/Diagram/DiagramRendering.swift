@@ -39,17 +39,14 @@ struct DiagramGeometry {
         CGPoint(x: p.x / zoom + origin.x, y: p.y / zoom + origin.y)
     }
 
-    var nodeSize: CGSize {
-        CGSize(width: DiagramMetrics.nodeWidth * zoom, height: DiagramMetrics.nodeHeight * zoom)
-    }
-
     /// Where the line from `center` towards `toward` leaves the node's card (plus a small gap).
-    func edgePoint(from center: CGPoint, toward other: CGPoint) -> CGPoint {
+    /// `width` is the card's width in diagram units (`node.width`).
+    func edgePoint(from center: CGPoint, toward other: CGPoint, width: Double = Double(DiagramMetrics.nodeWidth)) -> CGPoint {
         let dx = other.x - center.x
         let dy = other.y - center.y
         guard abs(dx) > 0.001 || abs(dy) > 0.001 else { return center }
-        let halfW = nodeSize.width / 2 + 4 * zoom
-        let halfH = nodeSize.height / 2 + 4 * zoom
+        let halfW = CGFloat(width) * zoom / 2 + 4 * zoom
+        let halfH = DiagramMetrics.nodeHeight * zoom / 2 + 4 * zoom
         let tx = abs(dx) > 0.001 ? halfW / abs(dx) : .greatestFiniteMagnitude
         let ty = abs(dy) > 0.001 ? halfH / abs(dy) : .greatestFiniteMagnitude
         let t = min(tx, ty, 1)
@@ -81,15 +78,16 @@ struct DiagramNodeView: View {
                     .font(.system(size: 12 * zoom, weight: .semibold))
                     .foregroundStyle(palette.text)
                     .lineLimit(1)
-                Text(node.address.isEmpty ? kind.title : node.address)
-                    .font(.system(size: 10 * zoom, design: node.address.isEmpty ? .default : .monospaced))
+                Text(node.detailText)
+                    .font(.system(size: 10 * zoom, design: node.detailIsAddress ? .monospaced : .default))
                     .foregroundStyle(palette.secondaryText)
                     .lineLimit(1)
+                    .truncationMode(.tail)
             }
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 10 * zoom)
-        .frame(width: DiagramMetrics.nodeWidth * zoom, height: DiagramMetrics.nodeHeight * zoom)
+        .frame(width: CGFloat(node.width) * zoom, height: DiagramMetrics.nodeHeight * zoom)
         .background(
             // Shadow on the shape only: shadowing the whole card (text included) renders the view
             // offscreen and blurs it on every move, which is what made dragging stutter.
@@ -250,7 +248,7 @@ struct DiagramStaticDrawing: View {
                 if let a = diagram.node(link.from), let b = diagram.node(link.to) {
                     let ca = geometry.point(a.x, a.y)
                     let cb = geometry.point(b.x, b.y)
-                    DiagramLinkView(from: geometry.edgePoint(from: ca, toward: cb), to: geometry.edgePoint(from: cb, toward: ca),
+                    DiagramLinkView(from: geometry.edgePoint(from: ca, toward: cb, width: a.width), to: geometry.edgePoint(from: cb, toward: ca, width: b.width),
                                     link: link, zoom: 1, palette: palette)
                 }
             }

@@ -118,7 +118,6 @@ enum DiagramTransfer {
         let oy = Double(b.minY) - pad
         let width = Double(b.width) + 2 * pad
         let height = Double(b.height) + 2 * pad
-        let w = Double(DiagramMetrics.nodeWidth)
         let h = Double(DiagramMetrics.nodeHeight)
         var out = """
         <svg xmlns="http://www.w3.org/2000/svg" width="\(number(width))" height="\(number(height))" viewBox="0 0 \(number(width)) \(number(height))" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
@@ -143,7 +142,7 @@ enum DiagramTransfer {
         for link in diagram.links {
             guard let a = diagram.node(link.from), let c = diagram.node(link.to) else { continue }
             let ca = geometry.point(a.x, a.y), cb = geometry.point(c.x, c.y)
-            let p1 = geometry.edgePoint(from: ca, toward: cb), p2 = geometry.edgePoint(from: cb, toward: ca)
+            let p1 = geometry.edgePoint(from: ca, toward: cb, width: a.width), p2 = geometry.edgePoint(from: cb, toward: ca, width: c.width)
             let dash = link.style == .solid ? "" : " stroke-dasharray=\"\(link.style.dash.map { number(Double($0)) }.joined(separator: " "))\""
             let marker = link.directed ? " marker-end=\"url(#arrow)\"" : ""
             out += "  <line x1=\"\(number(Double(p1.x)))\" y1=\"\(number(Double(p1.y)))\" x2=\"\(number(Double(p2.x)))\" y2=\"\(number(Double(p2.y)))\" stroke=\"#737373\" stroke-width=\"1.8\" stroke-linecap=\"round\"\(dash)\(marker)/>\n"
@@ -155,9 +154,10 @@ enum DiagramTransfer {
             }
         }
         for node in diagram.nodes {
+            let w = node.width
             let x = node.x - ox - w / 2, y = node.y - oy - h / 2
             let label = node.label.isEmpty ? node.kind.title : node.label
-            let sub = node.address.isEmpty ? node.kind.title : node.address
+            let sub = node.detailText
             out += """
               <g filter="url(#shadow)">
                 <rect x="\(number(x))" y="\(number(y))" width="\(number(w))" height="\(number(h))" rx="12" fill="#ffffff" stroke="#e0e0e0"/>
@@ -165,7 +165,7 @@ enum DiagramTransfer {
                 <circle cx="\(number(x + 27))" cy="\(number(y + h / 2))" r="17" fill="\(node.kind.hex)"/>
                 <text x="\(number(x + 27))" y="\(number(y + h / 2 + 3.5))" font-size="\(node.kind.abbreviation.count > 2 ? "9" : "11")" font-weight="700" text-anchor="middle" fill="#ffffff">\(xmlEscape(node.kind.abbreviation))</text>
                 <text x="\(number(x + 53))" y="\(number(y + h / 2 - 3))" font-size="12" font-weight="600" fill="#1a1a1a">\(xmlEscape(label))</text>
-                <text x="\(number(x + 53))" y="\(number(y + h / 2 + 12))" font-size="10" fill="#666666"\(node.address.isEmpty ? "" : " font-family=\"Menlo, Consolas, monospace\"")>\(xmlEscape(sub))</text>
+                <text x="\(number(x + 53))" y="\(number(y + h / 2 + 12))" font-size="10" fill="#666666"\(node.detailIsAddress ? " font-family=\"Menlo, Consolas, monospace\"" : "")>\(xmlEscape(sub))</text>
               </g>
 
             """
@@ -176,7 +176,7 @@ enum DiagramTransfer {
 
     /// An uncompressed .drawio file: zones as dashed containers, nodes as cards, links as edges.
     static func drawio(_ diagram: Diagram) -> String {
-        let w = Double(DiagramMetrics.nodeWidth), h = Double(DiagramMetrics.nodeHeight)
+        let h = Double(DiagramMetrics.nodeHeight)
         var cells: [String] = ["<mxCell id=\"0\"/>", "<mxCell id=\"1\" parent=\"0\"/>"]
         var index = 2
         var ids: [UUID: String] = [:]
@@ -188,6 +188,7 @@ enum DiagramTransfer {
         for node in diagram.nodes {
             let id = "n\(index)"; index += 1
             ids[node.id] = id
+            let w = node.width
             let label = node.label.isEmpty ? node.kind.title : node.label
             var html = "<b>\(xmlEscape(label))</b>"
             if !node.address.isEmpty { html += "<br>\(xmlEscape(node.address))" }
@@ -427,8 +428,8 @@ enum DiagramTransfer {
             let memberIDs = Set(members[diagram.zones[index].id] ?? [])
             let nodes = diagram.nodes.filter { memberIDs.contains($0.id) }
             guard !nodes.isEmpty else { continue }
-            let minX = nodes.map { $0.x }.min()! - Double(DiagramMetrics.nodeWidth) / 2 - 24
-            let maxX = nodes.map { $0.x }.max()! + Double(DiagramMetrics.nodeWidth) / 2 + 24
+            let minX = nodes.map { $0.x - $0.width / 2 }.min()! - 24
+            let maxX = nodes.map { $0.x + $0.width / 2 }.max()! + 24
             let minY = nodes.map { $0.y }.min()! - Double(DiagramMetrics.nodeHeight) / 2 - 44
             let maxY = nodes.map { $0.y }.max()! + Double(DiagramMetrics.nodeHeight) / 2 + 24
             diagram.zones[index].x = minX
@@ -819,7 +820,7 @@ enum DrawioImport {
                                              style: dotted ? .dotted : (dashed ? .dashed : .solid), directed: directed))
         }
         // Keep everything on the canvas.
-        let minX = min(diagram.nodes.map { $0.x - Double(DiagramMetrics.nodeWidth) / 2 }.min() ?? 0, diagram.zones.map { $0.x }.min() ?? 0)
+        let minX = min(diagram.nodes.map { $0.x - $0.width / 2 }.min() ?? 0, diagram.zones.map { $0.x }.min() ?? 0)
         let minY = min(diagram.nodes.map { $0.y - Double(DiagramMetrics.nodeHeight) / 2 }.min() ?? 0, diagram.zones.map { $0.y }.min() ?? 0)
         let dx = 40 - minX, dy = 40 - minY
         for index in diagram.nodes.indices {
