@@ -92,6 +92,32 @@ enum FindingStatus: String, Codable, CaseIterable {
     }
 }
 
+/// Outcome of a retest of an earlier finding.
+enum RetestStatus: String, Codable, CaseIterable {
+    case notRetested
+    case fixed
+    case partiallyFixed
+    case stillOpen
+
+    var label: String {
+        switch self {
+        case .notRetested: return "Not retested"
+        case .fixed: return "Fixed"
+        case .partiallyFixed: return "Partially fixed"
+        case .stillOpen: return "Still open"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .notRetested: return "arrow.triangle.2.circlepath"
+        case .fixed: return "checkmark.shield.fill"
+        case .partiallyFixed: return "shield.lefthalf.filled"
+        case .stillOpen: return "exclamationmark.shield.fill"
+        }
+    }
+}
+
 /// One finding for the report: what, how bad (severity + CVSS), where (affected hosts/ports),
 /// and the usual report sections. Stored in findings.json of the engagement.
 struct Finding: Identifiable, Codable, Equatable {
@@ -109,6 +135,13 @@ struct Finding: Identifiable, Codable, Equatable {
     var source = ""                 // "Nessus 57608", "nuclei http-missing-security-headers", "KB SEC-012", ""
     var createdAt = Date()
     var updatedAt = Date()
+    /// Retest of an earlier finding: where it came from, what was found this time.
+    var originalReference = ""      // "Acme external 2025 · F-07" or the earlier report's id
+    var retestStatus: RetestStatus = .notRetested
+    var retestDate: Date?
+    var retestNotes = ""
+
+    var isRetest: Bool { !originalReference.isEmpty || retestStatus != .notRetested }
 
     var cvssScore: Double? {
         CVSS31.score(vector: cvssVector)?.base
@@ -126,6 +159,7 @@ struct Finding: Identifiable, Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case id, title, severity, cvssVector, affected, description, impact, evidence, recommendation, references, status, source, createdAt, updatedAt
+        case originalReference, retestStatus, retestDate, retestNotes
     }
 
     init(from decoder: Decoder) throws {
@@ -144,6 +178,10 @@ struct Finding: Identifiable, Codable, Equatable {
         source = try c.decodeIfPresent(String.self, forKey: .source) ?? ""
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
+        originalReference = try c.decodeIfPresent(String.self, forKey: .originalReference) ?? ""
+        retestStatus = try c.decodeIfPresent(RetestStatus.self, forKey: .retestStatus) ?? .notRetested
+        retestDate = try c.decodeIfPresent(Date.self, forKey: .retestDate)
+        retestNotes = try c.decodeIfPresent(String.self, forKey: .retestNotes) ?? ""
     }
 
     func encode(to encoder: Encoder) throws {
@@ -162,5 +200,9 @@ struct Finding: Identifiable, Codable, Equatable {
         try c.encode(source, forKey: .source)
         try c.encode(createdAt, forKey: .createdAt)
         try c.encode(updatedAt, forKey: .updatedAt)
+        if !originalReference.isEmpty { try c.encode(originalReference, forKey: .originalReference) }
+        if retestStatus != .notRetested { try c.encode(retestStatus, forKey: .retestStatus) }
+        if let retestDate { try c.encode(retestDate, forKey: .retestDate) }
+        if !retestNotes.isEmpty { try c.encode(retestNotes, forKey: .retestNotes) }
     }
 }

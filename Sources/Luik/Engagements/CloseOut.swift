@@ -104,6 +104,7 @@ enum CloseOut {
         if options.findings {
             write(FindingsStore.shared.markdownReport(), to: "findings.md")
             write(FindingsStore.shared.htmlReport(), to: "findings.html")
+            if !FindingsStore.shared.retestFindings.isEmpty { write(FindingsStore.shared.retestMarkdown(), to: "retest.md") }
         }
         if options.targets {
             write(targets.markdown(), to: "targets.md")

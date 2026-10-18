@@ -368,6 +368,15 @@ gateway, and the hosts in a grid inside their zone — kind guessed from the ope
 in the notes. *Add missing hosts to this diagram* keeps the old behaviour of adding nodes to the
 current drawing. Rearrange, rename zones, export.
 
+### Retest
+
+For a retest, Findings › ⋯ › *Import findings for retest…* brings in the findings of an earlier
+engagement on this Mac or a `findings.json` from a close-out export: status Open, outcome "not
+retested", the original engagement and title as reference, the original evidence kept as a note.
+Each finding then has a Retest section — outcome (fixed, partially fixed, still open; fixed also
+resolves it), date, notes — and *Copy retest table as Markdown* produces the comparison with
+counts per outcome. The Retest plan template walks the engagement.
+
 ### Close-out
 
 When the engagement ends, *Close-out export…* (engagement menu, Tools menu, ⌘K) writes

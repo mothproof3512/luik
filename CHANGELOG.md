@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.42.0
+- **Retest flow in Findings**: ⋯ › *Import findings for retest…* copies the findings of another engagement on this Mac (or a `findings.json` from a close-out export) as retest items — status Open, outcome "not retested", original engagement and title as reference, original evidence kept as a note. Each finding gets a Retest section with outcome (fixed / partially fixed / still open — fixed also resolves the finding), date and notes; any finding can be marked as a retest item. The list shows the outcome, the report mentions it per finding, ⋯ › *Copy retest table as Markdown* (and `retest.md` in the close-out) gives the comparison table with counts per outcome.
+
 ## 0.41.0
 - **Close-out export** (engagement menu, Tools › Close-out Export…, ⌘K): the whole engagement into one folder and zip — README with scope and counts, findings report (Markdown + HTML), targets overview, a dossier per host, plans, the activity log with captured outputs, notes, diagrams (PNG + JSON), evidence files (including images linked from elsewhere) and the raw JSON. Tick what goes in; nothing is removed from Luik.
 

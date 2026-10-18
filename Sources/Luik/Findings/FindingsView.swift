@@ -6,6 +6,7 @@ struct FindingsView: View {
     @Environment(FindingsStore.self) private var store
     @Environment(EngagementStore.self) private var engagements
     @State private var showDeleteAll = false
+    @State private var showRetestImport = false
 
     var body: some View {
         @Bindable var store = store
@@ -23,6 +24,10 @@ struct FindingsView: View {
                         Button("Export report as Markdown…") { exportReport(html: false) }
                         Button("Export report as HTML (opens in Word)…") { exportReport(html: true) }
                         Button("Copy report as Markdown") { store.copy(store.markdownReport()) }
+                        Divider()
+                        Button("Import findings for retest…") { showRetestImport = true }
+                        Button("Copy retest table as Markdown") { store.copy(store.retestMarkdown()) }
+                            .disabled(store.retestFindings.isEmpty)
                         Divider()
                         Button("Show data folder in Finder") {
                             NSWorkspace.shared.activateFileViewerSelecting([engagements.fileURL("findings.json")])
@@ -111,6 +116,9 @@ struct FindingsView: View {
                 .frame(maxWidth: .infinity)
             }
         }
+        .sheet(isPresented: $showRetestImport) {
+            RetestImportView()
+        }
         .confirmationDialog("Delete all findings of this engagement?", isPresented: $showDeleteAll) {
             Button("Delete everything", role: .destructive) { store.deleteAll() }
         } message: {
@@ -185,6 +193,10 @@ struct FindingRow: View {
                     .lineLimit(1)
                     .strikethrough(finding.status == .falsePositive || finding.status == .resolved)
                 HStack(spacing: 6) {
+                    if finding.isRetest {
+                        Label(finding.retestStatus.label, systemImage: finding.retestStatus.symbol)
+                            .foregroundStyle(finding.retestStatus == .fixed ? Color.green : (finding.retestStatus == .notRetested ? Color.secondary : Color.orange))
+                    }
                     if let score = finding.cvssScore {
                         Text("CVSS \(CVSS31.format(score))")
                     }
@@ -344,6 +356,8 @@ struct FindingDetailView: View {
                             .frame(minHeight: 56, maxHeight: 120)
                     }
 
+                    retestSection
+
                     section("Description", text: $finding.description, prompt: "What is wrong and where.")
                     section("Impact", text: $finding.impact, prompt: "What an attacker can do with it.")
                     section("Evidence", text: $finding.evidence, prompt: "Commands, output, request/response, screenshots (Markdown links).")
@@ -372,6 +386,57 @@ struct FindingDetailView: View {
         .onChange(of: affectedText) { _, text in
             let entries = text.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
             if entries != finding.affected { finding.affected = entries }
+        }
+    }
+
+    /// Retest outcome, date and notes — shown when the finding came from an earlier engagement or
+    /// when a retest status was set; a button turns any finding into a retest item.
+    @ViewBuilder
+    private var retestSection: some View {
+        if finding.isRetest {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text("Retest")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    if !finding.originalReference.isEmpty {
+                        Text("original: \(finding.originalReference)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    Spacer()
+                    if let date = finding.retestDate {
+                        Text(date.formatted(date: .abbreviated, time: .omitted))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Picker("Outcome", selection: Binding(get: { finding.retestStatus }, set: { store.setRetest(finding.id, status: $0) })) {
+                    ForEach(RetestStatus.allCases, id: \.self) { status in
+                        Label(status.label, systemImage: status.symbol).tag(status)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                TextField("Retest notes: what was checked, what changed, what remains", text: $finding.retestNotes, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(1...4)
+            }
+            .padding(8)
+            .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
+        } else {
+            HStack {
+                Spacer()
+                Button {
+                    finding.originalReference = finding.source.isEmpty ? "earlier report" : finding.source
+                } label: {
+                    Label("Mark as retest item", systemImage: "arrow.triangle.2.circlepath")
+                }
+                .controlSize(.small)
+                .help("Adds outcome (fixed / partially fixed / still open), date and notes for a retest of an earlier finding")
+            }
         }
     }
 
@@ -522,5 +587,98 @@ struct CVSSEditor: View {
         text = built
         vector = built
         onChange?(CVSS31.score(values: values))
+    }
+}
+
+
+/// Sheet: pick an earlier engagement (or a findings.json / close-out data folder) and import its
+/// findings as retest items.
+struct RetestImportView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(FindingsStore.self) private var store
+    @Environment(EngagementStore.self) private var engagements
+    @Environment(UIState.self) private var ui
+    @State private var selectedID: UUID?
+    @State private var includeResolved = false
+    @State private var fileFindings: [Finding] = []
+    @State private var fileLabel = ""
+    @State private var message: String?
+
+    private var others: [Engagement] { engagements.engagements.filter { $0.id != engagements.current.id } }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Import findings for retest")
+                .font(.headline)
+            Text("The findings of an earlier engagement come in as retest items: status Open, outcome “not retested”, the original engagement and title as reference, the original evidence kept as a note. Set the outcome per finding in the Retest section; *Copy retest table* makes the comparison for the report.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Divider()
+            if others.isEmpty {
+                Text("No other engagements on this Mac — use a findings.json from a close-out export below.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Picker("From engagement", selection: $selectedID) {
+                    Text("Choose…").tag(UUID?.none)
+                    ForEach(others) { engagement in
+                        Text("\(engagement.displayName)  (\(FindingsStore.findings(of: engagement).count) findings)").tag(UUID?.some(engagement.id))
+                    }
+                }
+            }
+            HStack {
+                Button("Or choose a findings.json…") { chooseFile() }
+                if !fileLabel.isEmpty {
+                    Text("\(fileLabel): \(fileFindings.count) findings")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Toggle("Also import findings that were already resolved", isOn: $includeResolved)
+            if let message {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            HStack {
+                Spacer()
+                Button("Cancel") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Import") { run() }
+                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(selectedID == nil && fileFindings.isEmpty)
+            }
+        }
+        .padding(16)
+        .frame(width: 520)
+    }
+
+    private func chooseFile() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.message = "Choose findings.json (from Luik's data folder or a close-out export)"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        if let loaded = Storage.load([Finding].self, at: url) {
+            fileFindings = loaded
+            fileLabel = url.deletingLastPathComponent().lastPathComponent
+            selectedID = nil
+            message = nil
+        } else {
+            fileFindings = []
+            message = "Not a findings.json written by Luik."
+        }
+    }
+
+    private func run() {
+        var added = 0
+        if let id = selectedID, let engagement = others.first(where: { $0.id == id }) {
+            added = store.importForRetest(FindingsStore.findings(of: engagement), from: engagement.displayName, includeResolved: includeResolved)
+        } else if !fileFindings.isEmpty {
+            added = store.importForRetest(fileFindings, from: fileLabel, includeResolved: includeResolved)
+        }
+        ui.flash(added == 0 ? "Nothing new to import." : "\(added) finding\(added == 1 ? "" : "s") imported for retest.")
+        dismiss()
     }
 }

@@ -240,7 +240,18 @@ final class FindingsStore {
         if let score = finding.cvssScore { meta.append("**CVSS 3.1**: \(CVSS31.format(score)) (`\(finding.cvssVector)`)") }
         meta.append("**Status**: \(finding.status.label)")
         if !finding.source.isEmpty { meta.append("**Source**: \(finding.source)") }
+        if finding.isRetest {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            var retest = "**Retest**: \(finding.retestStatus.label)"
+            if let date = finding.retestDate { retest += " (\(formatter.string(from: date)))" }
+            if !finding.originalReference.isEmpty { retest += " — original: \(finding.originalReference)" }
+            meta.append(retest)
+        }
         out += meta.joined(separator: " · ") + "\n\n"
+        if finding.isRetest, !finding.retestNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            out += "**Retest notes**: \(finding.retestNotes.trimmingCharacters(in: .whitespacesAndNewlines))\n\n"
+        }
         if !finding.affected.isEmpty {
             out += "**Affected**:\n\n" + finding.affected.map { "- \($0)" }.joined(separator: "\n") + "\n\n"
         }
@@ -248,6 +259,83 @@ final class FindingsStore {
                                 ("Recommendation", finding.recommendation), ("References", finding.references)] {
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmed.isEmpty { out += "### \(heading)\n\n\(trimmed)\n\n" }
+        }
+        return out
+    }
+
+    // MARK: - Retest
+
+    /// Findings of another engagement (its findings.json), for a retest.
+    static func findings(of engagement: Engagement) -> [Finding] {
+        Storage.load([Finding].self, at: EngagementStore.folder(for: engagement).appendingPathComponent("findings.json")) ?? []
+    }
+
+    /// Copies earlier findings into this engagement as retest items: fresh ids, status Open,
+    /// retest status "not retested", the original engagement and title as reference, evidence
+    /// cleared (the retest collects its own). Returns how many were added.
+    @discardableResult
+    func importForRetest(_ earlier: [Finding], from label: String, includeResolved: Bool) -> Int {
+        var added = 0
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        for (index, original) in earlier.enumerated() {
+            if original.status == .falsePositive { continue }
+            if !includeResolved && original.status == .resolved { continue }
+            let reference = "\(label) · #\(index + 1) \(original.title)"
+            if findings.contains(where: { $0.originalReference == reference }) { continue }
+            var copy = original
+            copy.id = UUID()
+            copy.status = .open
+            copy.originalReference = reference
+            copy.retestStatus = .notRetested
+            copy.retestDate = nil
+            copy.retestNotes = ""
+            copy.evidence = "_Original evidence (\(dateFormatter.string(from: original.updatedAt))):_\n\n" + original.evidence
+            copy.createdAt = Date()
+            copy.updatedAt = Date()
+            findings.append(copy)
+            added += 1
+        }
+        if added > 0 {
+            scheduleSave()
+            ActivityLog.shared.record(.import, "\(added) finding(s) imported for retest from \(label)", source: "Findings")
+        }
+        return added
+    }
+
+    /// Sets the retest outcome; Fixed also resolves the finding, Still open re-opens it.
+    func setRetest(_ id: UUID, status: RetestStatus) {
+        guard let index = findings.firstIndex(where: { $0.id == id }) else { return }
+        findings[index].retestStatus = status
+        findings[index].retestDate = status == .notRetested ? nil : Date()
+        switch status {
+        case .fixed: findings[index].status = .resolved
+        case .stillOpen, .partiallyFixed: if findings[index].status == .resolved { findings[index].status = .confirmed }
+        case .notRetested: break
+        }
+        findings[index].updatedAt = Date()
+        scheduleSave()
+    }
+
+    var retestFindings: [Finding] { sorted.filter { $0.isRetest } }
+
+    /// The retest table for the report: original reference, finding, severity, outcome, date, notes.
+    func retestMarkdown() -> String {
+        let engagement = EngagementStore.shared.current
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        var out = "# Retest — \(engagement.name)\n\n"
+        out += "_Generated \(formatter.string(from: Date())) with Luik \(AppInfo.version)_\n\n"
+        let list = retestFindings
+        out += "| Outcome | Count |\n|---|---|\n"
+        for status in RetestStatus.allCases {
+            out += "| \(status.label) | \(list.filter { $0.retestStatus == status }.count) |\n"
+        }
+        out += "\n| Original | Finding | Severity | Outcome | Date | Notes |\n|---|---|---|---|---|---|\n"
+        for finding in list {
+            let date = finding.retestDate.map { formatter.string(from: $0) } ?? ""
+            let notes = finding.retestNotes.replacingOccurrences(of: "\n", with: " ").replacingOccurrences(of: "|", with: "\\|")
+            out += "| \(finding.originalReference.replacingOccurrences(of: "|", with: "\\|")) | \(finding.title) | \(finding.severity.label) | \(finding.retestStatus.label) | \(date) | \(notes) |\n"
         }
         return out
     }
