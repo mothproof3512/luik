@@ -443,8 +443,9 @@ for the next engagement.
 ### Plan — the test plan of the engagement
 
 1. **+** (or Tools › New Plan from Template…, ⌘K) and choose a template: *External network
-   penetration test*, *Internal network and Active Directory*, *Web application*, *Minimal plan*,
-   or one of your own. Client, reference and scope are prefilled from the engagement.
+   penetration test*, *Internal network and Active Directory*, *Web application*, *API
+   assessment*, *Cloud configuration review*, *Wireless assessment*, *Mobile application
+   assessment*, *Phishing and awareness campaign*, *Retest*, *Minimal plan*, or one of your own. Client, reference and scope are prefilled from the engagement.
 2. The sidebar lists the plan's phases with their progress; the right side shows the engagement
    details (fill-in fields: text, multi-line, date with a Today button, choice, yes/no) and the
    selected phase with its items. Click the circle to cycle an item's status (to do → in progress →

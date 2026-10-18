@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.40.0
+- **Six more plan templates**: API assessment (discovery, authentication, object/function/property-level authorisation, input and logic, infrastructure), Cloud configuration review (inventory, identity, network and compute, data, logging), Wireless assessment, Mobile application assessment (static, local data, network and backend, platform interaction), Phishing and awareness campaign (agreements, waves, measurement) and Retest (original findings imported, verification per finding, retest table). Each with its own fill-in fields; titles and hints only, like the existing ones.
+
 ## 0.39.0
 - **Welcome sheet** on the first start (Help › *Welcome to Luik…*, ⌘K "welcome"): the four steps that make a new Mac useful — download the knowledge base, download the documentation, install the shell integration, set up an engagement — each one button, with a tick once done.
 - **Daily content check**: once a day after launch (Settings › General, separate toggle from the Luik release check — both can be switched off, and then Luik makes no network requests on its own) the downloaded library sources and the imported knowledge base are compared with GitHub and the catalogue; a green *Updates (n)* badge in the top bar lists what is new with a Download button per item. Help › *Check for Updates…* and ⌘K run it on demand. Nothing is downloaded automatically.
