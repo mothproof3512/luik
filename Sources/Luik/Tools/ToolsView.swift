@@ -7,15 +7,82 @@ struct ToolsView: View {
     @Environment(UIState.self) private var ui
     @Environment(\.luikTheme) private var theme
 
+    @AppStorage("toolsSidebarCollapsed") private var collapsed = false
+
     var body: some View {
-        SplitPane(storageKey: "toolsSplitFraction", defaultFraction: 0.22, minFraction: 0.14, maxFraction: 0.4) {
+        if collapsed {
+            HStack(spacing: 0) {
+                iconRail
+                Divider()
+                content
+            }
+        } else {
+            SplitPane(storageKey: "toolsSplitFraction", defaultFraction: 0.22, minFraction: 0.14, maxFraction: 0.4) {
+                sidebar
+            } trailing: {
+                content
+            }
+        }
+    }
+
+    /// Collapsed sidebar: one icon per tool, the selected one tinted, names as tooltips.
+    private var iconRail: some View {
+        VStack(spacing: 2) {
+            Button {
+                withAnimation(.easeOut(duration: 0.15)) { collapsed = false }
+            } label: {
+                Image(systemName: "sidebar.left")
+                    .frame(width: 32, height: 28)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("Show the tool names")
+            .padding(.bottom, 4)
+            ForEach(ui.toolOrder) { module in
+                Button {
+                    ui.open(module)
+                } label: {
+                    Image(systemName: module.icon)
+                        .font(.system(size: 15))
+                        .frame(width: 34, height: 30)
+                        .background(ui.module == module ? theme.accentColor.opacity(0.28) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+                        .foregroundStyle(ui.module == module ? theme.accentColor : Color.primary)
+                }
+                .buttonStyle(.plain)
+                .help(module.title + " — " + module.summary)
+                .contextMenu {
+                    Button("Move up") { ui.moveTool(module, by: -1) }
+                        .disabled(ui.toolOrder.first == module)
+                    Button("Move down") { ui.moveTool(module, by: 1) }
+                        .disabled(ui.toolOrder.last == module)
+                    Divider()
+                    Button("Give it a tab in the top bar") { ui.moveToTabs(module) }
+                }
+            }
+            Spacer()
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 4)
+        .frame(width: 44)
+    }
+
+    private var sidebar: some View {
             VStack(spacing: 0) {
                 HStack {
                     Text("Tools")
                         .font(.headline)
                     Spacer()
+                    Button {
+                        withAnimation(.easeOut(duration: 0.15)) { collapsed = true }
+                    } label: {
+                        Image(systemName: "sidebar.left")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .help("Collapse to icons")
                     Menu {
                         Text("Right-click a tool to give it its own tab, or a tab to move it here.")
+                        Button("Collapse sidebar to icons") { withAnimation(.easeOut(duration: 0.15)) { collapsed = true } }
                         Divider()
                         Button("Reset tabs and tools") { ui.resetLayout() }
                             .disabled(ui.isDefaultLayout)
@@ -59,7 +126,9 @@ struct ToolsView: View {
                 .listStyle(.sidebar)
                 .scrollContentBackground(.hidden)
             }
-        } trailing: {
+    }
+
+    private var content: some View {
             ZStack {
                 ForEach(ui.toolOrder) { module in
                     ModuleContent(module: module)
@@ -79,7 +148,6 @@ struct ToolsView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-        }
     }
 }
 

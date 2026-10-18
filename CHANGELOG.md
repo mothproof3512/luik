@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.48.1
+- Tools: the sidebar collapses to an icon rail (sidebar button next to the title, or ⋯ › Collapse); names and summaries become tooltips, right-click still reorders or gives a tool its own tab. Remembered across launches.
+
 ## 0.48.0
 - **VM-aware terminal tabs.** A tab opened from a saved connection, or in which you type `ssh …`, knows which machine it is logged in to (user@host, the connection's name); `exit`, `logout` or Ctrl-D end it. The tab chip shows a network icon, the Log gets a `via` field (also in the Markdown export), and the tab keeps the connection's name.
 - **Prepare this VM** (right-click the tab, or ⌘K): puts Luik's shell integration on the remote machine through the session itself — one paste writes `~/.luik/shell-integration.sh` (bash and zsh), adds a source line to `.bashrc`/`.zshrc` once and loads it; no scp, no agent. A fresh VM per test is one click away from exact prompt markers. The icon turns green once done.
