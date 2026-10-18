@@ -195,7 +195,7 @@ struct CommandPalette: View {
                 ui.module = .plan
                 PlanStore.shared.showTemplateEditor = true
             },
-            PaletteItem(id: "tls", icon: "lock.shield", title: "TLS inspector", subtitle: "certificate, protocols, weak ciphers of host:port", group: "Actions") {
+            PaletteItem(id: "tls", icon: "checkmark.seal", title: "Certificates", subtitle: "certificate chain of host:port as OSINT, plus Certificate Transparency names", group: "Actions") {
                 if let node = TargetStore.shared.selectedNode, let host = TargetStore.shared.host(of: node), !host.address.isEmpty {
                     TLSInspector.shared.target = node.kind == .port ? "\(host.address):\(node.portNumber)" : host.address
                 }

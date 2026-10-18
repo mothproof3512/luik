@@ -353,9 +353,9 @@ struct NodeDetailView: View {
                                 ui.open(.tlsInspector)
                                 TLSInspector.shared.run()
                             } label: {
-                                Label("TLS", systemImage: "lock.shield")
+                                Label("Cert", systemImage: "checkmark.seal")
                             }
-                            .help("Certificate, protocol versions and cipher families of \(host.address):\(node.portNumber) — Tools › TLS")
+                            .help("Read the certificate chain of \(host.address):\(node.portNumber) — names, issuer, validity, fingerprints, CT — Tools › Certificates")
                         }
                         if web {
                             Button {
