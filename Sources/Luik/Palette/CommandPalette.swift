@@ -213,6 +213,13 @@ struct CommandPalette: View {
                 }
                 ui.open(.dnsLookup)
             },
+            PaletteItem(id: "shodan", icon: "binoculars", title: "Shodan lookup", subtitle: "ports, banners, CVEs by banner, subdomains — with your API key", group: "Actions") {
+                if let node = TargetStore.shared.selectedNode, let host = TargetStore.shared.host(of: node), !host.address.isEmpty {
+                    ShodanStore.shared.mode = .host
+                    ShodanStore.shared.query = host.address
+                }
+                ui.open(.shodan)
+            },
             PaletteItem(id: "prepare-vm", icon: "network", title: "Prepare this VM (shell integration)", subtitle: "put Luik's prompt markers on the machine the active terminal tab is logged in to", group: "Actions") {
                 if let session = TerminalStore.shared.selected, session.remote != nil {
                     ui.open(.terminal)

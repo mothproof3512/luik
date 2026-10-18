@@ -22,6 +22,7 @@ enum Module: String, CaseIterable, Identifiable {
     case tlsInspector
     case httpHeaders
     case dnsLookup
+    case shodan
 
     var id: String { rawValue }
 
@@ -46,6 +47,7 @@ enum Module: String, CaseIterable, Identifiable {
         case .tlsInspector: return "Certificates"
         case .httpHeaders: return "HTTP headers"
         case .dnsLookup: return "DNS & RDAP"
+        case .shodan: return "Shodan"
         }
     }
 
@@ -70,6 +72,7 @@ enum Module: String, CaseIterable, Identifiable {
         case .tlsInspector: return "checkmark.seal"
         case .httpHeaders: return "list.bullet.rectangle"
         case .dnsLookup: return "globe"
+        case .shodan: return "binoculars"
         }
     }
 }
@@ -97,12 +100,13 @@ extension Module {
         case .tlsInspector: return "Certificate chain as OSINT: names, organisation, issuer, validity, fingerprints, OCSP/CRL, validation level, CT timestamps — and the names CT logs know for the domain."
         case .httpHeaders: return "Security headers, cookie flags, redirects and CORS of a URL, judged — and the version disclosure for the Version check."
         case .dnsLookup: return "Records, reverse lookup, zone-transfer attempt and who owns the domain or address range (RDAP, ASN)."
+        case .shodan: return "What Shodan has seen on a host (ports, banners, certificates, CVEs by banner), the subdomains of a domain, and searches — with your API key; results merge into Targets."
         }
     }
 
     /// Where a module lives when nothing was changed: the top bar, or the Tools tab's sidebar.
     static let defaultTabs: [Module] = [.terminal, .notes, .snippets, .targets, .findings, .plan, .activity, .tools]
-    static let defaultTools: [Module] = [.knowledgeBase, .exploits, .chef, .diagram, .versionCheck, .mailSecurity, .tlsInspector, .httpHeaders, .dnsLookup, .reachability, .playbooks]
+    static let defaultTools: [Module] = [.knowledgeBase, .exploits, .chef, .diagram, .versionCheck, .mailSecurity, .tlsInspector, .httpHeaders, .dnsLookup, .shodan, .reachability, .playbooks]
 }
 
 /// Shared UI state (which tab is open, whether settings are visible).

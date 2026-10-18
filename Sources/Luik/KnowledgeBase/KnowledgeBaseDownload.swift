@@ -283,6 +283,7 @@ final class KnowledgeBaseDownloader {
 /// repositories, shared by the knowledge-base and library downloads.
 enum KeychainItem: String {
     case githubToken = "github-token"
+    case shodanKey = "shodan-api-key"
 
     private static let service = "dev.luik.app"
 

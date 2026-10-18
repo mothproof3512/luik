@@ -318,6 +318,23 @@ final class TargetStore {
         return result
     }
 
+    /// Hosts from another source than a scan file (Shodan, …), merged the same way as a scan import.
+    @discardableResult
+    func importParsedHosts(_ parsed: [ParsedHost], source: String) -> ImportResult {
+        var result = ImportResult(format: .nmap)
+        importHosts(parsed, includeNonOpen: false, result: &result)
+        let engagement = EngagementStore.shared
+        if engagement.hasScope {
+            result.outOfScope = parsed.map { $0.address }.filter { engagement.scopeStatus(of: $0).isProblem }
+        }
+        if selectedID == nil, let first = hosts.first { selectedID = first.id }
+        scheduleSave()
+        if result.newHosts + result.updatedHosts > 0 {
+            ActivityLog.shared.record(.import, "\(source) import: \(result.summary) \(parsed.map { $0.address }.prefix(8).joined(separator: ", "))", source: "Targets")
+        }
+        return result
+    }
+
     private func importHosts(_ parsed: [ParsedHost], includeNonOpen: Bool, result: inout ImportResult) {
         for parsedHost in parsed {
             let hostNode: TargetNode

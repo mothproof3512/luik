@@ -207,6 +207,14 @@ struct NodeRow: View {
         .contextMenu {
             if node.kind == .host || node.kind == .port {
                 Button(node.kind == .port ? "Use as $RHOST / $RPORT" : "Use as $RHOST") { TargetContext.use(node, export: true) }
+                if ShodanAPI.hasKey, let host = store.host(of: node), DNSLookup.isIPAddress(host.address) {
+                    Button("Look up in Shodan") {
+                        ShodanStore.shared.mode = .host
+                        ShodanStore.shared.query = host.address
+                        ui.open(.shodan)
+                        ShodanStore.shared.run()
+                    }
+                }
                 Button("Open a terminal here") {
                     TerminalStore.shared.newSession(boundTo: node)
                     ui.open(.terminal)

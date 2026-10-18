@@ -202,6 +202,7 @@ struct ModuleContent: View {
         case .tlsInspector: TLSInspectorView()
         case .httpHeaders: HTTPHeadersView()
         case .dnsLookup: DNSLookupView()
+        case .shodan: ShodanView()
         }
     }
 }
@@ -382,6 +383,12 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.checkContentUpdates) private var checkContentUpdates = true
     @AppStorage(SettingsKey.themeIntro) private var themeIntro = true
     @AppStorage(SettingsKey.exportTargetToTerminal) private var exportTargetToTerminal = true
+    @State private var shodanKey = KeychainItem.shodanKey.read() ?? ""
+
+    private func saveShodanKey() {
+        KeychainItem.shodanKey.write(shodanKey.trimmingCharacters(in: .whitespacesAndNewlines))
+        if shodanKey.trimmingCharacters(in: .whitespaces).isEmpty { ShodanStore.shared.plan = nil }
+    }
     @AppStorage(SettingsKey.knowledgeBaseCatalogURL) private var knowledgeBaseCatalogURL = ""
     @State private var checkingUpdates = false
     @State private var updateMessage: String? = nil
@@ -532,6 +539,28 @@ struct SettingsView: View {
                 Button("Download…") { ui.showKnowledgeBaseDownload = true }
             }
             caption("The catalog.json that the Download sheet of the Knowledge base tab lists. Empty = the Luik repository (English and Dutch attack-vectors knowledge bases). Point it at your own repository to make your team's knowledge bases the default; the format is described in knowledge-base/README.md of the repository.")
+
+            Divider()
+
+            Text("Shodan")
+                .font(.subheadline.weight(.semibold))
+            HStack(spacing: 8) {
+                SecureField("API key (account page on shodan.io)", text: $shodanKey)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(.caption, design: .monospaced))
+                    .onSubmit { saveShodanKey() }
+                Button("Save") { saveShodanKey() }
+                Button("Check") {
+                    saveShodanKey()
+                    ShodanStore.shared.checkKey()
+                }
+            }
+            if let plan = ShodanStore.shared.plan {
+                caption("Key works — plan \(plan), \(ShodanStore.shared.credits ?? 0) query credits left.")
+            } else if let error = ShodanStore.shared.error, !shodanKey.isEmpty {
+                Text(error).font(.caption).foregroundStyle(.orange)
+            }
+            caption("Kept in the macOS Keychain, never in the data folder. Tools › Shodan looks hosts and domains up (free on a paid plan) and searches (one credit per page); every request is written to the Log.")
 
             Divider()
 
