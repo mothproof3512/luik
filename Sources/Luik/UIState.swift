@@ -106,6 +106,17 @@ extension Module {
 
     /// Where a module lives when nothing was changed: the top bar, or the Tools tab's sidebar.
     static let defaultTabs: [Module] = [.terminal, .notes, .snippets, .targets, .findings, .plan, .activity, .tools]
+    /// Group in the Tools sidebar.
+    var toolGroup: String {
+        switch self {
+        case .knowledgeBase, .exploits: return "Reference"
+        case .tlsInspector, .httpHeaders, .dnsLookup, .shodan, .mailSecurity, .versionCheck: return "Recon"
+        case .chef, .diagram, .reachability, .playbooks: return "Work"
+        default: return "Tabs parked here"
+        }
+    }
+    static let toolGroupOrder = ["Reference", "Recon", "Work", "Tabs parked here"]
+
     static let defaultTools: [Module] = [.knowledgeBase, .exploits, .chef, .diagram, .versionCheck, .mailSecurity, .tlsInspector, .httpHeaders, .dnsLookup, .shodan, .reachability, .playbooks]
 }
 

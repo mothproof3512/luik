@@ -207,14 +207,6 @@ struct NodeRow: View {
         .contextMenu {
             if node.kind == .host || node.kind == .port {
                 Button(node.kind == .port ? "Use as $RHOST / $RPORT" : "Use as $RHOST") { TargetContext.use(node, export: true) }
-                if ShodanAPI.hasKey, let host = store.host(of: node), DNSLookup.isIPAddress(host.address) {
-                    Button("Look up in Shodan") {
-                        ShodanStore.shared.mode = .host
-                        ShodanStore.shared.query = host.address
-                        ui.open(.shodan)
-                        ShodanStore.shared.run()
-                    }
-                }
                 Button("Open a terminal here") {
                     TerminalStore.shared.newSession(boundTo: node)
                     ui.open(.terminal)
@@ -314,71 +306,7 @@ struct NodeDetailView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
-                if node.kind == .host {
-                    Button {
-                        showPortSheet = true
-                    } label: {
-                        Label("Port", systemImage: "plus")
-                    }
-                    .popover(isPresented: $showPortSheet) {
-                        NewPortPopover { number, proto in
-                            _ = store.addPort(to: node, number: number, proto: proto)
-                        }
-                    }
-                }
-                Button {
-                    _ = store.addChild(to: node)
-                } label: {
-                    Label("Sub-node", systemImage: "plus")
-                }
-                if node.kind == .host || node.kind == .port {
-                    Button {
-                        store.applyTemplate(to: node)
-                    } label: {
-                        Label("Checklist", systemImage: "list.bullet.rectangle")
-                    }
-                    .help("Add the missing work-item nodes from the checklist for this host/service")
-                }
-                if node.kind == .port {
-                    let query = ServiceQuery(node: node)
-                    Button {
-                        let product = query.product.isEmpty ? query.knowledgeTerms.joined(separator: " ") : query.product.joined(separator: " ")
-                        VersionCheck.shared.prefill(product: product, version: query.version)
-                        ui.open(.versionCheck)
-                    } label: {
-                        Label("Version", systemImage: "clock.badge.exclamationmark")
-                    }
-                    .disabled(query.product.isEmpty && query.knowledgeTerms.isEmpty)
-                    .help("Is \(query.displayQuery.isEmpty ? "this service" : query.displayQuery) current, supported or end of life? Opens Tools › Version check with the product and version from the service line")
-                    if let host = store.host(of: node), !host.address.isEmpty {
-                        let service = node.subtitle.lowercased()
-                        let web = service.contains("http") || [80, 443, 8080, 8443, 8000, 8888].contains(node.portNumber)
-                        let tls = service.contains("ssl") || service.contains("tls") || service.contains("https") || [443, 8443, 465, 993, 995, 636, 3389].contains(node.portNumber)
-                        if tls {
-                            Button {
-                                TLSInspector.shared.target = "\(host.address):\(node.portNumber)"
-                                TLSInspector.shared.starttls = "none"
-                                ui.open(.tlsInspector)
-                                TLSInspector.shared.run()
-                            } label: {
-                                Label("Cert", systemImage: "checkmark.seal")
-                            }
-                            .help("Read the certificate chain of \(host.address):\(node.portNumber) — names, issuer, validity, fingerprints, CT — Tools › Certificates")
-                        }
-                        if web {
-                            Button {
-                                let scheme = tls || node.portNumber == 443 || node.portNumber == 8443 ? "https" : "http"
-                                let portSuffix = [80, 443].contains(node.portNumber) ? "" : ":\(node.portNumber)"
-                                HTTPHeadersCheck.shared.url = "\(scheme)://\(host.subtitle.isEmpty ? host.address : host.subtitle)\(portSuffix)/"
-                                ui.open(.httpHeaders)
-                                HTTPHeadersCheck.shared.run()
-                            } label: {
-                                Label("Headers", systemImage: "list.bullet.rectangle")
-                            }
-                            .help("Security headers, cookies and redirects — Tools › HTTP headers")
-                        }
-                    }
-                }
+                // Two things you do all the time stay as buttons; adding and checking are menus.
                 Button {
                     findings.create(from: node, in: store)
                     ui.module = .findings
@@ -386,6 +314,84 @@ struct NodeDetailView: View {
                     Label("Finding", systemImage: "exclamationmark.triangle")
                 }
                 .help("Create a finding from this node: the notes become the evidence, the host/port the affected service")
+                if let host = store.host(of: node), !host.address.isEmpty {
+                    Button {
+                        TerminalStore.shared.newSession(boundTo: node)
+                        ui.open(.terminal)
+                    } label: {
+                        Label("Terminal", systemImage: "terminal")
+                    }
+                    .help("A terminal tab for \(host.address)\(node.kind == .port ? ":\(node.portNumber)" : "") with $RHOST\(node.kind == .port ? "/$RPORT" : "") set")
+                }
+                Menu {
+                    if node.kind == .host {
+                        Button("Port…") { showPortSheet = true }
+                    }
+                    Button("Sub-node") { _ = store.addChild(to: node) }
+                    if node.kind == .host || node.kind == .port {
+                        Button("Missing checklist items") { store.applyTemplate(to: node) }
+                    }
+                } label: {
+                    Label("Add", systemImage: "plus")
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .popover(isPresented: $showPortSheet) {
+                    NewPortPopover { number, proto in
+                        _ = store.addPort(to: node, number: number, proto: proto)
+                    }
+                }
+                if let host = store.host(of: node), !host.address.isEmpty {
+                    let query = node.kind == .port ? ServiceQuery(node: node) : nil
+                    let service = node.subtitle.lowercased()
+                    let web = node.kind == .port && (service.contains("http") || [80, 443, 8080, 8443, 8000, 8888].contains(node.portNumber))
+                    let tls = node.kind == .port && (service.contains("ssl") || service.contains("tls") || service.contains("https") || [443, 8443, 465, 993, 995, 636, 3389].contains(node.portNumber))
+                    Menu {
+                        if let query {
+                            Button("Version & end of life\(query.displayQuery.isEmpty ? "" : " — \(query.displayQuery)")") {
+                                let product = query.product.isEmpty ? query.knowledgeTerms.joined(separator: " ") : query.product.joined(separator: " ")
+                                VersionCheck.shared.prefill(product: product, version: query.version)
+                                ui.open(.versionCheck)
+                            }
+                            .disabled(query.product.isEmpty && query.knowledgeTerms.isEmpty)
+                        }
+                        if tls {
+                            Button("Certificate of \(host.address):\(node.portNumber)") {
+                                TLSInspector.shared.target = "\(host.address):\(node.portNumber)"
+                                TLSInspector.shared.starttls = "none"
+                                ui.open(.tlsInspector)
+                                TLSInspector.shared.run()
+                            }
+                        }
+                        if web {
+                            Button("HTTP security headers") {
+                                let scheme = tls || node.portNumber == 443 || node.portNumber == 8443 ? "https" : "http"
+                                let portSuffix = [80, 443].contains(node.portNumber) ? "" : ":\(node.portNumber)"
+                                HTTPHeadersCheck.shared.url = "\(scheme)://\(host.subtitle.isEmpty ? host.address : host.subtitle)\(portSuffix)/"
+                                ui.open(.httpHeaders)
+                                HTTPHeadersCheck.shared.run()
+                            }
+                        }
+                        Button("DNS & RDAP of \(host.subtitle.isEmpty ? host.address : host.subtitle)") {
+                            DNSLookup.shared.query = host.subtitle.isEmpty ? host.address : host.subtitle
+                            ui.open(.dnsLookup)
+                            DNSLookup.shared.run()
+                        }
+                        if ShodanAPI.hasKey, DNSLookup.isIPAddress(host.address) {
+                            Button("Shodan") {
+                                ShodanStore.shared.mode = .host
+                                ShodanStore.shared.query = host.address
+                                ui.open(.shodan)
+                                ShodanStore.shared.run()
+                            }
+                        }
+                    } label: {
+                        Label("Check", systemImage: "magnifyingglass.circle")
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help("Look this host or service up in the tools: version, certificate, headers, DNS, Shodan")
+                }
                 Button {
                     AppDelegate.shared?.captureEvidenceHidingLuik()
                 } label: {

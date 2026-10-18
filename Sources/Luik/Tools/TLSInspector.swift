@@ -466,27 +466,13 @@ struct TLSInspectorView: View {
     var body: some View {
         @Bindable var inspector = TLSInspector.shared
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                TextField("host or host:port (www.example.com, 203.0.113.10:8443)", text: $inspector.target)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 320)
-                    .onSubmit { inspector.run() }
+            CheckToolbar(text: $inspector.target, placeholder: "host or host:port (www.example.com, 203.0.113.10:8443)", isRunning: inspector.isRunning, hasOptions: true, optionsHelp: "STARTTLS", run: { inspector.run() }) {
                 Picker("STARTTLS", selection: $inspector.starttls) {
                     ForEach(TLSInspector.starttlsOptions, id: \.self) { Text($0).tag($0) }
                 }
-                .frame(maxWidth: 170)
-                .help("For mail, FTP, LDAP and database ports that upgrade to TLS after a plain-text greeting")
-                Button {
-                    inspector.run()
-                } label: {
-                    Label("Read", systemImage: "play.fill")
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(inspector.isRunning || inspector.target.trimmingCharacters(in: .whitespaces).isEmpty)
-                if inspector.isRunning {
-                    ProgressView().controlSize(.small)
-                }
-                Spacer()
+                Text("For mail, FTP, LDAP and database ports that upgrade to TLS after a plain-text greeting. The port follows the choice unless you give one.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            } trailing: {
                 if let result = inspector.result, result.reachable {
                     CheckResultButtons(markdown: { TLSInspector.markdown(result) + (inspector.ctEntries.isEmpty ? "" : TLSInspector.ctMarkdown(inspector.ctEntries, domain: inspector.ctDomain)) },
                                        findingTitle: result.problems.isEmpty ? nil : "Certificate problem on \(result.endpoint)",
@@ -494,8 +480,6 @@ struct TLSInspectorView: View {
                                        addToTargets: { addToTargets(result) })
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
             Divider()
             if let error = inspector.error {
                 Label(error, systemImage: "exclamationmark.triangle")

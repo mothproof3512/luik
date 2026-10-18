@@ -310,22 +310,12 @@ struct HTTPHeadersView: View {
     var body: some View {
         @Bindable var check = HTTPHeadersCheck.shared
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                TextField("URL (https://www.example.com/login)", text: $check.url)
+            CheckToolbar(text: $check.url, placeholder: "URL (https://www.example.com/login)", isRunning: check.isRunning, hasOptions: true, optionsHelp: "User-Agent", run: { check.run() }) {
+                Text("User-Agent").font(.caption.weight(.semibold))
+                TextField("User-Agent header", text: $check.userAgent)
                     .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 380)
-                    .onSubmit { check.run() }
-                Button {
-                    check.run()
-                } label: {
-                    Label("Check", systemImage: "play.fill")
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(check.isRunning || check.url.trimmingCharacters(in: .whitespaces).isEmpty)
-                if check.isRunning {
-                    ProgressView().controlSize(.small)
-                }
-                Spacer()
+                    .font(.system(.caption, design: .monospaced))
+            } trailing: {
                 if let result = check.result, result.final != nil {
                     CheckResultButtons(markdown: { HTTPHeadersCheck.markdown(result) },
                                        findingTitle: result.problems.isEmpty ? nil : "Missing or weak security headers on \(result.url.host ?? "")",
@@ -333,8 +323,6 @@ struct HTTPHeadersView: View {
                                        addToTargets: { addToTargets(result) })
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
             Divider()
             if let error = check.error {
                 Label(error, systemImage: "exclamationmark.triangle")

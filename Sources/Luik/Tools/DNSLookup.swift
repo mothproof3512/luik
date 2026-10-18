@@ -312,26 +312,11 @@ struct DNSLookupView: View {
     var body: some View {
         @Bindable var lookup = DNSLookup.shared
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                TextField("Domain or IP address (example.com, 203.0.113.10)", text: $lookup.query)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 320)
-                    .onSubmit { lookup.run() }
-                Toggle("Zone transfer", isOn: $lookup.tryZoneTransfer)
-                    .help("One AXFR request per name server — read-only, but it is a request the client's DNS logs will show")
-                Toggle("RDAP", isOn: $lookup.useRDAP)
-                    .help("Ownership through rdap.org (one HTTPS request to that service)")
-                Button {
-                    lookup.run()
-                } label: {
-                    Label("Look up", systemImage: "play.fill")
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(lookup.isRunning || lookup.query.trimmingCharacters(in: .whitespaces).isEmpty)
-                if lookup.isRunning {
-                    ProgressView().controlSize(.small)
-                }
-                Spacer()
+            CheckToolbar(text: $lookup.query, placeholder: "Domain or IP address (example.com, 203.0.113.10)", isRunning: lookup.isRunning, hasOptions: true, optionsHelp: "Zone transfer, RDAP", run: { lookup.run() }) {
+                Toggle("Try a zone transfer (AXFR) on every name server", isOn: $lookup.tryZoneTransfer)
+                Text("Read-only, but a request the client's DNS logs will show.").font(.caption).foregroundStyle(.secondary)
+                Toggle("Ownership through RDAP (rdap.org)", isOn: $lookup.useRDAP)
+            } trailing: {
                 if let result = lookup.result {
                     CheckResultButtons(markdown: { DNSLookup.markdown(result) },
                                        findingTitle: result.axfr.contains { $0.transferred } ? "DNS zone transfer allowed for \(result.query)" : nil,
@@ -339,8 +324,6 @@ struct DNSLookupView: View {
                                        addToTargets: result.addresses.isEmpty ? nil : { addToTargets(result) })
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
             Divider()
             if let error = lookup.error {
                 Label(error, systemImage: "exclamationmark.triangle")

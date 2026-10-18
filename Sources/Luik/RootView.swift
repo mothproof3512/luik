@@ -217,6 +217,9 @@ struct TopBar: View {
     var body: some View {
         @Bindable var ui = ui
         HStack(spacing: 4) {
+            // The engagement comes first: everything in the tabs lives under it.
+            EngagementMenu()
+                .padding(.trailing, 6)
             ForEach(Array(ui.tabOrder.enumerated()), id: \.element) { index, module in
                 Button {
                     ui.open(module)
@@ -255,6 +258,7 @@ struct TopBar: View {
                 }
             }
             Spacer()
+            // Only things that need attention right now are shown; everything else is in the status menu.
             if log.isPaused {
                 Button {
                     log.resume()
@@ -267,65 +271,93 @@ struct TopBar: View {
                 .help("Logging is paused — nothing is recorded. Click to resume.")
                 .padding(.trailing, 8)
             }
-            TargetContextChip()
-                .padding(.trailing, 10)
             CanaryIndicator()
                 .padding(.trailing, 8)
-            PublicIPButton()
+            TargetContextChip()
                 .padding(.trailing, 8)
-            EngagementMenu()
-                .padding(.trailing, 8)
-            ContentUpdatesButton()
-                .padding(.trailing, 8)
-            if let update = ui.updateAvailable, ContentUpdates.shared.updates.isEmpty {
-                Button {
-                    if let url = URL(string: update.url) { NSWorkspace.shared.open(url) }
-                } label: {
-                    Label("Update \(update.version)", systemImage: "arrow.down.circle")
-                        .font(.caption)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.green)
-                .help("A newer Luik release is available on GitHub")
-                .padding(.trailing, 8)
-            }
-            Button {
-                ui.showPalette.toggle()
-            } label: {
-                Image(systemName: "magnifyingglass")
-            }
-            .buttonStyle(.plain)
-            .help("Search everything (⌘K)")
-            .padding(.trailing, 8)
-            Button {
-                ui.showShortcuts = true
-            } label: {
-                Image(systemName: "questionmark.circle")
-            }
-            .buttonStyle(.plain)
-            .help("Keyboard shortcuts (⌘/)")
-            .padding(.trailing, 8)
-            Button {
-                ui.showSettings.toggle()
-            } label: {
-                Image(systemName: "gearshape")
-            }
-            .buttonStyle(.plain)
-            .help("Settings")
-            .popover(isPresented: $ui.showSettings, arrowEdge: .bottom) {
-                SettingsView()
-            }
-            Button {
-                AppDelegate.shared?.hideDropdown()
-            } label: {
-                Image(systemName: "chevron.up")
-            }
-            .buttonStyle(.plain)
-            .help("Hide (the hotkey works too)")
-            .padding(.leading, 8)
+            StatusMenu()
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
+    }
+}
+
+/// The one menu at the right of the top bar: public IP and $LHOST, updates, search, shortcuts,
+/// settings, hide. A dot on the icon means there is something new (content or a Luik release).
+struct StatusMenu: View {
+    @Environment(UIState.self) private var ui
+    @Environment(SnippetStore.self) private var snippets
+    @State private var showUpdates = false
+
+    var body: some View {
+        @Bindable var ui = ui
+        let ip = PublicIP.shared
+        let updates = ContentUpdates.shared
+        let hasNews = !updates.updates.isEmpty || ui.updateAvailable != nil
+        Menu {
+            Section("Network") {
+                Button(ip.address.map { "Public IP \($0) — refresh" } ?? (ip.isLoading ? "Looking up public IP…" : "Look up public IP")) { ip.refresh() }
+                if let address = ip.address {
+                    Button("Copy \(address)") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(address, forType: .string)
+                    }
+                }
+                Menu("$LHOST: \(snippets.lhost.isEmpty ? "not set" : snippets.lhost)") {
+                    ForEach(LocalAddress.interfaces()) { interface in
+                        Button("\(interface.name): \(interface.address)\(interface.isTunnel ? " (VPN)" : "")") {
+                            snippets.lhost = interface.address
+                            snippets.saveTarget()
+                        }
+                    }
+                }
+            }
+            if hasNews {
+                Section("New") {
+                    if !updates.updates.isEmpty {
+                        Button("Content updates (\(updates.updates.count))…") { showUpdates = true }
+                    }
+                    if let update = ui.updateAvailable {
+                        Button("Luik \(update.version) is available — open release") {
+                            if let url = URL(string: update.url) { NSWorkspace.shared.open(url) }
+                        }
+                    }
+                }
+            }
+            Divider()
+            Button("Search everything…        ⌘K") { ui.showPalette.toggle() }
+            Button("Keyboard shortcuts        ⌘/") { ui.showShortcuts = true }
+            Button("Settings…") { ui.showSettings = true }
+            Divider()
+            Button("Hide Luik") { AppDelegate.shared?.hideDropdown() }
+        } label: {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: 15))
+                if hasNews {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 7, height: 7)
+                        .offset(x: 2, y: -2)
+                }
+                if ip.isLoading {
+                    ProgressView().controlSize(.mini).offset(x: 4, y: -4)
+                }
+            }
+            .frame(width: 22, height: 22)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(hasNews ? "Something new: content updates or a Luik release" : "Public IP, $LHOST, updates, search, shortcuts, settings")
+        .popover(isPresented: $ui.showSettings, arrowEdge: .bottom) {
+            SettingsView()
+        }
+        .popover(isPresented: $showUpdates, arrowEdge: .bottom) {
+            ContentUpdatesList()
+                .padding(14)
+                .frame(width: 440)
+        }
     }
 }
 

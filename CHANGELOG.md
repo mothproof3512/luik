@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.52.0 — simpler UI
+- **Top bar**: the engagement now comes first (left of the tabs — everything in the tabs lives under it); on the right only what needs attention (log paused, canary, current target) plus **one status menu** (⋯) that holds public IP and $LHOST, content updates and a new Luik release (green dot on the icon), search ⌘K, shortcuts ⌘/, Settings and Hide. Nine controls became four.
+- **Targets node toolbar**: Finding and Terminal stay as buttons; **Add ▾** (port, sub-node, missing checklist items) and **Check ▾** (version & end of life, certificate, HTTP headers, DNS & RDAP, Shodan) replace seven buttons.
+- **One toolbar for the check tools** (Mail security, Certificates, HTTP headers, DNS & RDAP): input · options behind a slider icon (DKIM selectors, STARTTLS, User-Agent, zone transfer/RDAP) · Run · the same three result buttons. No more toggles and pickers in the bar.
+- **Tools sidebar in groups** — Reference, Recon, Work, parked tabs — in the list and as thin dividers in the icon rail; the summaries moved to tooltips.
+
 ## 0.51.0
 - **Tools › Shodan** with your API key (Settings › Tools › Shodan, kept in the Keychain; *Check* shows plan and credits). **Host**: everything Shodan has seen on an address — organisation, ISP, ASN, location, OS, hostnames, tags, CVEs by banner (clearly marked as unverified), and every service with product/version, page title, server header, certificate subject/issuer/expiry, CPEs and the raw banner. *Add to Targets* merges host, ports, versions and banners like a scan import; *Finding from vulns* makes a to-verify finding; right-click a service for the Version check. **Domain**: subdomains and DNS records Shodan knows (a second source next to Certificate Transparency), A-record hosts to Targets. **Search**: any Shodan query, one credit per page of 100, all hosts to Targets. **Enrich all hosts in Targets** looks every address up at one request per second. Shodan knows nothing about a host → silently skipped. Right-click a host in Targets › *Look up in Shodan*; ⌘K.
 - Every Shodan request is written to the Log — it is a query to a third party about the client's systems.

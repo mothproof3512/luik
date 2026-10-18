@@ -38,25 +38,33 @@ struct ToolsView: View {
             .foregroundStyle(.secondary)
             .help("Show the tool names")
             .padding(.bottom, 4)
-            ForEach(ui.toolOrder) { module in
-                Button {
-                    ui.open(module)
-                } label: {
-                    Image(systemName: module.icon)
-                        .font(.system(size: 15))
-                        .frame(width: 34, height: 30)
-                        .background(ui.module == module ? theme.accentColor.opacity(0.28) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
-                        .foregroundStyle(ui.module == module ? theme.accentColor : Color.primary)
-                }
-                .buttonStyle(.plain)
-                .help(module.title + " — " + module.summary)
-                .contextMenu {
-                    Button("Move up") { ui.moveTool(module, by: -1) }
-                        .disabled(ui.toolOrder.first == module)
-                    Button("Move down") { ui.moveTool(module, by: 1) }
-                        .disabled(ui.toolOrder.last == module)
-                    Divider()
-                    Button("Give it a tab in the top bar") { ui.moveToTabs(module) }
+            ForEach(Module.toolGroupOrder, id: \.self) { group in
+                let members = ui.toolOrder.filter { $0.toolGroup == group }
+                if !members.isEmpty {
+                    if group != Module.toolGroupOrder.first(where: { g in ui.toolOrder.contains { $0.toolGroup == g } }) {
+                        Divider().padding(.vertical, 3).padding(.horizontal, 8)
+                    }
+                    ForEach(members) { module in
+                        Button {
+                            ui.open(module)
+                        } label: {
+                            Image(systemName: module.icon)
+                                .font(.system(size: 15))
+                                .frame(width: 34, height: 30)
+                                .background(ui.module == module ? theme.accentColor.opacity(0.28) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+                                .foregroundStyle(ui.module == module ? theme.accentColor : Color.primary)
+                        }
+                        .buttonStyle(.plain)
+                        .help(module.title + " — " + module.summary)
+                        .contextMenu {
+                            Button("Move up") { ui.moveTool(module, by: -1) }
+                                .disabled(ui.toolOrder.first == module)
+                            Button("Move down") { ui.moveTool(module, by: 1) }
+                                .disabled(ui.toolOrder.last == module)
+                            Divider()
+                            Button("Give it a tab in the top bar") { ui.moveToTabs(module) }
+                        }
+                    }
                 }
             }
             Spacer()
@@ -81,7 +89,6 @@ struct ToolsView: View {
                     .foregroundStyle(.secondary)
                     .help("Collapse to icons")
                     Menu {
-                        Text("Right-click a tool to give it its own tab, or a tab to move it here.")
                         Button("Collapse sidebar to icons") { withAnimation(.easeOut(duration: 0.15)) { collapsed = true } }
                         Divider()
                         Button("Reset tabs and tools") { ui.resetLayout() }
@@ -96,26 +103,25 @@ struct ToolsView: View {
                 .padding(.vertical, 8)
                 List(selection: Binding<Module?>(get: { ui.toolOrder.contains(ui.module) ? ui.module : nil },
                                                  set: { if let module = $0 { ui.open(module) } })) {
-                    ForEach(ui.toolOrder) { module in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Label(module.title, systemImage: module.icon)
-                            Text(module.summary)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
+                    ForEach(Module.toolGroupOrder, id: \.self) { group in
+                        let members = ui.toolOrder.filter { $0.toolGroup == group }
+                        if !members.isEmpty {
+                            Section(group) {
+                                ForEach(members) { module in
+                                    Label(module.title, systemImage: module.icon)
+                                        .help(module.summary)
+                                        .tag(module)
+                                        .contextMenu {
+                                            Button("Move up") { ui.moveTool(module, by: -1) }
+                                                .disabled(ui.toolOrder.first == module)
+                                            Button("Move down") { ui.moveTool(module, by: 1) }
+                                                .disabled(ui.toolOrder.last == module)
+                                            Divider()
+                                            Button("Give it a tab in the top bar") { ui.moveToTabs(module) }
+                                        }
+                                }
+                            }
                         }
-                        .tag(module)
-                        .contextMenu {
-                            Button("Move up") { ui.moveTool(module, by: -1) }
-                                .disabled(ui.toolOrder.first == module)
-                            Button("Move down") { ui.moveTool(module, by: 1) }
-                                .disabled(ui.toolOrder.last == module)
-                            Divider()
-                            Button("Give it a tab in the top bar") { ui.moveToTabs(module) }
-                        }
-                    }
-                    .onMove { source, destination in
-                        ui.moveTool(from: source, to: destination)
                     }
                     if ui.toolOrder.isEmpty {
                         Text("Everything has its own tab. Right-click a tab and choose “Move into Tools” to park it here.")
@@ -513,56 +519,25 @@ struct VersionCheckView: View {
 struct MailSecurityView: View {
     @Environment(FindingsStore.self) private var findings
     @Environment(\.luikTheme) private var theme
-    @State private var findingCreated = false
-    @State private var copied = false
     @State private var showRecords = false
 
     var body: some View {
         @Bindable var check = MailSecurityCheck.shared
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                TextField("Domain (example.com)", text: $check.domain)
+            CheckToolbar(text: $check.domain, placeholder: "Mail domain (example.com)", isRunning: check.isRunning, hasOptions: true, optionsHelp: "Extra DKIM selectors", run: { check.run() }) {
+                Text("Extra DKIM selectors").font(.caption.weight(.semibold))
+                TextField("comma-separated, e.g. mail2024, sel1", text: $check.selectors)
                     .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 260)
-                    .onSubmit { check.run() }
-                TextField("Extra DKIM selectors, comma-separated (optional)", text: $check.selectors)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 300)
-                    .help("Common selectors are tried automatically; add the one from a real mail's DKIM-Signature header (s=…) when it is not among them")
-                Button {
-                    check.run()
-                } label: {
-                    Label("Check", systemImage: "play.fill")
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(check.isRunning || check.domain.trimmingCharacters(in: .whitespaces).isEmpty)
-                if check.isRunning {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-                Spacer()
+                Text("Common selectors are tried automatically; add the one from a real mail's DKIM-Signature header (s=…) when it is not among them.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            } trailing: {
                 if let result = check.result {
-                    Button {
-                        let pasteboard = NSPasteboard.general
-                        pasteboard.clearContents()
-                        pasteboard.setString(MailSecurityCheck.markdown(result), forType: .string)
-                        copied = true
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copied = false }
-                    } label: {
-                        Label(copied ? "Copied" : "Copy as Markdown", systemImage: copied ? "checkmark" : "doc.on.doc")
-                    }
-                    if !result.problems.isEmpty {
-                        Button {
-                            createFinding(result)
-                        } label: {
-                            Label(findingCreated ? "Finding created" : "Create finding", systemImage: findingCreated ? "checkmark" : "exclamationmark.triangle")
-                        }
-                        .help("A finding “Weak email authentication for \(result.domain)” with the issues and the records in the description")
-                    }
+                    CheckResultButtons(markdown: { MailSecurityCheck.markdown(result) },
+                                       findingTitle: result.problems.isEmpty ? nil : "Weak email authentication for \(result.domain)",
+                                       createFinding: { createFinding(result) },
+                                       addToTargets: nil)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
             Divider()
             if let error = check.error {
                 Label(error, systemImage: "exclamationmark.triangle")
@@ -672,8 +647,6 @@ struct MailSecurityView: View {
         finding.source = "Mail security check"
         _ = findings.add(finding)
         ActivityLog.shared.record(.action, "Finding “\(finding.title)” created from the mail security check", source: "Tools")
-        findingCreated = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { findingCreated = false }
     }
 }
 

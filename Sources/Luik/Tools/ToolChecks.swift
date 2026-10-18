@@ -131,3 +131,51 @@ enum ShellTool {
         items.map { "- \($0.level.mark) \($0.text)" }.joined(separator: "\n")
     }
 }
+
+/// The one toolbar every check tool has: input · ⚙︎ options (popover, only when there are any) ·
+/// Run · spinner · the result buttons on the right.
+struct CheckToolbar<Options: View, Trailing: View>: View {
+    @Binding var text: String
+    var placeholder: String
+    var isRunning: Bool
+    var hasOptions = false
+    var optionsHelp = "Options"
+    var run: () -> Void
+    @ViewBuilder var options: () -> Options
+    @ViewBuilder var trailing: () -> Trailing
+    @State private var showOptions = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            TextField(placeholder, text: $text)
+                .textFieldStyle(.roundedBorder)
+                .frame(maxWidth: 380)
+                .onSubmit(run)
+            if hasOptions {
+                Button {
+                    showOptions.toggle()
+                } label: {
+                    Image(systemName: "slider.horizontal.3")
+                }
+                .help(optionsHelp)
+                .popover(isPresented: $showOptions, arrowEdge: .bottom) {
+                    VStack(alignment: .leading, spacing: 8) { options() }
+                        .padding(12)
+                        .frame(minWidth: 260)
+                }
+            }
+            Button(action: run) {
+                Label("Run", systemImage: "play.fill")
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isRunning || text.trimmingCharacters(in: .whitespaces).isEmpty)
+            if isRunning {
+                ProgressView().controlSize(.small)
+            }
+            Spacer()
+            trailing()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+}
