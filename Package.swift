@@ -25,6 +25,11 @@ let package = Package(
             linkerSettings: [
                 .linkedFramework("Carbon")
             ]
+        ),
+        .testTarget(
+            name: "LuikTests",
+            dependencies: ["Luik"],
+            path: "Tests/LuikTests"
         )
     ],
     swiftLanguageVersions: [.v5]

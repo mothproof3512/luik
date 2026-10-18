@@ -30,6 +30,21 @@ struct TLSCertificate: Identifiable {
     var daysLeft: Int? { notAfter.map { Int($0.timeIntervalSinceNow / 86400) } }
 }
 
+struct TLSProbeRecord: Identifiable {
+    let id = UUID()
+    var name: String
+    var flag: String
+    var outcome: TLSProbe.Outcome
+
+    var label: String {
+        switch outcome.verdict {
+        case .accepted: return "accepted (\(outcome.negotiatedProtocol ?? "") \(outcome.negotiatedCipher ?? ""))"
+        case .refused: return "refused"
+        case .notTestable(let reason): return "not testable — \(reason)"
+        }
+    }
+}
+
 struct TLSResult {
     var host: String
     var port: Int
@@ -43,8 +58,11 @@ struct TLSResult {
     var chain: [TLSCertificate] = []
     /// Protocol name → accepted / refused / nil (not testable with this openssl).
     var protocols: [(name: String, flag: String, accepted: Bool?)] = []
-    /// Cipher family → accepted.
+    /// Cipher family → accepted (families that could not be tested are left out).
     var weakCiphers: [(name: String, accepted: Bool)] = []
+    /// What every probe actually negotiated, for the raw view and the Markdown.
+    var probes: [TLSProbeRecord] = []
+    var cipherProbes: [TLSProbeRecord] = []
     var items: [CheckItem] = []
     var raw = ""
 
@@ -113,13 +131,6 @@ final class TLSInspector {
         return ""
     }
 
-    private static func handshakeSucceeded(_ output: String) -> Bool? {
-        if output.contains("unknown option") || output.contains("Unknown option") || output.contains("bad option") { return nil }
-        let cipher = value("Cipher", in: output)
-        if cipher.isEmpty || cipher.contains("NONE") { return false }
-        return true
-    }
-
     private static func pemBlocks(in text: String) -> [String] {
         var blocks: [String] = []
         var current: [String] = []
@@ -185,13 +196,13 @@ final class TLSInspector {
         var items: [CheckItem] = []
         let main = sclient(host: host, port: port, starttls: starttls, extra: ["-showcerts"])
         result.raw = main
-        guard handshakeSucceeded(main) == true else {
+        guard TLSProbe.localProblem(main) == nil, TLSProbe.negotiatedCipher(main) != nil else {
             result.reachable = false
             result.items = [CheckItem(level: .info, text: "No TLS handshake with \(host):\(port).")]
             return result
         }
-        result.negotiatedProtocol = value("Protocol", in: main)
-        result.negotiatedCipher = value("Cipher", in: main)
+        result.negotiatedProtocol = TLSProbe.negotiatedProtocol(main) ?? ""
+        result.negotiatedCipher = TLSProbe.negotiatedCipher(main) ?? ""
         result.tempKey = value("Server Temp Key", in: main)
         result.verifyCode = value("Verify return code", in: main)
         result.chain = pemBlocks(in: main).map(parseCertificate)
@@ -236,6 +247,9 @@ final class TLSInspector {
                     items.append(CheckItem(level: .pass, text: "Key: \(leaf.keyType.isEmpty ? "\(bits) bit" : "\(leaf.keyType), \(bits) bit"); signature \(leaf.signatureAlgorithm)."))
                 }
             }
+            if result.chain.count > 1, let last = result.chain.last, last.isSelfSigned {
+                items.append(CheckItem(level: .info, text: "Root CA included in the chain (\(last.commonName)) — unnecessary; some Java clients reject chains that end in the root."))
+            }
             let signature = leaf.signatureAlgorithm.lowercased()
             if signature.contains("sha1") || signature.contains("md5") {
                 items.append(CheckItem(level: .fail, text: "Certificate signed with \(leaf.signatureAlgorithm) — SHA-1/MD5 signatures are deprecated."))
@@ -244,48 +258,88 @@ final class TLSInspector {
             items.append(CheckItem(level: .warn, text: "No certificate could be read from the handshake."))
         }
 
-        // Protocol versions
+        // Protocol versions — each probe forces exactly one version; it only counts when the
+        // server negotiated that version (TLSProbe.evaluateProtocol). TLS 1.2 output is kept for
+        // the renegotiation / compression checks, which do not exist in TLS 1.3.
         let versions: [(String, String)] = [("SSLv3", "-ssl3"), ("TLS 1.0", "-tls1"), ("TLS 1.1", "-tls1_1"), ("TLS 1.2", "-tls1_2"), ("TLS 1.3", "-tls1_3")]
+        var tls12Output: String?
+        var notTestable: [String] = []
         for (name, flag) in versions {
-            let accepted = handshakeSucceeded(sclient(host: host, port: port, starttls: starttls, extra: [flag]))
-            result.protocols.append((name, flag, accepted))
+            let output = sclient(host: host, port: port, starttls: starttls, extra: [flag])
+            let outcome = TLSProbe.evaluateProtocol(flag: flag, output: output)
+            result.probes.append(TLSProbeRecord(name: name, flag: flag, outcome: outcome))
+            switch outcome.verdict {
+            case .accepted:
+                result.protocols.append((name, flag, true))
+                if flag == "-tls1_2" { tls12Output = output }
+            case .refused:
+                result.protocols.append((name, flag, false))
+            case .notTestable(let reason):
+                result.protocols.append((name, flag, nil))
+                notTestable.append("\(name) (\(reason))")
+            }
         }
         let accepted = result.protocols.filter { $0.accepted == true }.map { $0.name }
+        let modern = accepted.filter { $0 == "TLS 1.2" || $0 == "TLS 1.3" }
         let legacy = accepted.filter { $0 == "SSLv3" || $0 == "TLS 1.0" || $0 == "TLS 1.1" }
         if !legacy.isEmpty {
             items.append(CheckItem(level: legacy.contains("SSLv3") ? .fail : .warn, text: "Legacy protocol(s) accepted: \(legacy.joined(separator: ", ")) — deprecated (RFC 8996); only TLS 1.2 and 1.3 should be offered."))
         }
-        if !accepted.contains("TLS 1.2") && !accepted.contains("TLS 1.3") {
-            items.append(CheckItem(level: .fail, text: "Neither TLS 1.2 nor TLS 1.3 could be negotiated by this openssl — modern clients may fail to connect."))
-        } else if accepted.contains("TLS 1.3") {
-            items.append(CheckItem(level: .pass, text: "Protocols: \(accepted.joined(separator: ", ")) (negotiated \(result.negotiatedProtocol))."))
+        if modern.isEmpty {
+            items.append(CheckItem(level: .fail, text: "Neither TLS 1.2 nor TLS 1.3 was negotiated — modern clients may fail to connect\(legacy.isEmpty ? "" : "; only \(legacy.joined(separator: ", ")) answered")."))
+        } else if legacy.isEmpty {
+            items.append(CheckItem(level: modern.contains("TLS 1.3") ? .pass : .info, text: "Protocols: \(modern.joined(separator: ", ")) only\(modern.contains("TLS 1.3") ? "" : " — TLS 1.3 not offered") (negotiated \(result.negotiatedProtocol))."))
         } else {
-            items.append(CheckItem(level: .info, text: "TLS 1.3 not offered; \(accepted.joined(separator: ", ")) accepted (negotiated \(result.negotiatedProtocol))."))
+            items.append(CheckItem(level: .info, text: "Modern protocols: \(modern.joined(separator: ", ")) (negotiated \(result.negotiatedProtocol)); see the legacy warning above."))
         }
-        let untestable = result.protocols.filter { $0.accepted == nil }.map { $0.name }
-        if !untestable.isEmpty {
-            items.append(CheckItem(level: .info, text: "Not testable with this openssl (compiled out): \(untestable.joined(separator: ", ")) — treat as not offered, confirm with sslscan/testssl.sh if it matters."))
+        if !notTestable.isEmpty {
+            items.append(CheckItem(level: .info, text: "Not testable with this openssl: \(notTestable.joined(separator: "; ")) — treated as not offered; confirm with testssl.sh or sslscan if it matters."))
         }
 
-        // Cipher families (TLS 1.2 handshakes with a restricted cipher list)
+        // Cipher families — a TLS ≤ 1.2 concept, so these probes force TLS 1.2 (`-tls1_2` sets
+        // min = max; OpenSSL 3 refuses `-no_tls1_3` next to it) and apply the list at security
+        // level 0 where the openssl supports it (LibreSSL does not know @SECLEVEL; then the plain
+        // list is used). A family counts as accepted only when the
+        // server negotiated TLS 1.2 with a cipher that `openssl ciphers` lists for that family.
         let families: [(String, String, CheckItem.Level, String)] = [
             ("NULL / anonymous", "NULL:aNULL", .fail, "no encryption or no authentication"),
             ("EXPORT grade", "EXPORT", .fail, "40/56-bit export ciphers"),
             ("RC4", "RC4", .fail, "RC4 is broken (RFC 7465)"),
             ("3DES", "3DES", .warn, "64-bit block cipher (Sweet32)"),
-            ("CBC-only", "AES128-SHA:AES256-SHA:AES128-SHA256:AES256-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-RSA-AES256-SHA", .info, "CBC ciphers — fine on TLS 1.2 with current libraries, but Lucky13-class issues on old ones"),
+            ("CBC", "SHA1:SHA256:SHA384", .info, "CBC with HMAC — fine on TLS 1.2 with current libraries, but Lucky13-class issues on old ones"),
             ("Static RSA key exchange", "kRSA", .warn, "no forward secrecy: a leaked private key decrypts recorded traffic"),
         ]
         if accepted.contains("TLS 1.2") {
+            var familyNotTestable: [String] = []
             for (name, list, level, why) in families {
-                let output = sclient(host: host, port: port, starttls: starttls, extra: ["-tls1_2", "-cipher", list])
-                let ok = handshakeSucceeded(output) == true
-                result.weakCiphers.append((name, ok))
-                if ok { items.append(CheckItem(level: level, text: "\(name) ciphers accepted (\(value("Cipher", in: output))): \(why).")) }
+                // What does this openssl understand by the list? (empty = nothing: not testable)
+                var cipherList = list + ":@SECLEVEL=0"
+                var family = TLSProbe.cipherNames(fromCiphersOutput: ShellTool.run(openssl, ["ciphers", cipherList], timeout: 5))
+                if family.isEmpty {
+                    cipherList = list
+                    family = TLSProbe.cipherNames(fromCiphersOutput: ShellTool.run(openssl, ["ciphers", cipherList], timeout: 5))
+                }
+                let output = family.isEmpty ? "" : sclient(host: host, port: port, starttls: starttls, extra: ["-tls1_2", "-cipher", cipherList])
+                let outcome = TLSProbe.evaluateCipherFamily(family: family, output: output)
+                result.cipherProbes.append(TLSProbeRecord(name: name, flag: cipherList, outcome: outcome))
+                switch outcome.verdict {
+                case .accepted:
+                    result.weakCiphers.append((name, true))
+                    items.append(CheckItem(level: level, text: "\(name) ciphers accepted (\(outcome.negotiatedCipher ?? "")): \(why)."))
+                case .refused:
+                    result.weakCiphers.append((name, false))
+                case .notTestable(let reason):
+                    familyNotTestable.append("\(name) (\(reason))")
+                }
             }
-            if !result.weakCiphers.contains(where: { $0.accepted }) {
-                items.append(CheckItem(level: .pass, text: "No weak cipher family accepted on TLS 1.2 (NULL, export, RC4, 3DES, static RSA)."))
+            if !result.weakCiphers.contains(where: { $0.accepted }) && !result.weakCiphers.isEmpty {
+                items.append(CheckItem(level: .pass, text: "No weak cipher family accepted on TLS 1.2 (\(result.weakCiphers.map { $0.name }.joined(separator: ", ")) all refused)."))
             }
+            if !familyNotTestable.isEmpty {
+                items.append(CheckItem(level: .info, text: "Cipher families not testable with this openssl: \(familyNotTestable.joined(separator: "; "))."))
+            }
+        } else {
+            items.append(CheckItem(level: .info, text: "Cipher-family probes skipped: they apply to TLS 1.2, which this server does not negotiate."))
         }
         if !result.tempKey.isEmpty {
             let lower = result.tempKey.lowercased()
@@ -295,11 +349,14 @@ final class TLSInspector {
                 items.append(CheckItem(level: .pass, text: "Key exchange: \(result.tempKey)."))
             }
         }
-        if main.contains("Secure Renegotiation IS NOT supported") {
-            items.append(CheckItem(level: .warn, text: "Secure renegotiation (RFC 5746) not supported."))
+        // Renegotiation and compression are TLS ≤ 1.2 features: judged on the forced TLS 1.2 handshake.
+        switch TLSProbe.secureRenegotiation(tls12Output: tls12Output) {
+        case .some(true): items.append(CheckItem(level: .pass, text: "Secure renegotiation (RFC 5746) supported on TLS 1.2."))
+        case .some(false): items.append(CheckItem(level: .warn, text: "Secure renegotiation (RFC 5746) not supported on TLS 1.2."))
+        case .none: items.append(CheckItem(level: .info, text: "Secure renegotiation: n/a (\(accepted.contains("TLS 1.2") ? "no TLS 1.2 handshake output" : "TLS 1.3 only — renegotiation does not exist in TLS 1.3")."))
         }
-        if main.contains("Compression: ") && !main.contains("Compression: NONE") {
-            items.append(CheckItem(level: .warn, text: "TLS compression enabled (CRIME)."))
+        if TLSProbe.compressionEnabled(tls12Output: tls12Output) == true {
+            items.append(CheckItem(level: .warn, text: "TLS compression enabled on TLS 1.2 (CRIME)."))
         }
         result.items = items.sorted { $0.level.rawValue > $1.level.rawValue }
         return result
@@ -308,9 +365,9 @@ final class TLSInspector {
     static func markdown(_ result: TLSResult) -> String {
         var out = "## TLS — \(result.endpoint)\(result.starttls == "none" ? "" : " (STARTTLS \(result.starttls))")\n\n_Checked \(result.checkedAt.formatted(date: .abbreviated, time: .shortened)) · negotiated \(result.negotiatedProtocol) \(result.negotiatedCipher)_\n\n"
         out += ShellTool.markdownList(result.items) + "\n\n"
-        if !result.protocols.isEmpty {
-            out += "| Protocol | Accepted |\n|---|---|\n"
-            for protocolEntry in result.protocols { out += "| \(protocolEntry.name) | \(protocolEntry.accepted.map { $0 ? "yes" : "no" } ?? "not testable") |\n" }
+        if !result.probes.isEmpty {
+            out += "| Probe | Result |\n|---|---|\n"
+            for probe in result.probes + result.cipherProbes { out += "| \(probe.name) | \(probe.label) |\n" }
             out += "\n"
         }
         for (index, cert) in result.chain.enumerated() {
@@ -330,6 +387,7 @@ struct TLSInspectorView: View {
     @Environment(\.luikTheme) private var theme
     @State private var showChain = false
     @State private var showRaw = false
+    @State private var showProbes = false
 
     var body: some View {
         @Bindable var inspector = TLSInspector.shared
@@ -422,6 +480,23 @@ struct TLSInspectorView: View {
                             .padding(.top, 4)
                         } label: {
                             Text("Certificate chain: \(result.chain.count) certificate(s)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        DisclosureGroup(isExpanded: $showProbes) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                ForEach(result.probes + result.cipherProbes) { probe in
+                                    HStack(spacing: 6) {
+                                        Image(systemName: probe.outcome.verdict.isAccepted ? "checkmark.circle" : "minus.circle")
+                                            .foregroundStyle(probe.outcome.verdict.isAccepted ? Color.orange : Color.secondary)
+                                        Text(probe.name).font(.caption.weight(.semibold)).frame(width: 170, alignment: .leading)
+                                        Text(probe.label).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                            .padding(.top, 4)
+                        } label: {
+                            Text("Probes: what each handshake negotiated")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
