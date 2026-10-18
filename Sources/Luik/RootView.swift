@@ -610,6 +610,10 @@ struct SettingsView: View {
 
             Toggle("Log typed commands to the Log tab", isOn: $logTypedCommands)
             caption("Every command you run in a Luik terminal tab is recorded with a timestamp — also inside ssh sessions, after tab completion and from history, because Luik reads the command from the screen when you press Enter. Anything that does not appear on screen (passwords for sudo, ssh, su, mysql -p, …) is never recorded; full-screen programs such as vim, less and htop are ignored. Commands pasted from One-liners or Searchsploit are always logged.")
+            Divider()
+            shellIntegrationSection
+            Divider()
+
             Toggle("Keep the output of every command", isOn: $captureOutput)
             caption("What a logged command printed is kept next to its Log entry (per engagement, in outputs/, last 1500 commands, 1 MB each). Expand it in the Log, pin command + output as evidence to the selected finding, target or a note (⌘⇧P in the terminal for the last command), or import recognised scanner output into Targets.")
             Toggle("Selecting a host or port in Targets makes it the current target ($RHOST / $RPORT)", isOn: $followTargetSelection)
@@ -670,6 +674,39 @@ struct SettingsView: View {
     }
 
     // MARK: Helper views
+
+    @State private var shellMessage: String?
+
+    private var shellIntegrationSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text("Shell integration")
+                    .font(.subheadline.weight(.semibold))
+                let active = ShellIntegration.activeInSelectedTab
+                Label(active ? "active in the current tab" : "not detected in the current tab", systemImage: active ? "checkmark.circle.fill" : "circle")
+                    .font(.caption)
+                    .foregroundStyle(active ? Color.green : Color.secondary)
+            }
+            caption("Prompt markers (OSC 133, the same as iTerm2 and VS Code use) tell Luik exactly where a command's output starts and ends and what its exit status was — exact with multi-line prompts and when you type ahead. One line is added to your shell's rc file that sources a script in Luik's data folder; it only does something inside Luik's terminal tabs. New tabs pick it up.")
+            HStack(spacing: 8) {
+                ForEach(ShellIntegration.Shell.allCases) { shell in
+                    let installed = ShellIntegration.isInstalled(shell)
+                    Button(installed ? "Remove from \(shell.rcFile.lastPathComponent)" : "Install for \(shell.rawValue) (\(shell.rcFile.lastPathComponent))") {
+                        shellMessage = installed ? ShellIntegration.uninstall(shell) : ShellIntegration.install(shell)
+                    }
+                }
+                Button("Copy the source line") {
+                    ShellIntegration.copySnippet(.zsh)
+                    shellMessage = "Source line copied — paste it into the rc file of your shell."
+                }
+            }
+            if let shellMessage {
+                Text(shellMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
 
     private func caption(_ text: String) -> some View {
         Text(text)

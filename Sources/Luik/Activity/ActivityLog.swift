@@ -46,6 +46,8 @@ struct ActivityEntry: Identifiable, Codable, Equatable {
     var scanFormat: String? = nil
     /// The host this line is about (bound terminal, or the $RHOST the command names).
     var host: String? = nil
+    /// Exit status of the command (shell integration).
+    var exitCode: Int32? = nil
 }
 
 /// Timestamped record of what happened during an engagement: commands Luik pasted into the
@@ -127,6 +129,12 @@ final class ActivityLog {
 
     func entry(id: UUID) -> ActivityEntry? {
         entries.first { $0.id == id }
+    }
+
+    func attachExitCode(_ code: Int32, to entryID: UUID) {
+        guard let index = entries.lastIndex(where: { $0.id == entryID }) else { return }
+        entries[index].exitCode = code
+        scheduleSave()
     }
 
     /// Links a captured output to its command entry.

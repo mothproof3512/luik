@@ -221,6 +221,14 @@ struct ActivityRow: View {
                     Text("\(entry.kind.label) · \(entry.source)")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                    if let code = entry.exitCode, code != 0 {
+                        Text("exit \(code)")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Color.red.opacity(0.25), in: Capsule())
+                            .help("The command ended with exit status \(code)")
+                    }
                     if let output {
                         Button {
                             showOutput.toggle()

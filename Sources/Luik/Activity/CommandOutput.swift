@@ -17,6 +17,8 @@ struct CommandOutput: Identifiable, Codable, Equatable {
     var scanFormat: String?
     /// Set once the scanner output has been imported into Targets (by hand or automatically).
     var imported = false
+    /// Exit status of the command, when the shell integration reported it.
+    var exitCode: Int32?
 
     var fileName: String { "\(id.uuidString).txt" }
 
@@ -70,9 +72,13 @@ final class CommandOutputStore {
 
     /// Keeps `output` for the Log entry `entryID`. Returns the record (nil for empty output).
     @discardableResult
-    func store(_ rawOutput: String, for entryID: UUID, command: String, source: String) -> CommandOutput? {
+    func store(_ rawOutput: String, for entryID: UUID, command: String, source: String, exitCode: Int32? = nil) -> CommandOutput? {
         var output = CommandOutputStore.clean(rawOutput)
-        guard !output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        if output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            // Nothing printed, but a failing exit status is still worth a mark on the Log line.
+            if let exitCode, exitCode != 0 { ActivityLog.shared.attachExitCode(exitCode, to: entryID) }
+            return nil
+        }
         var lineCount = output.reduce(0) { $0 + ($1 == "\n" ? 1 : 0) } + 1
         if lineCount > CommandOutputStore.maxLines {
             output = output.split(separator: "\n", omittingEmptySubsequences: false).prefix(CommandOutputStore.maxLines).joined(separator: "\n") + "\n… (truncated)"
@@ -84,6 +90,7 @@ final class CommandOutputStore {
         }
         let format = ScanDetect.format(of: output, command: command)
         var record = CommandOutput(entryID: entryID, command: command, source: source, lines: lineCount, bytes: output.utf8.count, scanFormat: format?.rawValue)
+        record.exitCode = exitCode
         do {
             try output.write(to: fileURL(of: record), atomically: true, encoding: .utf8)
         } catch {
@@ -94,6 +101,7 @@ final class CommandOutputStore {
         records.append(record)
         trim()
         ActivityLog.shared.attachOutput(record.id, to: entryID, scanFormat: format)
+        if let exitCode { ActivityLog.shared.attachExitCode(exitCode, to: entryID) }
         if let format, UserDefaults.standard.bool(forKey: SettingsKey.autoImportScans) {
             let result = TargetStore.shared.importScan(output, options: ScanImportOptions())
             if result.newHosts + result.updatedHosts + result.newPorts + result.newFindings > 0 {

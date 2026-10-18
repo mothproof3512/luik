@@ -399,6 +399,12 @@ command) puts command + output + time as a Markdown block into the selected find
 the selected target's notes or a new note. A finding thus carries the exact command, its output
 and the moment — reproducible without copy-and-paste.
 
+**Shell integration.** Settings › Logging › *Install for zsh* (or bash) adds one `source` line
+to your rc file; the script only runs inside Luik's tabs and prints OSC 133 prompt markers (as
+iTerm2 and VS Code use). Luik then takes the output boundaries from the shell — exact with
+two-line prompts and when you type ahead — and records each command's exit status (`exit n`
+badge in the Log). Without it the Enter-key heuristic is used.
+
 When the output looks like a scan — nmap (normal, -oG, -oX), nuclei (console lines or JSON),
 masscan — its hosts, ports and findings go into Targets automatically when the prompt returns,
 through the same merge as a manual import (Settings › Logging switches it off; the Log then shows

@@ -50,6 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         dropdown = controller
 
+        ShellIntegration.writeScripts()
         TerminalStore.shared.ensureSession()
 
         hotKey.onTrigger = { [weak self] in

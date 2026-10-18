@@ -36,6 +36,49 @@ final class LoggingTerminalView: LocalProcessTerminalView {
 
     /// Screen row where the output of the last command starts; nil when no command is pending.
     private var outputStartRow: Int?
+    /// True once the shell has sent an OSC 133 marker: boundaries then come from the shell
+    /// instead of from the Enter-key heuristic (exact with multi-line prompts and typing ahead).
+    private(set) var hasShellIntegration = false
+    /// Exit status reported by the shell for the command whose output is being closed.
+    private var lastExitCode: Int32?
+    /// Called with the exit status of the last command (shell integration only).
+    var onExitCode: ((Int32) -> Void)?
+
+    /// Installs the OSC 133 handler (FinalTerm / iTerm2 / VS Code shell-integration markers):
+    /// A = prompt start, B = prompt end (command input starts), C = command runs (output starts),
+    /// D;<status> = command finished.
+    func installShellIntegration() {
+        getTerminal().registerOscHandler(code: 133) { [weak self] data in
+            guard let self else { return }
+            let text = String(decoding: data, as: UTF8.self)
+            // Positions must be read before the prompt that follows the marker is drawn, so
+            // this runs inline when the parser is on the main thread (it is: SwiftTerm feeds
+            // the pty data on main).
+            if Thread.isMainThread { self.handleMarker(text) } else { DispatchQueue.main.sync { self.handleMarker(text) } }
+        }
+    }
+
+    private func handleMarker(_ text: String) {
+        let parts = text.split(separator: ";", maxSplits: 1).map(String.init)
+        guard let kind = parts.first?.first else { return }
+        hasShellIntegration = true
+        let terminal = getTerminal()
+        switch kind {
+        case "C":
+            // The shell is about to run the command; the cursor is at the first output row.
+            outputStartRow = terminal.cursorScrollInvariantRow
+        case "D":
+            lastExitCode = parts.count > 1 ? Int32(parts[1].trimmingCharacters(in: .whitespaces)) : nil
+            // The marker is printed where the prompt will go: the output ends on the row above
+            // (or on this row when the command left the cursor mid-line).
+            closeOutput(end: terminal.cursorScrollInvariantRow - (terminal.cursorColumn == 0 ? 1 : 0))
+        case "A":
+            // Prompt start: a command without C (empty line, Ctrl-C) leaves nothing pending.
+            if outputStartRow != nil { closeOutput(end: terminal.cursorScrollInvariantRow - (terminal.cursorColumn == 0 ? 1 : 0)) }
+        default:
+            break
+        }
+    }
 
     private var lineActive = false
     private var startRow = 0
@@ -59,8 +102,10 @@ final class LoggingTerminalView: LocalProcessTerminalView {
                 // Luik ran the command itself; it is already in the log as "Command".
                 lineActive = false
                 lastProgrammaticText = ""
-                closeOutput()
-                outputStartRow = getTerminal().cursorScrollInvariantRow + 1
+                if !hasShellIntegration {
+                    closeOutput()
+                    outputStartRow = getTerminal().cursorScrollInvariantRow + 1
+                }
             } else {
                 // Pasted for editing: the line starts here, with the prompt as it is right now.
                 if !lineActive { beginLine() }
@@ -107,17 +152,20 @@ final class LoggingTerminalView: LocalProcessTerminalView {
         inEscape = false
         startRow = terminal.cursorScrollInvariantRow
         promptPrefix = terminal.scrollInvariantLineText(row: startRow, endCol: terminal.cursorColumn) ?? ""
-        closeOutput()
+        if !hasShellIntegration { closeOutput() }
     }
 
     /// Hands the rows between the last command and the current prompt to `onCommandOutput`.
-    private func closeOutput() {
+    /// `end` is the last output row; by default the row above the cursor (the prompt row).
+    private func closeOutput(end explicitEnd: Int? = nil) {
         guard let start = outputStartRow else { return }
         outputStartRow = nil
         let terminal = getTerminal()
-        guard !terminal.isCurrentBufferAlternate else { return }
-        let end = terminal.cursorScrollInvariantRow - 1   // the prompt row itself is not output
-        guard end >= start else { return }
+        guard !terminal.isCurrentBufferAlternate else { lastExitCode = nil; return }
+        let end = explicitEnd ?? (terminal.cursorScrollInvariantRow - 1)
+        if let code = lastExitCode { onExitCode?(code) }
+        lastExitCode = nil
+        guard end >= start else { onCommandOutput?(""); return }
         let text = LoggingTerminalView.rows(start...end, in: terminal)
         onCommandOutput?(text)
     }
@@ -165,9 +213,12 @@ final class LoggingTerminalView: LocalProcessTerminalView {
         lastProgrammaticText = ""
         // Read the screen a moment later, when the echo of the last keystrokes has arrived
         // (remote shells over ssh answer with a delay).
-        // Whatever follows this row is the command's output, until the next prompt.
-        closeOutput()
-        outputStartRow = end + 1
+        // Whatever follows this row is the command's output, until the next prompt (with shell
+        // integration the C / D markers set the boundaries instead).
+        if !hasShellIntegration {
+            closeOutput()
+            outputStartRow = end + 1
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
             guard let self, let command = self.command(from: start, to: end, endCol: endCol, prefix: prefix, typed: typed) else { return }
             // Typed, but (almost) nothing of it on screen: a password or other hidden input.
@@ -241,6 +292,10 @@ final class TerminalSession: Identifiable {
     @ObservationIgnored var pendingEntryID: UUID?
     @ObservationIgnored var pendingCommand = ""
     @ObservationIgnored var pendingTime = Date()
+    @ObservationIgnored var pendingExitCode: Int32?
+    /// Output that arrived before the command was recognised (a fast command with shell
+    /// integration: the D marker can beat the 0.2 s screen read).
+    @ObservationIgnored private var unclaimedOutput: (text: String, exitCode: Int32?, time: Date)?
 
     init(shell: String, fontSize: CGFloat, opacity: CGFloat, boundHost: String? = nil, boundPort: Int? = nil) {
         self.boundHost = boundHost
@@ -248,6 +303,10 @@ final class TerminalSession: Identifiable {
         view = LoggingTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 400))
         applyAppearance(fontSize: fontSize, opacity: opacity)
         view.getTerminal().changeHistorySize(5000)   // SwiftTerm's default of 500 lines is short for scan output
+        view.installShellIntegration()
+        view.onExitCode = { [weak self] code in
+            self?.pendingExitCode = code
+        }
         view.optionAsMetaKey = true
         view.processDelegate = self
         view.onTypedLine = { [weak self] line in
@@ -257,12 +316,25 @@ final class TerminalSession: Identifiable {
             self.pendingCommand = line
             self.pendingTime = Date()
             TerminalStore.warnIfOutOfScope(line)
+            if let waiting = self.unclaimedOutput, Date().timeIntervalSince(waiting.time) < 1.0, let entryID = self.pendingEntryID,
+               UserDefaults.standard.bool(forKey: SettingsKey.captureOutput) {
+                self.unclaimedOutput = nil
+                self.pendingEntryID = nil
+                CommandOutputStore.shared.store(waiting.text, for: entryID, command: line, source: "Terminal: \(self.title)", exitCode: waiting.exitCode)
+            }
         }
         view.onCommandOutput = { [weak self] output in
             guard let self, UserDefaults.standard.bool(forKey: SettingsKey.captureOutput) else { return }
-            guard let entryID = self.pendingEntryID else { return }
+            guard let entryID = self.pendingEntryID else {
+                self.unclaimedOutput = (output, self.pendingExitCode, Date())
+                self.pendingExitCode = nil
+                return
+            }
             self.pendingEntryID = nil
-            CommandOutputStore.shared.store(output, for: entryID, command: self.pendingCommand, source: "Terminal: \(self.title)")
+            self.unclaimedOutput = nil
+            let exitCode = self.pendingExitCode
+            self.pendingExitCode = nil
+            CommandOutputStore.shared.store(output, for: entryID, command: self.pendingCommand, source: "Terminal: \(self.title)", exitCode: exitCode)
         }
 
         var environment = ProcessInfo.processInfo.environment
@@ -278,6 +350,7 @@ final class TerminalSession: Identifiable {
         environment["TERM"] = "xterm-256color"
         environment["COLORTERM"] = "truecolor"
         environment["TERM_PROGRAM"] = "Luik"
+        environment["LUIK_VERSION"] = AppInfo.version
         if environment["LANG"] == nil {
             environment["LANG"] = "en_US.UTF-8"
         }

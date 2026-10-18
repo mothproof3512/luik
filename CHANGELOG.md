@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.36.0
+- **Shell integration (OSC 133 prompt markers)**: Settings › Logging › *Install for zsh / bash* adds one `source` line to the rc file; the script (in Luik's data folder, rewritten at launch) only acts inside Luik's tabs. With it, output boundaries come from the shell instead of the Enter-key heuristic — exact with two-line prompts (powerlevel10k and friends) and when you type the next command while the previous one still prints — and every command's **exit status** is recorded (red `exit n` badge in the Log). Without it everything keeps working as before. The status of the current tab is shown in Settings.
+
 ## 0.35.0
 - **Luik learns what you use.** Every copy or paste of a one-liner is counted per service (usage.json, global, never exported); the one-liners at a port node are ordered by what you used at that service before (with "· 3×"), and the One-liners tab opens with a *Most used* section. Checklist items marked done / n/a on a port are counted too; the checklist editor shows the totals so items that are mostly n/a can be pruned.
 - **Playbooks**: Tools › *Export Playbook…* writes one-liners, checklists, your own plan templates and your knowledge records (My findings) to one `.luikplaybook.json`; *Import Playbook…* merges one (one-liners and records added, same-named checklists replaced, templates added). Engagement data, usage statistics and credentials are never part of it. Also in ⌘K.
