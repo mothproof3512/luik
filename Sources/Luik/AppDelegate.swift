@@ -44,6 +44,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .environment(PlanStore.shared)
         let controller = DropdownController(rootView: root)
         controller.onDidShow = {
+            // Opening effect of the "Screens and consoles" schemes (Settings › Colours).
+            if UserDefaults.standard.bool(forKey: SettingsKey.themeIntro), ThemeIntro.hasEffect(LuikTheme.current) {
+                UIState.shared.introToken += 1
+                UIState.shared.showIntro = true
+            }
             if UIState.shared.module == .terminal {
                 TerminalStore.shared.focusSelected()
             }

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.46.0
+- **Opening effects** for the Screens and consoles schemes: when the panel drops down, about a second of procedural animation in the scheme's colours — sweeping bars (Bridge), the ring of markers and a ripple (Chevron), converging grid and crosshair (Rebel console), dotted map lines and a typed status line (WOPR), rising wireframe towers (Gibson), falling glyphs (Digital rain), scan band with hex readouts (Section 9), perspective floor grid with a light trail (The Grid), broadcast static over a red wash (Fifth of November), CRT power-on with flicker (Basement), rising chart bars and a prompt (Incubator). Settings › Colours switches it off.
+
 ## 0.45.0
 - **Eleven "Screens and consoles" colour schemes** (Settings › Colours): Bridge, Chevron, Rebel console, WOPR, Gibson, Digital rain, Section 9, The Grid, Fifth of November, Basement, Incubator — palettes in the spirit of famous screens from film and TV: tint, terminal text and accent only, no artwork or lettering. The colour settings are now grouped.
 

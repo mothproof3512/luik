@@ -116,6 +116,12 @@ struct RootView: View {
         }
         // Rounding/clipping happens at the AppKit level (DropdownController), so the
         // terminal view joins in and the corner radius is adjustable.
+        .overlay {
+            if ui.showIntro {
+                ThemeIntroView(theme: theme, token: ui.introToken) { ui.showIntro = false }
+                    .transition(.opacity)
+            }
+        }
         .overlay(alignment: .bottom) {
             if let message = ui.flashMessage {
                 Text(message)
@@ -371,6 +377,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.hideWhileCapturing) private var hideWhileCapturing = true
     @AppStorage(SettingsKey.checkForUpdates) private var checkForUpdates = true
     @AppStorage(SettingsKey.checkContentUpdates) private var checkContentUpdates = true
+    @AppStorage(SettingsKey.themeIntro) private var themeIntro = true
     @AppStorage(SettingsKey.knowledgeBaseCatalogURL) private var knowledgeBaseCatalogURL = ""
     @State private var checkingUpdates = false
     @State private var updateMessage: String? = nil
@@ -675,6 +682,8 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     themeGroup("Luik and Sanzo Wada", caption: "Ten combinations from Sanzo Wada's A Dictionary of Color Combinations (1933): the darkest colour is the tint, the lightest the text, the most saturated the accent.", schemes: [LuikTheme.luik] + LuikTheme.wada)
                     themeGroup("Screens and consoles", caption: "Palettes in the spirit of famous screens from film and TV — the bridge console, the stone ring, the war room, the mainframe, the rain, the grid, the basement, the incubator. Colours only; no artwork or lettering.", schemes: LuikTheme.screens)
+                    Toggle("Opening effect when the panel drops down (these schemes only)", isOn: $themeIntro)
+                    caption("About a second of lines, bars or glyphs drawn over the panel in the scheme's colours, then it fades. Purely decorative; off means the panel just appears.")
                 }
                 .padding(.vertical, 2)
             }
