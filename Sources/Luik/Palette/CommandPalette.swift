@@ -195,6 +195,12 @@ struct CommandPalette: View {
                 ui.module = .plan
                 PlanStore.shared.showTemplateEditor = true
             },
+            PaletteItem(id: "welcome", icon: "hand.wave", title: "Welcome to Luik", subtitle: "knowledge base, documentation, shell integration, engagement — the four first steps", group: "Actions") {
+                ui.showWelcome = true
+            },
+            PaletteItem(id: "check-updates", icon: "arrow.down.circle", title: "Check for updates", subtitle: "library sources, knowledge-base catalogue and Luik itself", group: "Actions") {
+                ContentUpdates.shared.checkNow(includeApp: true)
+            },
             PaletteItem(id: "playbook-export", icon: "shippingbox", title: "Export playbook", subtitle: "one-liners, checklists, plan templates and your knowledge records in one file", group: "Actions") {
                 ui.showPlaybook = .export
             },

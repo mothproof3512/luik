@@ -68,7 +68,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if UserDefaults.standard.bool(forKey: SettingsKey.showOnLaunch) {
             showDropdown()
         }
-        UpdateCheck.checkAtLaunchIfDue()
+        if UserDefaults.standard.bool(forKey: SettingsKey.checkContentUpdates) {
+            // The content check covers the app release too (one badge for everything).
+            ContentUpdates.shared.checkAtLaunchIfDue()
+        } else {
+            UpdateCheck.checkAtLaunchIfDue()
+        }
+        if !UserDefaults.standard.bool(forKey: SettingsKey.welcomeShown) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { UIState.shared.showWelcome = true }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -361,6 +369,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let helpMenuItem = NSMenuItem()
         let helpMenu = NSMenu(title: "Help")
+        helpMenu.addItem(NSMenuItem(title: "Welcome to Luik…", action: #selector(showWelcome), keyEquivalent: ""))
+        helpMenu.addItem(NSMenuItem(title: "Check for Updates…", action: #selector(checkUpdatesNow), keyEquivalent: ""))
+        helpMenu.addItem(.separator())
         helpMenu.addItem(NSMenuItem(title: "Keyboard Shortcuts", action: #selector(showShortcuts), keyEquivalent: "/"))
         helpMenu.addItem(NSMenuItem(title: "Knowledge Base Template…", action: #selector(saveKnowledgeBaseTemplate), keyEquivalent: ""))
         helpMenu.addItem(.separator())
@@ -470,6 +481,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let destination = EvidencePin.availableDestinations.first ?? .newNote
         let message = EvidencePin.pin(command: last.command, output: last.output, time: last.time, source: "Terminal: \(session.title)", to: destination)
         UIState.shared.flash(message)
+    }
+
+    @objc private func showWelcome() { UIState.shared.showWelcome = true }
+    @objc private func checkUpdatesNow() {
+        ContentUpdates.shared.checkNow(includeApp: true)
+        UIState.shared.flash("Checking GitHub for updates…")
     }
 
     @objc private func exportPlaybook() { UIState.shared.showPlaybook = .export }

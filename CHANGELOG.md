@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.0
+- **Welcome sheet** on the first start (Help › *Welcome to Luik…*, ⌘K "welcome"): the four steps that make a new Mac useful — download the knowledge base, download the documentation, install the shell integration, set up an engagement — each one button, with a tick once done.
+- **Daily content check**: once a day after launch (Settings › General, separate toggle from the Luik release check — both can be switched off, and then Luik makes no network requests on its own) the downloaded library sources and the imported knowledge base are compared with GitHub and the catalogue; a green *Updates (n)* badge in the top bar lists what is new with a Download button per item. Help › *Check for Updates…* and ⌘K run it on demand. Nothing is downloaded automatically.
+
 ## 0.38.0
 - **Diagram ↔ Targets**: a node whose address (or label) is a host in Targets shows badges with its port count and findings (red when high or critical) and a green ring when it is the current target; right-click › *Open … in Targets*, *Use as $RHOST*, *Open a terminal for …* — or *Add … to Targets* when the host is not there yet. In Targets, right-click a host › *Show in diagram* (selects the node in the diagram that has it, or adds it to the current one).
 

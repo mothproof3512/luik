@@ -223,7 +223,7 @@ final class KnowledgeBaseDownloader {
 
     // MARK: - Networking
 
-    private func fetch(_ url: URL) async throws -> Data {
+    func fetch(_ url: URL) async throws -> Data {
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 60)
         request.setValue("Luik/\(AppInfo.version)", forHTTPHeaderField: "User-Agent")
         let secret = token.trimmingCharacters(in: .whitespacesAndNewlines)

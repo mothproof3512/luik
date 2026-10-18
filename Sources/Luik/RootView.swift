@@ -148,6 +148,9 @@ struct RootView: View {
         .sheet(item: $ui.showPlaybook) { mode in
             PlaybookView(mode: mode)
         }
+        .sheet(isPresented: $ui.showWelcome) {
+            WelcomeView()
+        }
         .sheet(isPresented: $checklists.showEditor) {
             ChecklistEditorView()
         }
@@ -258,7 +261,9 @@ struct TopBar: View {
                 .padding(.trailing, 8)
             EngagementMenu()
                 .padding(.trailing, 8)
-            if let update = ui.updateAvailable {
+            ContentUpdatesButton()
+                .padding(.trailing, 8)
+            if let update = ui.updateAvailable, ContentUpdates.shared.updates.isEmpty {
                 Button {
                     if let url = URL(string: update.url) { NSWorkspace.shared.open(url) }
                 } label: {
@@ -361,6 +366,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.evidenceFolder) private var evidenceFolder = ""
     @AppStorage(SettingsKey.hideWhileCapturing) private var hideWhileCapturing = true
     @AppStorage(SettingsKey.checkForUpdates) private var checkForUpdates = true
+    @AppStorage(SettingsKey.checkContentUpdates) private var checkContentUpdates = true
     @AppStorage(SettingsKey.knowledgeBaseCatalogURL) private var knowledgeBaseCatalogURL = ""
     @State private var checkingUpdates = false
     @State private var updateMessage: String? = nil
@@ -516,7 +522,10 @@ struct SettingsView: View {
             Text("Updates")
                 .font(.subheadline.weight(.semibold))
             HStack {
-                Toggle("Check for updates at launch", isOn: $checkForUpdates)
+                Toggle("Check for a new Luik release at launch (once a day)", isOn: $checkForUpdates)
+                Toggle("Check downloaded content for updates at launch (once a day)", isOn: $checkContentUpdates)
+                caption("Library sources (PayloadsAllTheThings, InternalAllTheThings, your repositories) and the knowledge-base catalogue are compared with what you have; a green “Updates (n)” badge in the top bar lists what is new. Nothing is downloaded by itself. Both checks talk to GitHub only; switch them off and Luik makes no network requests on its own.")
+                Button("Check content now") { ContentUpdates.shared.checkNow(includeApp: checkForUpdates) }
                 Spacer()
                 Button("Check now") { runUpdateCheck() }
                     .disabled(checkingUpdates)

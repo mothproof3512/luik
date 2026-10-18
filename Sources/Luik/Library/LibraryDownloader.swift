@@ -198,7 +198,7 @@ final class LibraryDownloader {
         }
     }
 
-    private func resolveBranch(_ source: LibrarySource) async throws -> String {
+    func resolveBranch(_ source: LibrarySource) async throws -> String {
         if let branch = source.branch, !branch.isEmpty { return branch }
         let data = try await fetch(URL(string: "https://api.github.com/repos/\(source.repository)")!, accept: "application/vnd.github+json")
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -208,7 +208,7 @@ final class LibraryDownloader {
         return branch
     }
 
-    private func fetchLatestCommit(repository: String, branch: String) async throws -> (sha: String, date: Date?) {
+    func fetchLatestCommit(repository: String, branch: String) async throws -> (sha: String, date: Date?) {
         let encodedBranch = branch.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? branch
         let data = try await fetch(URL(string: "https://api.github.com/repos/\(repository)/commits/\(encodedBranch)")!, accept: "application/vnd.github+json")
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],

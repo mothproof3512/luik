@@ -368,6 +368,15 @@ gateway, and the hosts in a grid inside their zone — kind guessed from the ope
 in the notes. *Add missing hosts to this diagram* keeps the old behaviour of adding nodes to the
 current drawing. Rearrange, rename zones, export.
 
+### First start and updates
+
+The first start shows a welcome sheet with the four steps that make Luik useful on a new Mac
+(knowledge base, documentation, shell integration, engagement), each one button; it stays
+reachable under Help › *Welcome to Luik…*. Once a day after launch Luik can compare what you
+downloaded (library sources, knowledge base) and Luik itself with GitHub and show a green
+*Updates (n)* badge — nothing is downloaded by itself, and both checks can be switched off in
+Settings › General, after which Luik makes no network requests on its own.
+
 ### Commands, checklists and pages are one thing
 
 A one-liner and a checklist item can carry a *Read more* link: a library page (picked with the

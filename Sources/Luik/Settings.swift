@@ -2,7 +2,7 @@ import Foundation
 
 /// Version and repository, used by the settings footer, the update check and build.sh.
 enum AppInfo {
-    static let version = "0.38.0"
+    static let version = "0.39.0"
     static let repository = "mothproof3512/luik"
 }
 
@@ -61,6 +61,11 @@ enum SettingsKey {
     /// Check GitHub for a newer release at launch (once a day).
     static let checkForUpdates = "checkForUpdates"
     static let lastUpdateCheck = "lastUpdateCheck"
+    /// Daily check of library sources and the knowledge-base catalogue (separate from the app check).
+    static let checkContentUpdates = "checkContentUpdates"
+    static let lastContentCheck = "lastContentCheck"
+    /// The welcome sheet was shown (or dismissed with "don't show again").
+    static let welcomeShown = "welcomeShown"
     /// Id of the colour scheme (LuikTheme.id): "default" or one of the Sanzo Wada combinations.
     static let colorScheme = "colorScheme"
     /// Catalogue (catalog.json) the knowledge-base download sheet lists; "" = the Luik repository.
@@ -131,6 +136,7 @@ enum SettingsDefaults {
             SettingsKey.snippetRPort: "",
             SettingsKey.hotKeyPauseApps: "",
             SettingsKey.logTypedCommands: true,
+            SettingsKey.checkContentUpdates: true,
             SettingsKey.captureOutput: true,
             SettingsKey.autoImportScans: true,
             SettingsKey.followTargetSelection: true,
