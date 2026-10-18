@@ -372,6 +372,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let helpMenu = NSMenu(title: "Help")
         helpMenu.addItem(NSMenuItem(title: "Welcome to Luik…", action: #selector(showWelcome), keyEquivalent: ""))
         helpMenu.addItem(NSMenuItem(title: "Check for Updates…", action: #selector(checkUpdatesNow), keyEquivalent: ""))
+        helpMenu.addItem(NSMenuItem(title: "Create Demo Engagement", action: #selector(createDemo), keyEquivalent: ""))
         helpMenu.addItem(.separator())
         helpMenu.addItem(NSMenuItem(title: "Keyboard Shortcuts", action: #selector(showShortcuts), keyEquivalent: "/"))
         helpMenu.addItem(NSMenuItem(title: "Knowledge Base Template…", action: #selector(saveKnowledgeBaseTemplate), keyEquivalent: ""))
@@ -485,6 +486,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func showWelcome() { UIState.shared.showWelcome = true }
+    @objc private func createDemo() {
+        let created = DemoEngagement.create()
+        UIState.shared.flash(created ? "Demo engagement created — fictional data." : "Demo engagement opened.")
+    }
     @objc private func showCloseOut() { UIState.shared.showCloseOut = true }
     @objc private func checkUpdatesNow() {
         ContentUpdates.shared.checkNow(includeApp: true)

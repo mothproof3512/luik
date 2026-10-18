@@ -198,6 +198,10 @@ struct CommandPalette: View {
             PaletteItem(id: "closeout", icon: "archivebox", title: "Close-out export", subtitle: "the whole engagement into one folder and zip: report material, host dossiers, plans, log, notes, diagrams, evidence, raw data", group: "Actions") {
                 ui.showCloseOut = true
             },
+            PaletteItem(id: "demo", icon: "sparkles", title: "Create demo engagement", subtitle: "fictional hosts, findings, plan, diagram and log to see how the tabs hang together", group: "Actions") {
+                let created = DemoEngagement.create()
+                ui.flash(created ? "Demo engagement created." : "Demo engagement opened.")
+            },
             PaletteItem(id: "welcome", icon: "hand.wave", title: "Welcome to Luik", subtitle: "knowledge base, documentation, shell integration, engagement — the four first steps", group: "Actions") {
                 ui.showWelcome = true
             },

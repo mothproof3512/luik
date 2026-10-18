@@ -79,9 +79,15 @@ enum DiagramTransfer {
         return result.isEmpty ? "diagram" : result
     }
 
+    /// Settings › the Export menu's "Title block and legend" toggle.
+    static var titleBlockEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: "diagramExportTitleBlock") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "diagramExportTitleBlock") }
+    }
+
     @MainActor
     static func png(_ diagram: Diagram, palette: DiagramPalette) -> Data? {
-        let renderer = ImageRenderer(content: DiagramStaticDrawing(diagram: diagram, palette: palette)
+        let renderer = ImageRenderer(content: DiagramStaticDrawing(diagram: diagram, palette: palette, titleBlock: titleBlockEnabled)
             .environment(\.colorScheme, palette.isLight ? .light : .dark))
         renderer.scale = 2
         guard let image = renderer.cgImage else { return nil }

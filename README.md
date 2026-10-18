@@ -348,6 +348,10 @@ Nodes that exist in Targets carry badges (ports, findings — red when high or c
 ring when they are the current target; right-click gives *Open in Targets*, *Use as $RHOST*,
 *Open a terminal for …* or *Add to Targets*. From Targets, right-click a host › *Show in diagram*.
 
+Add › **Groups** places a ready-made set in one go (Active Directory, web application, identity,
+cloud landing zone, DMZ); PNG exports carry a title block and legend unless switched off in the
+Export menu.
+
 ### Diagram templates
 
 **New from template** (diagram menu, or *Start from a template* on an empty tab) offers fifteen
@@ -388,8 +392,8 @@ raw JSON. Tick what goes in; nothing is removed from Luik.
 ### First start and updates
 
 The first start shows a welcome sheet with the four steps that make Luik useful on a new Mac
-(knowledge base, documentation, shell integration, engagement), each one button; it stays
-reachable under Help › *Welcome to Luik…*. Once a day after launch Luik can compare what you
+(knowledge base, documentation, shell integration, engagement), each one button, plus a fictional
+**demo engagement** to look at; it stays reachable under Help › *Welcome to Luik…*. Once a day after launch Luik can compare what you
 downloaded (library sources, knowledge base) and Luik itself with GitHub and show a green
 *Updates (n)* badge — nothing is downloaded by itself, and both checks can be switched off in
 Settings › General, after which Luik makes no network requests on its own.

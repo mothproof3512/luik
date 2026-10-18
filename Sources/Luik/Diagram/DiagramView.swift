@@ -163,6 +163,8 @@ struct DiagramView: View {
                     Button("Copy image (dark)") { copyImage(diagram, light: false) }
                     Divider()
                     Button("Save to Library (PNG, light)") { saveToLibrary(diagram) }
+                    Divider()
+                    Toggle("Title block and legend on images", isOn: Binding(get: { DiagramTransfer.titleBlockEnabled }, set: { DiagramTransfer.titleBlockEnabled = $0 }))
                 } label: {
                     Label("Export", systemImage: "square.and.arrow.up")
                         .labelStyle(.iconOnly)
@@ -210,11 +212,22 @@ struct DiagramView: View {
                     }
                 }
             }
+            Section("Groups") {
+                ForEach(DiagramStamp.all) { stamp in
+                    Button {
+                        store.addStamp(stamp, near: store.insertPoint ?? defaultInsertPoint)
+                        status = "\(stamp.name): \(stamp.summary)"
+                    } label: {
+                        Label(stamp.name, systemImage: "square.grid.3x1.below.line.grid.1x2")
+                    }
+                    .help(stamp.summary)
+                }
+            }
         } label: {
             Label("Add", systemImage: "plus")
         }
         .frame(width: 70)
-        .help("Add a device. It appears where you last clicked on the canvas.")
+        .help("Add a device, or a ready-made group (AD set, web application set, …). It appears where you last clicked on the canvas.")
     }
 
     /// Addresses / notes / kinds on the second line of every card.

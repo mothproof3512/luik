@@ -254,12 +254,109 @@ struct DiagramStaticDrawing: View {
     let palette: DiagramPalette
     var padding: CGFloat = 40
     var showGrid = false
+    /// Title block (name, engagement, client, date) above and a legend of the kinds and zones below.
+    var titleBlock = false
 
     var body: some View {
         let bounds = diagram.bounds
+        let drawing = CGSize(width: bounds.width + 2 * padding, height: bounds.height + 2 * padding)
+        if titleBlock {
+            VStack(alignment: .leading, spacing: 0) {
+                header
+                    .frame(width: max(drawing.width, 520), alignment: .leading)
+                canvas(bounds: bounds, size: drawing)
+                legend
+                    .frame(width: max(drawing.width, 520), alignment: .leading)
+            }
+            .background(palette.background)
+        } else {
+            canvas(bounds: bounds, size: drawing)
+        }
+    }
+
+    private var header: some View {
+        let engagement = EngagementStore.shared.current
+        var parts: [String] = []
+        if !engagement.client.isEmpty { parts.append(engagement.client) }
+        parts.append(engagement.displayName)
+        if !engagement.reference.isEmpty { parts.append(engagement.reference) }
+        parts.append(Date().formatted(date: .long, time: .omitted))
+        return VStack(alignment: .leading, spacing: 3) {
+            Text(diagram.name)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(palette.text)
+            Text(parts.joined(separator: " · "))
+                .font(.system(size: 11))
+                .foregroundStyle(palette.secondaryText)
+        }
+        .padding(.horizontal, padding)
+        .padding(.top, 24)
+        .padding(.bottom, 4)
+    }
+
+    private var legend: some View {
+        let kinds = Array(Set(diagram.nodes.map { $0.kind })).sorted { $0.title < $1.title }
+        return VStack(alignment: .leading, spacing: 6) {
+            Rectangle().fill(palette.cardBorder).frame(height: 1)
+            HStack(alignment: .top, spacing: 24) {
+                if !kinds.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Legend")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(palette.secondaryText)
+                        let columns = Array(repeating: GridItem(.flexible(minimum: 120), alignment: .leading), count: min(4, max(1, kinds.count)))
+                        LazyVGrid(columns: columns, alignment: .leading, spacing: 4) {
+                            ForEach(kinds) { kind in
+                                HStack(spacing: 5) {
+                                    ZStack {
+                                        Circle().fill(kind.color)
+                                        Image(systemName: kind.symbol)
+                                            .font(.system(size: 8, weight: .semibold))
+                                            .foregroundStyle(.white)
+                                    }
+                                    .frame(width: 16, height: 16)
+                                    Text(kind.title)
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(palette.text)
+                                        .lineLimit(1)
+                                }
+                            }
+                        }
+                    }
+                }
+                if !diagram.zones.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Zones")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(palette.secondaryText)
+                        ForEach(diagram.zones) { zone in
+                            HStack(spacing: 5) {
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(zone.color.opacity(0.25))
+                                    .overlay(RoundedRectangle(cornerRadius: 3).stroke(zone.color, style: StrokeStyle(lineWidth: 1, dash: [3, 2])))
+                                    .frame(width: 16, height: 12)
+                                Text(zone.name)
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(palette.text)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                }
+                Spacer(minLength: 0)
+                Text("Made with Luik \(AppInfo.version)")
+                    .font(.system(size: 9))
+                    .foregroundStyle(palette.secondaryText)
+            }
+        }
+        .padding(.horizontal, padding)
+        .padding(.top, 6)
+        .padding(.bottom, 18)
+    }
+
+    private func canvas(bounds: CGRect, size: CGSize) -> some View {
         let geometry = DiagramGeometry(zoom: 1, origin: CGPoint(x: bounds.minX - padding, y: bounds.minY - padding))
-        let size = CGSize(width: bounds.width + 2 * padding, height: bounds.height + 2 * padding)
-        ZStack(alignment: .topLeading) {
+        return ZStack(alignment: .topLeading) {
             palette.background
             if showGrid {
                 DiagramGridView(zoom: 1, color: palette.grid)

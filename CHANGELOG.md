@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.43.0
+- **Demo engagement** (welcome sheet, Help › Create Demo Engagement, ⌘K): a fictional "Example Corp" with three hosts, ports, checklists, two findings with evidence, a note, a plan, a diagram and log lines — documentation address ranges only. Delete it from Manage engagements when done.
+- **Diagram groups**: Add › Groups places a ready-made set as one undo step, with its zone — Active Directory set, web application set, identity set, cloud landing zone, DMZ set.
+- **Title block and legend on diagram images**: PNG exports, copied images and Save to Library get the diagram name, client / engagement / reference / date above and a legend of the kinds and zones below (Export menu › toggle, on by default).
+
 ## 0.42.0
 - **Retest flow in Findings**: ⋯ › *Import findings for retest…* copies the findings of another engagement on this Mac (or a `findings.json` from a close-out export) as retest items — status Open, outcome "not retested", original engagement and title as reference, original evidence kept as a note. Each finding gets a Retest section with outcome (fixed / partially fixed / still open — fixed also resolves the finding), date and notes; any finding can be marked as a retest item. The list shows the outcome, the report mentions it per finding, ⋯ › *Copy retest table as Markdown* (and `retest.md` in the close-out) gives the comparison table with counts per outcome.
 

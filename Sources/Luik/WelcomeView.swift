@@ -46,6 +46,14 @@ struct WelcomeView: View {
                  text: "Client, scope and exclusions per engagement: Targets, findings, log, notes and diagrams live inside it, and commands naming a host outside the scope get a warning.") {
                 Button("Set up…") { engagements.showManager = true }
             }
+            step(done: DemoEngagement.exists, icon: "sparkles", title: "Or look at the demo first",
+                 text: "A fictional engagement with hosts, findings, a plan, a diagram and log lines, so you see how the tabs hang together. Delete it from Manage engagements afterwards.") {
+                Button(DemoEngagement.exists ? "Open demo" : "Create demo") {
+                    DemoEngagement.create()
+                    welcomeShown = true
+                    dismiss()
+                }
+            }
             if let shellMessage {
                 Text(shellMessage)
                     .font(.caption)
