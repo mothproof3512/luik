@@ -517,7 +517,7 @@ struct DiagramCanvas: View {
                 store.insertPoint = CGPoint(x: zone.x + Double(location.x / zoom), y: zone.y + Double(location.y / zoom))
             }
             .gesture(
-                DragGesture(minimumDistance: 3)
+                DragGesture(minimumDistance: 3, coordinateSpace: .named("diagram"))
                     .onChanged { value in
                         if liveDrag?.zone != zone.id {
                             frozenCanvas = naturalCanvasSize
@@ -569,7 +569,7 @@ struct DiagramCanvas: View {
                 }
             }
             .gesture(
-                DragGesture(minimumDistance: 3)
+                DragGesture(minimumDistance: 3, coordinateSpace: .named("diagram"))
                     .onChanged { value in
                         if liveDrag == nil || liveDrag?.zone != nil || liveDrag?.nodes.contains(node.id) != true {
                             frozenCanvas = naturalCanvasSize
@@ -623,7 +623,7 @@ struct DiagramCanvas: View {
                     .contentShape(Rectangle().inset(by: -6))
                     .help("Drag to resize the zone")
                     .gesture(
-                        DragGesture(minimumDistance: 1)
+                        DragGesture(minimumDistance: 1, coordinateSpace: .named("diagram"))
                             .onChanged { value in
                                 if resizeStart == nil {
                                     store.checkpoint()

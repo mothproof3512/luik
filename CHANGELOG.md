@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.31.5
+- Diagram: node, zone and resize drags now measure in the canvas coordinate space instead of the moving view's own — that feedback loop was the jitter ("vibrating" nodes) while dragging.
+
 ## 0.31.4
 - Diagram: the per-node/zone/link `.contextMenu` (an AppKit layer that lagged behind moving views and showed a ghost copy next to a dragged node) is replaced by one right-click layer over the canvas that works out what is under the pointer. Same menus; right-click on empty canvas or a zone now also offers *Add node here* and *Add zone here*.
 
