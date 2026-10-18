@@ -58,11 +58,14 @@ struct TerminalTabChip: View {
     let isSelected: Bool
     let select: () -> Void
     let close: () -> Void
+    @Environment(UIState.self) private var ui
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "terminal")
+            Image(systemName: session.remote != nil ? "network" : "terminal")
                 .font(.caption)
+                .foregroundStyle(session.remote?.prepared == true ? Color.green : Color.primary)
+                .help(session.remote.map { "Logged in to \($0.label)\($0.prepared ? " — shell integration prepared" : "")" } ?? "Local shell")
             Text(session.title)
                 .font(.callout)
                 .lineLimit(1)
@@ -81,5 +84,27 @@ struct TerminalTabChip: View {
                     in: RoundedRectangle(cornerRadius: 6))
         .contentShape(Rectangle())
         .onTapGesture(perform: select)
+        .contextMenu {
+            if let remote = session.remote {
+                Text("On \(remote.label)")
+                Button(remote.prepared ? "Prepare this VM again (shell integration)" : "Prepare this VM (shell integration)") {
+                    select()
+                    session.prepareRemote()
+                }
+                Button("Type export RHOST=… here") {
+                    select()
+                    if !session.exportTarget(force: true) { ui.flash("No current target to export.", seconds: 2) }
+                }
+                Button("This tab is local again") { session.remote = nil }
+            } else {
+                Text("Local shell")
+                Button("Type export RHOST=… here") {
+                    select()
+                    if !session.exportTarget(force: true) { ui.flash("No current target to export.", seconds: 2) }
+                }
+            }
+            Divider()
+            Button("Close tab", action: close)
+        }
     }
 }

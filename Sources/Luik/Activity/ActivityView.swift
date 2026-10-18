@@ -218,7 +218,7 @@ struct ActivityRow: View {
                         .textSelection(.enabled)
                 }
                 HStack(spacing: 8) {
-                    Text("\(entry.kind.label) · \(entry.source)")
+                    Text("\(entry.kind.label) · \(entry.source)\(entry.via.map { " · via \($0)" } ?? "")")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     if let code = entry.exitCode, code != 0 {

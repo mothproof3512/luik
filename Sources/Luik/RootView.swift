@@ -378,6 +378,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.checkForUpdates) private var checkForUpdates = true
     @AppStorage(SettingsKey.checkContentUpdates) private var checkContentUpdates = true
     @AppStorage(SettingsKey.themeIntro) private var themeIntro = true
+    @AppStorage(SettingsKey.exportTargetToTerminal) private var exportTargetToTerminal = true
     @AppStorage(SettingsKey.knowledgeBaseCatalogURL) private var knowledgeBaseCatalogURL = ""
     @State private var checkingUpdates = false
     @State private var updateMessage: String? = nil
@@ -637,6 +638,9 @@ struct SettingsView: View {
             shellIntegrationSection
             Divider()
 
+            Toggle("“Use as $RHOST” also types export RHOST=… into the active terminal tab", isOn: $exportTargetToTerminal)
+            caption("The Mac's environment does not travel over ssh, so a shell on the attack VM learns the current target this way: one visible, logged export line, only when the shell is at an idle prompt. The target chip and a tab's right-click menu can always type it on request.")
+            Divider()
             Toggle("Keep the output of every command", isOn: $captureOutput)
             caption("What a logged command printed is kept next to its Log entry (per engagement, in outputs/, last 1500 commands, 1 MB each). Expand it in the Log, pin command + output as evidence to the selected finding, target or a note (⌘⇧P in the terminal for the last command), or import recognised scanner output into Targets.")
             Toggle("Selecting a host or port in Targets makes it the current target ($RHOST / $RPORT)", isOn: $followTargetSelection)
@@ -726,7 +730,7 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(active ? Color.green : Color.secondary)
             }
-            caption("Prompt markers (OSC 133, the same as iTerm2 and VS Code use) tell Luik exactly where a command's output starts and ends and what its exit status was — exact with multi-line prompts and when you type ahead. One line is added to your shell's rc file that sources a script in Luik's data folder; it only does something inside Luik's terminal tabs. New tabs pick it up.")
+            caption("Prompt markers (OSC 133, the same as iTerm2 and VS Code use) tell Luik exactly where a command's output starts and ends and what its exit status was — exact with multi-line prompts and when you type ahead. One line is added to your shell's rc file that sources a script in Luik's data folder; it only does something inside Luik's terminal tabs. New tabs pick it up. Working on a VM over ssh? The markers must come from that machine: right-click the tab › Prepare this VM (or ⌘K) writes the same script there through the session.")
             HStack(spacing: 8) {
                 ForEach(ShellIntegration.Shell.allCases) { shell in
                     let installed = ShellIntegration.isInstalled(shell)

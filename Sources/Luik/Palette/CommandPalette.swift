@@ -195,6 +195,18 @@ struct CommandPalette: View {
                 ui.module = .plan
                 PlanStore.shared.showTemplateEditor = true
             },
+            PaletteItem(id: "prepare-vm", icon: "network", title: "Prepare this VM (shell integration)", subtitle: "put Luik's prompt markers on the machine the active terminal tab is logged in to", group: "Actions") {
+                if let session = TerminalStore.shared.selected, session.remote != nil {
+                    ui.open(.terminal)
+                    session.prepareRemote()
+                } else {
+                    ui.flash("The active terminal tab is not logged in anywhere (open a connection or type ssh first).", seconds: 4)
+                }
+            },
+            PaletteItem(id: "export-target", icon: "scope", title: "Export $RHOST into the active terminal", subtitle: "types export RHOST=… RPORT=… — for a shell on the attack VM", group: "Actions") {
+                ui.open(.terminal)
+                if !TerminalStore.shared.exportTargetToSelected(force: true) { ui.flash("No current target to export.", seconds: 2) }
+            },
             PaletteItem(id: "closeout", icon: "archivebox", title: "Close-out export", subtitle: "the whole engagement into one folder and zip: report material, host dossiers, plans, log, notes, diagrams, evidence, raw data", group: "Actions") {
                 ui.showCloseOut = true
             },

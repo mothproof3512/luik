@@ -206,7 +206,7 @@ struct NodeRow: View {
         }
         .contextMenu {
             if node.kind == .host || node.kind == .port {
-                Button(node.kind == .port ? "Use as $RHOST / $RPORT" : "Use as $RHOST") { TargetContext.use(node) }
+                Button(node.kind == .port ? "Use as $RHOST / $RPORT" : "Use as $RHOST") { TargetContext.use(node, export: true) }
                 Button("Open a terminal here") {
                     TerminalStore.shared.newSession(boundTo: node)
                     ui.open(.terminal)

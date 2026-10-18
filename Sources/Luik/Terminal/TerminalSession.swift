@@ -43,6 +43,16 @@ final class LoggingTerminalView: LocalProcessTerminalView {
     private var lastExitCode: Int32?
     /// Called with the exit status of the last command (shell integration only).
     var onExitCode: ((Int32) -> Void)?
+    /// Called when Ctrl-D is pressed on an empty line (a shell — possibly a remote one — ends).
+    var onControlD: (() -> Void)?
+
+    /// With shell integration: the shell is at its prompt and nothing is being typed. Without it
+    /// only "nothing is being typed" is known.
+    var isIdle: Bool {
+        if lineActive { return false }
+        if getTerminal().isCurrentBufferAlternate { return false }
+        return hasShellIntegration ? outputStartRow == nil : true
+    }
 
     /// Installs the OSC 133 handler (FinalTerm / iTerm2 / VS Code shell-integration markers):
     /// A = prompt start, B = prompt end (command input starts), C = command runs (output starts),
@@ -133,6 +143,7 @@ final class LoggingTerminalView: LocalProcessTerminalView {
                 finishLine()
                 return // the remaining lines of a multi-line paste are not followed
             case 0x03, 0x04: // Ctrl-C, Ctrl-D: the line is abandoned
+                if byte == 0x04, typedBytes.isEmpty { onControlD?() }
                 lineActive = false
                 return
             case 0x7F, 0x08:
@@ -288,6 +299,8 @@ final class TerminalSession: Identifiable {
     /// its shell and every command in it is tagged with the host in the Log.
     var boundHost: String?
     var boundPort: Int?
+    /// The machine this tab is logged in to over ssh (attack VM, jump host), when Luik knows.
+    var remote: RemoteHost?
     /// Log entry of the command whose output is being collected, and the command itself.
     @ObservationIgnored var pendingEntryID: UUID?
     @ObservationIgnored var pendingCommand = ""
@@ -312,16 +325,21 @@ final class TerminalSession: Identifiable {
         view.onTypedLine = { [weak self] line in
             guard let self, UserDefaults.standard.bool(forKey: SettingsKey.logTypedCommands) else { return }
             let host = TargetContext.host(for: line, boundHost: self.boundHost)
-            self.pendingEntryID = ActivityLog.shared.record(.typed, line, source: "Terminal: \(self.title)", host: host)
+            self.pendingEntryID = ActivityLog.shared.record(.typed, line, source: "Terminal: \(self.title)", host: host, via: self.remote?.shortName)
             self.pendingCommand = line
             self.pendingTime = Date()
             TerminalStore.warnIfOutOfScope(line)
+            self.noteLogin(line)
             if let waiting = self.unclaimedOutput, Date().timeIntervalSince(waiting.time) < 1.0, let entryID = self.pendingEntryID,
                UserDefaults.standard.bool(forKey: SettingsKey.captureOutput) {
                 self.unclaimedOutput = nil
                 self.pendingEntryID = nil
                 CommandOutputStore.shared.store(waiting.text, for: entryID, command: line, source: "Terminal: \(self.title)", exitCode: waiting.exitCode)
             }
+        }
+        view.onControlD = { [weak self] in
+            guard let self, self.remote != nil else { return }
+            self.remote = nil
         }
         view.onCommandOutput = { [weak self] output in
             guard let self, UserDefaults.standard.bool(forKey: SettingsKey.captureOutput) else { return }
@@ -415,6 +433,54 @@ final class TerminalSession: Identifiable {
         guard let window = view.window else { return }
         window.makeFirstResponder(view)
     }
+
+    // MARK: Remote machine
+
+    /// Follows `ssh …` / `exit` lines so the tab knows which machine it is on.
+    func noteLogin(_ command: String) {
+        if let login = RemoteDetect.sshLogin(in: command) {
+            var next = login
+            if let current = remote, current.host == login.host { next = current }   // ssh again from a jump host
+            else if remote != nil { next.connectionName = nil }
+            remote = next
+            ActivityLog.shared.record(.action, "Logged in to \(login.label)", source: "Terminal: \(title)", via: login.shortName)
+        } else if remote != nil, RemoteDetect.endsLogin(command) {
+            remote = nil
+        }
+    }
+
+    /// Puts Luik's shell integration on the remote machine through this tab (one paste: the
+    /// script, a source line in .bashrc/.zshrc, and it is loaded in the current shell).
+    func prepareRemote() {
+        guard let target = remote else { return }
+        guard view.isIdle else {
+            UIState.shared.flash("The shell in this tab is busy — prepare the VM at an idle prompt.", seconds: 3)
+            return
+        }
+        let entryID = ActivityLog.shared.record(.action, "Shell integration put on \(target.label) (~/.luik/shell-integration.sh, sourced from .bashrc and .zshrc)", source: "Terminal: \(title)", via: target.shortName)
+        send(RemoteShellIntegration.prepareCommand, entryID: entryID)
+        remote?.prepared = true
+    }
+
+    /// Types `export RHOST=… RPORT=…` into this tab's shell: the Mac's environment does not travel
+    /// over ssh, so a remote shell learns the current target this way. Visible, logged, undoable.
+    @discardableResult
+    func exportTarget(force: Bool = false) -> Bool {
+        let snippets = SnippetStore.shared
+        let target = snippets.target.trimmingCharacters(in: .whitespaces)
+        guard !target.isEmpty else { return false }
+        guard force || view.isIdle else { return false }
+        var line = "export RHOST=\(target)"
+        let rport = snippets.rport.trimmingCharacters(in: .whitespaces)
+        line += rport.isEmpty ? " RPORT=" : " RPORT=\(rport)"
+        let lhost = snippets.lhost.trimmingCharacters(in: .whitespaces)
+        if !lhost.isEmpty { line += " LHOST=\(lhost)" }
+        let lport = snippets.lport.trimmingCharacters(in: .whitespaces)
+        if !lport.isEmpty { line += " LPORT=\(lport)" }
+        let entryID = ActivityLog.shared.record(.command, line, source: "Target → Terminal: \(title)", host: target, via: remote?.shortName)
+        send(line + "\n", entryID: entryID)
+        return true
+    }
 }
 
 extension TerminalSession: LocalProcessTerminalViewDelegate {
@@ -422,8 +488,9 @@ extension TerminalSession: LocalProcessTerminalViewDelegate {
 
     func setTerminalTitle(source: LocalProcessTerminalView, title: String) {
         DispatchQueue.main.async {
-            // A bound tab keeps the host as its name.
+            // A bound tab keeps the host as its name; a tab opened from a connection its name.
             if let host = self.boundHost { self.title = host; return }
+            if let name = self.remote?.connectionName { self.title = name; return }
             self.title = title.isEmpty ? "Shell" : title
         }
     }
@@ -559,9 +626,17 @@ final class TerminalStore {
     func sendToSelected(_ text: String, source: String = "Luik") {
         guard let session = selected else { return }
         let host = TargetContext.host(for: text, boundHost: session.boundHost)
-        let entryID = ActivityLog.shared.record(.command, text, source: "\(source) → Terminal: \(session.title)", host: host)
+        let entryID = ActivityLog.shared.record(.command, text, source: "\(source) → Terminal: \(session.title)", host: host, via: session.remote?.shortName)
         session.send(text, entryID: entryID)
         TerminalStore.warnIfOutOfScope(text)
+    }
+
+    /// `export RHOST=…` into the selected tab when its shell is idle (Targets › Use as $RHOST,
+    /// the target chip). Returns false when nothing was sent.
+    @discardableResult
+    func exportTargetToSelected(force: Bool = false) -> Bool {
+        guard let session = selected else { return false }
+        return session.exportTarget(force: force)
     }
 
     func applyAppearance() {

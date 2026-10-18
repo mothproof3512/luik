@@ -2,7 +2,7 @@ import Foundation
 
 /// Version and repository, used by the settings footer, the update check and build.sh.
 enum AppInfo {
-    static let version = "0.47.1"
+    static let version = "0.48.0"
     static let repository = "mothproof3512/luik"
 }
 
@@ -70,6 +70,8 @@ enum SettingsKey {
     static let colorScheme = "colorScheme"
     /// Opening effect when the panel drops down (Screens and consoles schemes).
     static let themeIntro = "themeIntro"
+    static let remoteHintShown = "remoteHintShown"
+    static let exportTargetToTerminal = "exportTargetToTerminal"
     /// Catalogue (catalog.json) the knowledge-base download sheet lists; "" = the Luik repository.
     static let knowledgeBaseCatalogURL = "knowledgeBaseCatalogURL"
     /// Last URL typed in the download sheet's "your own file" field.
@@ -140,6 +142,7 @@ enum SettingsDefaults {
             SettingsKey.logTypedCommands: true,
             SettingsKey.checkContentUpdates: true,
             SettingsKey.themeIntro: true,
+            SettingsKey.exportTargetToTerminal: true,
             SettingsKey.captureOutput: true,
             SettingsKey.autoImportScans: true,
             SettingsKey.followTargetSelection: true,

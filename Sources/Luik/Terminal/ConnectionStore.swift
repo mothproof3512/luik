@@ -41,9 +41,17 @@ final class ConnectionStore {
         let session = terminals.newSession()
         session.title = connection.name
         let command = SnippetStore.shared.resolve(connection.command)
+        if var login = RemoteDetect.sshLogin(in: command) {
+            login.connectionName = connection.name
+            session.remote = login
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            let entryID = ActivityLog.shared.record(.command, command, source: "Connections → Terminal: \(connection.name)")
+            let entryID = ActivityLog.shared.record(.command, command, source: "Connections → Terminal: \(connection.name)", via: session.remote?.shortName)
             session.send(command + "\n", entryID: entryID)
+            if session.remote != nil, !UserDefaults.standard.bool(forKey: SettingsKey.remoteHintShown) {
+                UserDefaults.standard.set(true, forKey: SettingsKey.remoteHintShown)
+                UIState.shared.flash("Logged in? Right-click the tab › Prepare this VM puts Luik's shell integration on it.", seconds: 6)
+            }
         }
     }
 

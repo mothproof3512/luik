@@ -49,7 +49,9 @@ enum TargetContext {
     }
 
     /// Makes a Targets node the context: its host becomes `$RHOST`, a port node also sets `$RPORT`.
-    static func use(_ node: TargetNode) {
+    /// With `export`, the selected terminal tab also gets an `export RHOST=…` line typed in (when
+    /// its shell is idle and the setting is on) — the way a shell on the attack VM learns the target.
+    static func use(_ node: TargetNode, export: Bool = false) {
         let store = TargetStore.shared
         guard let host = store.host(of: node) else { return }
         let address = host.address.trimmingCharacters(in: .whitespaces)
@@ -62,6 +64,11 @@ enum TargetContext {
             changed = true
         }
         if changed { snippets.saveTarget() }
+        if export, UserDefaults.standard.bool(forKey: SettingsKey.exportTargetToTerminal) {
+            if TerminalStore.shared.exportTargetToSelected() {
+                UIState.shared.flash("$RHOST exported into the terminal tab “\(TerminalStore.shared.selected?.title ?? "")”.", seconds: 2)
+            }
+        }
     }
 
     static func clear() {
@@ -189,7 +196,7 @@ struct TargetContextChip: View {
     var body: some View {
         Menu {
             if let node = targets.selectedNode, let host = targets.host(of: node), !host.address.isEmpty {
-                Button("Use selected: \(host.address)\(node.kind == .port ? ":\(node.portNumber)" : "")") { TargetContext.use(node) }
+                Button("Use selected: \(host.address)\(node.kind == .port ? ":\(node.portNumber)" : "")") { TargetContext.use(node, export: true) }
                 Divider()
             }
             let hosts = targets.hosts.filter { !$0.address.isEmpty }
@@ -225,6 +232,12 @@ struct TargetContextChip: View {
                 Button("Open a terminal for \(node.address)") {
                     TerminalStore.shared.newSession(boundTo: node)
                     ui.open(.terminal)
+                }
+            }
+            if !target.isEmpty, let session = TerminalStore.shared.selected {
+                Divider()
+                Button("Type export RHOST=… into “\(session.title)”\(session.remote.map { " (on \($0.shortName))" } ?? "")") {
+                    if !TerminalStore.shared.exportTargetToSelected(force: true) { ui.flash("Nothing to export — no current target.", seconds: 2) }
                 }
             }
             Divider()

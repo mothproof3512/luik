@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.48.0
+- **VM-aware terminal tabs.** A tab opened from a saved connection, or in which you type `ssh …`, knows which machine it is logged in to (user@host, the connection's name); `exit`, `logout` or Ctrl-D end it. The tab chip shows a network icon, the Log gets a `via` field (also in the Markdown export), and the tab keeps the connection's name.
+- **Prepare this VM** (right-click the tab, or ⌘K): puts Luik's shell integration on the remote machine through the session itself — one paste writes `~/.luik/shell-integration.sh` (bash and zsh), adds a source line to `.bashrc`/`.zshrc` once and loads it; no scp, no agent. A fresh VM per test is one click away from exact prompt markers. The icon turns green once done.
+- **$RHOST over the wire**: the Mac's environment does not travel over ssh, so *Use as $RHOST* (Targets, target chip) now also types a visible `export RHOST=… RPORT=… LHOST=… LPORT=…` line into the active tab when its shell is idle (Settings › Terminal toggle). The target chip, a tab's right-click menu and ⌘K can type it on request at any time.
+
 ## 0.47.1
 - Settings: the Terminal and Tools tabs had outgrown the window — they scroll now, the window is slightly larger, the update checks are laid out properly and the shell-integration buttons fit.
 

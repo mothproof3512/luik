@@ -48,6 +48,8 @@ struct ActivityEntry: Identifiable, Codable, Equatable {
     var host: String? = nil
     /// Exit status of the command (shell integration).
     var exitCode: Int32? = nil
+    /// The machine the terminal tab was logged in to (attack VM, jump host) when this happened.
+    var via: String? = nil
 }
 
 /// Timestamped record of what happened during an engagement: commands Luik pasted into the
@@ -110,12 +112,13 @@ final class ActivityLog {
 
     /// Returns the new entry's id (nil when paused or empty), so a command's output can be attached later.
     @discardableResult
-    func record(_ kind: ActivityEntry.Kind, _ text: String, source: String, host: String? = nil) -> UUID? {
+    func record(_ kind: ActivityEntry.Kind, _ text: String, source: String, host: String? = nil, via: String? = nil) -> UUID? {
         guard !isPaused else { return nil }
         let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return nil }
         var entry = ActivityEntry(kind: kind, text: cleaned, source: source)
         entry.host = host
+        entry.via = via
         let work = {
             self.entries.append(entry)
             if self.entries.count > ActivityLog.maxEntries {
@@ -173,12 +176,12 @@ final class ActivityLog {
             let time = formatter.string(from: entry.time)
             switch entry.kind {
             case .command, .typed:
-                out += "- `\(time)` **\(entry.kind.label)** (\(entry.source))\n\n    ```\n    \(entry.text.replacingOccurrences(of: "\n", with: "\n    "))\n    ```\n\n"
+                out += "- `\(time)` **\(entry.kind.label)** (\(entry.source)\(entry.via.map { ", via \($0)" } ?? ""))\n\n    ```\n    \(entry.text.replacingOccurrences(of: "\n", with: "\n    "))\n    ```\n\n"
                 if includeOutput, let output = CommandOutputStore.shared.text(ofOutput: entry.outputID), !output.isEmpty {
                     out += "    Output:\n\n    ```\n    \(output.replacingOccurrences(of: "\n", with: "\n    "))\n    ```\n\n"
                 }
             default:
-                out += "- `\(time)` **\(entry.kind.label)** (\(entry.source)): \(entry.text)\n"
+                out += "- `\(time)` **\(entry.kind.label)** (\(entry.source)\(entry.via.map { ", via \($0)" } ?? "")): \(entry.text)\n"
             }
         }
         return out
