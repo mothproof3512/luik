@@ -95,7 +95,7 @@ enum ShodanError: Error, LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .noKey: return "No Shodan API key — Settings › Tools › Shodan."
+        case .noKey: return "No Shodan API key — Settings › Integrations › Shodan."
         case .http(let code, let message): return "Shodan answered HTTP \(code)\(message.isEmpty ? "" : ": \(message)")"
         case .network(let message): return message
         case .decode: return "Shodan's answer could not be read."
@@ -287,8 +287,6 @@ final class ShodanStore {
     var search: ShodanSearch?
     var plan: String?
     var credits: Int?
-    /// Bulk enrichment progress ("3 / 12").
-    var enrichProgress: String?
 
     func checkKey() {
         DispatchQueue.global(qos: .userInitiated).async {
@@ -359,7 +357,7 @@ final class ShodanStore {
     func enrichTargets(addresses: [String]) {
         guard ShodanAPI.hasKey, !addresses.isEmpty else { return }
         isRunning = true
-        enrichProgress = "0 / \(addresses.count)"
+        UIState.shared.progress = "Shodan 0 / \(addresses.count)"
         DispatchQueue.global(qos: .userInitiated).async {
             var done = 0
             var found = 0
@@ -378,12 +376,12 @@ final class ShodanStore {
                     if case ShodanError.http(401, _) = error { break }
                 }
                 done += 1
-                DispatchQueue.main.async { self.enrichProgress = "\(done) / \(addresses.count)" }
+                DispatchQueue.main.async { UIState.shared.progress = "Shodan \(done) / \(addresses.count)" }
                 Thread.sleep(forTimeInterval: 1.1)
             }
             DispatchQueue.main.async {
                 self.isRunning = false
-                self.enrichProgress = nil
+                UIState.shared.progress = nil
                 self.error = failures.isEmpty ? nil : failures.prefix(3).joined(separator: "\n")
                 ActivityLog.shared.record(.action, "Shodan enrichment: \(found) of \(addresses.count) host(s) known to Shodan, merged into Targets", source: "Tools")
                 UIState.shared.flash("Shodan: \(found) of \(addresses.count) hosts enriched.", seconds: 3)
@@ -421,7 +419,6 @@ struct ShodanView: View {
                 .disabled(store.isRunning || store.query.trimmingCharacters(in: .whitespaces).isEmpty)
                 if store.isRunning {
                     ProgressView().controlSize(.small)
-                    if let progress = store.enrichProgress { Text(progress).font(.caption).foregroundStyle(.secondary) }
                 }
                 Spacer()
                 Menu {
@@ -430,7 +427,7 @@ struct ShodanView: View {
                         .disabled(addresses.isEmpty || store.isRunning)
                     Divider()
                     Button("Check API key and credits") { store.checkKey() }
-                    Button("Settings › Tools › Shodan") { ui.showSettings = true }
+                    Button("Settings › Integrations › Shodan") { ui.showSettings = true }
                 } label: {
                     Label(store.plan.map { "\($0) · \(store.credits ?? 0) credits" } ?? "Shodan", systemImage: "ellipsis.circle")
                 }
@@ -446,15 +443,10 @@ struct ShodanView: View {
                     .padding()
             }
             if !ShodanAPI.hasKey {
-                VStack(spacing: 8) {
-                    Spacer()
-                    Image(systemName: "binoculars").font(.largeTitle).foregroundStyle(.secondary)
-                    Text("Put your Shodan API key in Settings › Tools › Shodan (it is kept in the Keychain). Host and domain lookups are free on a paid plan; a search costs one query credit per page.")
-                        .foregroundStyle(.secondary).multilineTextAlignment(.center)
+                EmptyState(icon: "binoculars", title: "Shodan",
+                           message: "Put your API key in Settings › Integrations (it is kept in the Keychain). Host and domain lookups are free on a paid plan; a search costs one credit per page.") {
                     Button("Open Settings") { ui.showSettings = true }
-                    Spacer()
                 }
-                .frame(maxWidth: .infinity).padding()
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 10) {

@@ -33,7 +33,7 @@ struct KBCatalogEntry: Codable, Identifiable, Hashable {
 }
 
 /// A catalogue: a name and a list of entries. Luik ships one in the repository
-/// (knowledge-base/catalog.json); teams can host their own and point Settings › Tools at it.
+/// (knowledge-base/catalog.json); teams can host their own and point Settings › Integrations at it.
 struct KBCatalog: Codable {
     var name: String?
     var entries: [KBCatalogEntry]
@@ -65,7 +65,7 @@ final class KnowledgeBaseDownloader {
 
     private var fieldsLoaded = false
 
-    /// Settings › Tools, or the Luik catalogue when empty.
+    /// Settings › Integrations, or the Luik catalogue when empty.
     static var configuredCatalogURL: String {
         let value = (UserDefaults.standard.string(forKey: SettingsKey.knowledgeBaseCatalogURL) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         return value.isEmpty ? defaultCatalogURL : value

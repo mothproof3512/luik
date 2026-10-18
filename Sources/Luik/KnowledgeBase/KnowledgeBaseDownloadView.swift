@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// "Download a knowledge base": the catalogue of the Luik repository (or the one configured in
-/// Settings › Tools) with an Import button per entry, plus a field for any other file or
+/// Settings › Integrations) with an Import button per entry, plus a field for any other file or
 /// catalogue link — for a team's own GitHub repository, for example.
 struct KnowledgeBaseDownloadView: View {
     @Environment(\.dismiss) private var dismiss
@@ -106,7 +106,7 @@ struct KnowledgeBaseDownloadView: View {
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("No internet access, or the catalogue moved? Check Settings › Tools › Knowledge base catalogue, or paste a direct link to the file below.")
+                Text("No internet access, or the catalogue moved? Check Settings › Integrations › Knowledge base catalogue, or paste a direct link to the file below.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -203,7 +203,7 @@ struct KnowledgeBaseDownloadView: View {
                 .disabled(KnowledgeBaseDownloader.shared.isDownloading
                           || downloader.wrappedValue.customURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            Text("Tip: a catalogue URL in Settings › Tools makes your team's repository the default list above.")
+            Text("Tip: a catalogue URL in Settings › Integrations makes your team's repository the default list above.")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }

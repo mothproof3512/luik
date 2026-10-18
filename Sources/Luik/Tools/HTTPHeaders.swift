@@ -368,21 +368,8 @@ struct HTTPHeadersView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else if check.error == nil {
-                VStack(spacing: 8) {
-                    Spacer()
-                    Image(systemName: "list.bullet.rectangle")
-                        .font(.largeTitle)
-                        .foregroundStyle(.secondary)
-                    Text("Enter a URL and press Check: one GET per redirect hop, then HSTS, CSP, framing, nosniff, referrer and permissions policies, cookie flags, CORS and version disclosure are judged.")
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                    Text("Certificates are not verified here (use the TLS inspector); nothing is submitted; cookies are not stored.")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
+                EmptyState(icon: "list.bullet.rectangle", title: "HTTP headers",
+                           message: "One GET per redirect hop, then HSTS, CSP, framing, nosniff, referrer and permissions policies, cookie flags, CORS and version disclosure, judged. Nothing is submitted; certificates are not verified here.")
             }
         }
     }

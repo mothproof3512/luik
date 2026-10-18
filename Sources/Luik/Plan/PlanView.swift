@@ -67,13 +67,8 @@ struct PlanView: View {
             .padding(.vertical, 8)
 
             if store.plans.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("No plan yet for this engagement.")
-                        .font(.callout)
-                    Text("A plan is the engagement-level checklist: phases with items to work through, notes and fill-in fields, exported as Markdown for the report. Start from a template — external, internal/AD, web application or minimal — and shape it; afterwards save the worked plan as your own template.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                EmptyState(icon: "list.clipboard", title: "No plan yet",
+                           message: "The engagement-level checklist: phases, items, notes and fill-in fields, exported as Markdown. Start from a template and shape it.") {
                     Button {
                         store.showNewPlan = true
                     } label: {
@@ -81,7 +76,6 @@ struct PlanView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     Button("Templates…") { store.showTemplateEditor = true }
-                        .font(.caption)
                 }
                 .padding(12)
                 Spacer()

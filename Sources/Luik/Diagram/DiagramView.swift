@@ -80,14 +80,6 @@ struct DiagramView: View {
                 Label(store.current?.name ?? "Diagrams", systemImage: "point.3.connected.trianglepath.dotted")
             }
             .frame(maxWidth: 200)
-            Menu {
-                templateMenu
-            } label: {
-                Label("Templates", systemImage: "square.grid.2x2")
-            }
-            .frame(width: 110)
-            .help("New diagram from a template: web application set-ups, authentication flows, network layouts")
-
             if store.current != nil {
                 Divider().frame(height: 18)
                 addMenu
@@ -112,21 +104,6 @@ struct DiagramView: View {
                 .toggleStyle(.button)
                 .onChange(of: store.connectMode) { _, _ in store.connectFrom = nil }
                 .help("Click a node, then another, to link them. Or drag the dot on the right of a selected node to another node.")
-                Menu {
-                    Button("Add missing hosts to this diagram") {
-                        let added = store.addHostsFromTargets()
-                        status = added == 0 ? "Every host in Targets is in the diagram already (matched on address)." : "Added \(added) host(s) from Targets."
-                    }
-                    Button("Build a network map (new diagram)") {
-                        let placed = store.buildNetworkMap()
-                        status = placed == 0 ? "No hosts in Targets yet." : "Network map: \(placed) host(s) grouped by /24, with gateways and your attacker node."
-                    }
-                } label: {
-                    Label("From Targets", systemImage: "network")
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                .help("Add the hosts of the Targets tab as nodes, or build a complete map: a zone per /24, a gateway per segment, the attacker node linked to the gateways; kinds guessed from the open ports")
                 Button {
                     store.undo()
                 } label: {
@@ -139,39 +116,33 @@ struct DiagramView: View {
             Spacer()
 
             Menu {
-                Button("Import file…") {
-                    status = DiagramTransfer.importWithPanel(into: store)
+                Section("Import") {
+                    Button("File… (draw.io, Mermaid, Luik JSON)") {
+                        status = DiagramTransfer.importWithPanel(into: store)
+                    }
+                    Button("Mermaid / draw.io from the clipboard") {
+                        status = DiagramTransfer.importFromClipboard(into: store)
+                    }
                 }
-                Button("Paste Mermaid / draw.io from clipboard") {
-                    status = DiagramTransfer.importFromClipboard(into: store)
+                if let diagram = store.current {
+                    Section("Export") {
+                        ForEach(DiagramTransfer.ExportFormat.allCases) { format in
+                            Button(format.title) {
+                                export(diagram, format)
+                            }
+                        }
+                        Button("Copy image (light)") { copyImage(diagram, light: true) }
+                        Button("Copy image (dark)") { copyImage(diagram, light: false) }
+                        Button("Save to Library (PNG)") { saveToLibrary(diagram) }
+                        Toggle("Title block and legend on images", isOn: Binding(get: { DiagramTransfer.titleBlockEnabled }, set: { DiagramTransfer.titleBlockEnabled = $0 }))
+                    }
                 }
             } label: {
-                Label("Import", systemImage: "square.and.arrow.down")
+                Label("Import / Export", systemImage: "square.and.arrow.up.on.square")
                     .labelStyle(.iconOnly)
             }
             .frame(width: 44)
-            .help("Import: draw.io (.drawio, also compressed), Mermaid flowcharts and Luik JSON")
-            if let diagram = store.current {
-                Menu {
-                    ForEach(DiagramTransfer.ExportFormat.allCases) { format in
-                        Button(format.title) {
-                            export(diagram, format)
-                        }
-                    }
-                    Divider()
-                    Button("Copy image (light)") { copyImage(diagram, light: true) }
-                    Button("Copy image (dark)") { copyImage(diagram, light: false) }
-                    Divider()
-                    Button("Save to Library (PNG, light)") { saveToLibrary(diagram) }
-                    Divider()
-                    Toggle("Title block and legend on images", isOn: Binding(get: { DiagramTransfer.titleBlockEnabled }, set: { DiagramTransfer.titleBlockEnabled = $0 }))
-                } label: {
-                    Label("Export", systemImage: "square.and.arrow.up")
-                        .labelStyle(.iconOnly)
-                }
-                .frame(width: 44)
-                .help("Export: PNG, SVG, draw.io, Mermaid, JSON · copy as image · save to the Library")
-            }
+            .help("Import draw.io, Mermaid or Luik JSON · export PNG, SVG, draw.io, Mermaid, JSON · copy as image · save to the Library")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
@@ -221,6 +192,16 @@ struct DiagramView: View {
                         Label(stamp.name, systemImage: "square.grid.3x1.below.line.grid.1x2")
                     }
                     .help(stamp.summary)
+                }
+            }
+            Section("From Targets") {
+                Button("Missing hosts as nodes") {
+                    let added = store.addHostsFromTargets()
+                    status = added == 0 ? "Every host in Targets is in the diagram already (matched on address)." : "Added \(added) host(s) from Targets."
+                }
+                Button("Network map (new diagram)") {
+                    let placed = store.buildNetworkMap()
+                    status = placed == 0 ? "No hosts in Targets yet." : "Network map: \(placed) host(s) grouped by /24, with gateways and your attacker node."
                 }
             }
         } label: {
@@ -352,19 +333,9 @@ struct DiagramView: View {
     // MARK: Empty
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
-            Spacer()
-            Image(systemName: "point.3.connected.trianglepath.dotted")
-                .font(.system(size: 40))
-                .foregroundStyle(.secondary)
-            Text("No diagrams in this engagement yet.")
-                .font(.headline)
-            Text("Draw the network architecture: firewalls, segments, servers and clients, with links between them. Export as PNG or SVG for the report, or as draw.io / Mermaid to edit elsewhere; import those formats too.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: 520)
-                .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 10) {
+        VStack(spacing: 0) {
+            EmptyState(icon: "point.3.connected.trianglepath.dotted", title: "No diagrams yet",
+                       message: "Network and application architecture for the report: draw it, start from a template, or build it from Targets. Exports as PNG, SVG, draw.io and Mermaid.") {
                 Button {
                     store.newDiagram()
                 } label: {
@@ -387,8 +358,8 @@ struct DiagramView: View {
                 Text(status)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .padding(.bottom, 24)
             }
-            Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(24)

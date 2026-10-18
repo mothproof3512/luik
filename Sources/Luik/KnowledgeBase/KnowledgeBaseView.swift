@@ -93,23 +93,19 @@ struct KnowledgeBaseView: View {
                     .foregroundStyle(.secondary)
                     .help((store.knowledgeBase.map { "\($0.sourceName), imported \($0.importedAt.formatted(date: .abbreviated, time: .shortened))" } ?? "No imported knowledge base") + (store.mine.records.isEmpty ? "" : "\n\(store.mine.records.count) record(s) of your own"))
             }
+            if !store.mine.records.isEmpty {
+                Toggle(isOn: $store.onlyMine) {
+                    Label("Mine (\(store.mine.records.count))", systemImage: "person")
+                }
+                .toggleStyle(.button)
+                .help("Only your own records (My findings)")
+            }
             Menu {
                 if let kb = store.knowledgeBase {
                     Text("\(kb.sourceName)\(kb.version.map { " (version \($0))" } ?? "")")
                     Text("Imported \(kb.importedAt.formatted(date: .abbreviated, time: .shortened)) · \(kb.tables.count) sheet(s), \(kb.recordCount) rows")
                     if let source = kb.sourceURL {
                         Text("From \(source)")
-                    }
-                    Divider()
-                }
-                if !store.mine.records.isEmpty {
-                    Text("\(store.mine.records.count) record(s) of your own (My findings)")
-                    Button("Show only my records") {
-                        store.search = ""
-                        store.scopeFilter = ""
-                        store.severityFilter = ""
-                        store.phaseFilter = ""
-                        store.onlyMine = true
                     }
                     Divider()
                 }

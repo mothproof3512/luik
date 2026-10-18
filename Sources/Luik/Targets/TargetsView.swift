@@ -63,18 +63,8 @@ struct TargetsView: View {
                 .padding(.vertical, 8)
 
                 if store.hosts.isEmpty {
-                    VStack(spacing: 10) {
-                        Spacer()
-                        Image(systemName: "network")
-                            .font(.largeTitle)
-                            .foregroundStyle(.secondary)
-                        Text("No targets yet.\nImport nmap, Nessus, nuclei or masscan output, or add a host by hand.")
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
+                    EmptyState(icon: "network", title: "No targets yet",
+                               message: "Import nmap, Nessus, nuclei or masscan output, add a host by hand, or let Shodan fill the scope.")
                 } else {
                     List(store.hosts, children: \.outlineChildren, selection: $store.selectedID) { node in
                         NodeRow(node: node)

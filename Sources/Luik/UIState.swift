@@ -149,6 +149,8 @@ final class UIState {
     var pendingSnippet: Snippet?
     /// Opening effect of the colour scheme (ThemeIntroView): shown while true, token restarts it.
     var showIntro = false
+    /// One line in the top bar for anything that takes a while (enrichment, crt.sh, close-out).
+    var progress: String? = nil
     var introToken = 0
     /// Close-out export sheet.
     var showCloseOut = false

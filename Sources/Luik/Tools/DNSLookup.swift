@@ -410,22 +410,8 @@ struct DNSLookupView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else if lookup.error == nil {
-                VStack(spacing: 8) {
-                    Spacer()
-                    Image(systemName: "globe")
-                        .font(.largeTitle)
-                        .foregroundStyle(.secondary)
-                    Text("Enter a domain or an address: A/AAAA/CNAME/MX/NS/TXT/SOA/CAA and the common SRV records, reverse lookup, a zone-transfer attempt per name server, and who owns the domain or the address range (RDAP, ASN).")
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                    Text("DNS goes through dig and your normal resolver; RDAP is one request to rdap.org; the ASN comes from Team Cymru's DNS service.")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .multilineTextAlignment(.center)
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
+                EmptyState(icon: "globe", title: "DNS & RDAP",
+                           message: "Records, reverse lookup, a zone-transfer attempt per name server, and who owns the domain or address range (RDAP, ASN). DNS through dig; RDAP is one request to rdap.org.")
             }
         }
     }

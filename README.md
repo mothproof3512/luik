@@ -547,7 +547,7 @@ import summary. Existing data from before 0.14 lands in the "Default engagement"
    ATT&CK, CWE, CISA KEV and more — in **English** or **Dutch**. The same sheet takes a link to
    your own file (GitHub, GitLab, a web server; GitHub `…/blob/…` links are converted, an access
    token covers private repositories and is kept in your keychain) or to a *catalogue* of your
-   team's knowledge bases; **Settings › Tools › Knowledge base catalogue** makes such a catalogue
+   team's knowledge bases; **Settings › Integrations › Knowledge base catalogue** makes such a catalogue
    the default list. When the catalogue has a newer version of what you imported, the sheet shows
    **Update**. The format is described in [knowledge-base/README.md](knowledge-base/README.md).
    Prefer your own sheet? The empty tab explains which columns Luik recognises, and **Save example
@@ -598,7 +598,7 @@ Exploit-DB, Chef operations, the log, engagements ("Switch to …") and actions 
 ### Evidence screenshots (⌘⇧E)
 
 Runs macOS's own `screencapture -i`: drag an area, or press space and click a window. The PNG is
-saved with a timestamp in `~/Documents/Luik Evidence` (Settings › Tools), a Markdown image link is
+saved with a timestamp in `~/Documents/Luik Evidence` (Settings › General), a Markdown image link is
 appended to the notes of the selected target node, and the capture is written to the Log. By default
 Luik hides itself first so you can capture what is behind it; ⌘⌥⇧E keeps it visible. macOS asks once
 for Screen Recording permission.

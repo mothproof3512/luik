@@ -260,21 +260,8 @@ struct VersionCheckView: View {
         } else if let detail = check.detail {
             productDetail(detail)
         } else {
-            VStack(spacing: 8) {
-                Spacer()
-                Image(systemName: "clock.badge.exclamationmark")
-                    .font(.largeTitle)
-                    .foregroundStyle(.secondary)
-                Text("Type a product and pick it from the list; add the version you found to get a verdict.")
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                Text("On a port node in Targets, the Version button brings the product and version here.")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                Spacer()
-            }
-            .frame(maxWidth: .infinity)
-            .padding()
+            EmptyState(icon: "clock.badge.exclamationmark", title: "Version & end of life",
+                       message: "Type a product and pick it from the list; add the version you found for a verdict. Check ▾ › Version on a port node in Targets fills it in.")
         }
     }
 
@@ -595,18 +582,8 @@ struct MailSecurityView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else {
-                VStack(spacing: 8) {
-                    Spacer()
-                    Image(systemName: "envelope.badge.shield.half.filled")
-                        .font(.largeTitle)
-                        .foregroundStyle(.secondary)
-                    Text("Enter a mail domain and press Check. Only DNS queries are made (through dig, your normal resolver).")
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
+                EmptyState(icon: "envelope.badge.shield.half.filled", title: "Mail security",
+                           message: "SPF, DKIM, DMARC, MX, MTA-STS and TLS-RPT of a domain, judged. Only DNS queries through dig.")
             }
         }
     }

@@ -176,6 +176,7 @@ final class TLSInspector {
         ctLoading = true
         ctError = nil
         ctDomain = domain
+        UIState.shared.progress = "crt.sh %.\(domain)…"
         var request = URLRequest(url: url)
         request.timeoutInterval = 40
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -215,6 +216,7 @@ final class TLSInspector {
                 self.ctEntries = entries
                 self.ctError = failure
                 self.ctLoading = false
+                UIState.shared.progress = nil
                 if failure == nil { ActivityLog.shared.record(.action, "Certificate Transparency: \(entries.count) name(s) for %.\(domain) (crt.sh)", source: "Tools") }
             }
         }.resume()
@@ -539,22 +541,8 @@ struct TLSInspectorView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else if inspector.error == nil {
-                VStack(spacing: 8) {
-                    Spacer()
-                    Image(systemName: "checkmark.seal")
-                        .font(.largeTitle)
-                        .foregroundStyle(.secondary)
-                    Text("Enter a host (and port) and press Read: the certificate chain as OSINT — every name, organisation, issuer, validity, serials and fingerprints, key usage, OCSP/CRL/CA URLs, validation level, CT timestamps — and the names Certificate Transparency logs know for the domain.")
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                    Text("One handshake with the system's openssl. Protocol and cipher weaknesses are testssl.sh's job; this tool documents what the certificate reveals.")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .multilineTextAlignment(.center)
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
+                EmptyState(icon: "checkmark.seal", title: "Certificates",
+                           message: "The certificate chain of a host as OSINT — names, organisation, issuer, validity, fingerprints, OCSP/CRL, validation level, CT timestamps — and the names Certificate Transparency knows for the domain. One handshake with openssl; cipher and protocol testing is testssl.sh's job.")
             }
         }
     }

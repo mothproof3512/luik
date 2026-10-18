@@ -271,6 +271,13 @@ struct TopBar: View {
                 .help("Logging is paused — nothing is recorded. Click to resume.")
                 .padding(.trailing, 8)
             }
+            if let progress = ui.progress {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.mini)
+                    Text(progress).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+                .padding(.trailing, 10)
+            }
             CanaryIndicator()
                 .padding(.trailing, 8)
             TargetContextChip()
@@ -460,8 +467,8 @@ struct SettingsView: View {
                     .tabItem { Text("Terminal") }
                 targetsTab
                     .tabItem { Text("Targets") }
-                toolsTab
-                    .tabItem { Text("Tools") }
+                integrationsTab
+                    .tabItem { Text("Integrations") }
             }
 
             HStack {
@@ -510,13 +517,13 @@ struct SettingsView: View {
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            caption("Click the field and press the key or combination you want (e.g. F12, ⌃`, ⌥Space or ⌘⇧T). Esc cancels, ⌫ clears the hotkey. Letters and digits only in combination with ⌃, ⌥ or ⌘. On a MacBook keyboard, function keys usually need fn held down unless \"Use F1, F2, etc. keys as standard function keys\" is enabled in System Settings › Keyboard.")
+            caption("Click the field and press the key (F12, ⌃`, ⌥Space, ⌘⇧T …). Esc cancels, ⌫ clears. Function keys on a MacBook need fn unless System Settings › Keyboard says otherwise.")
 
             LabeledContent("Pause hotkey in") {
                 TextField("e.g. Windows App, Remote Desktop, Parallels", text: $hotKeyPauseApps)
                     .textFieldStyle(.roundedBorder)
             }
-            caption("While one of these apps (name or bundle id, comma-separated) is active, the hotkey is paused and the key goes straight to that app, e.g. to a remote desktop or VM. Open Luik from the menu bar icon in the meantime.")
+            caption("App names or bundle ids, comma-separated. While one is active the key goes to that app (remote desktop, VM); use the menu bar icon meanwhile.")
 
             Divider()
 
@@ -535,16 +542,10 @@ struct SettingsView: View {
                 }
                 .controlSize(.small)
             }
-            caption("Targets, notes, findings, the log and evidence screenshots are kept per engagement (briefcase menu in the top bar). One-liners, the knowledge base, Exploit-DB, Chef recipes and connections are shared. Each engagement has a scope list; hosts outside it are flagged in Targets and in the import summary.")
+            caption("Targets, notes, findings, log and evidence are per engagement; one-liners, knowledge base, Exploit-DB and connections are shared. Hosts outside the engagement's scope are flagged.")
 
-            Spacer(minLength: 0)
-        }
-        .padding(12)
-    }
+            Divider()
 
-    private var toolsTab: some View {
-        ScrollView {
-        VStack(alignment: .leading, spacing: 12) {
             Text("Evidence screenshots")
                 .font(.subheadline.weight(.semibold))
             LabeledContent("Folder") {
@@ -552,16 +553,16 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
             }
             Toggle("Hide Luik while selecting the screenshot area", isOn: $hideWhileCapturing)
-            caption("⌘⇧E takes a screenshot with macOS's own screencapture (drag an area, or press space and click a window). It is saved with a timestamp in a subfolder per engagement, linked in the notes of the selected target node (or the open finding) and written to the Log. macOS asks once for Screen Recording permission for Luik.")
+            caption("⌘⇧E uses macOS screencapture; the file goes into a subfolder per engagement, is linked in the selected node or finding and written to the Log.")
 
-            Divider()
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+    }
 
-            Text("Search everything")
-                .font(.subheadline.weight(.semibold))
-            caption("⌘K opens one search box over notes, one-liners, targets, findings, knowledge base, Exploit-DB, Chef operations, the log, engagements and actions. ↑↓ to choose, ↩ to open, esc to close.")
-
-            Divider()
-
+    private var integrationsTab: some View {
+        ScrollView {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Knowledge base catalogue")
                 .font(.subheadline.weight(.semibold))
             HStack(spacing: 8) {
@@ -570,7 +571,7 @@ struct SettingsView: View {
                     .font(.system(.caption, design: .monospaced))
                 Button("Download…") { ui.showKnowledgeBaseDownload = true }
             }
-            caption("The catalog.json that the Download sheet of the Knowledge base tab lists. Empty = the Luik repository (English and Dutch attack-vectors knowledge bases). Point it at your own repository to make your team's knowledge bases the default; the format is described in knowledge-base/README.md of the repository.")
+            caption("The catalog.json the Knowledge base › Download sheet lists. Empty = the Luik repository; point it at your own for your team's knowledge bases (format: knowledge-base/README.md).")
 
             Divider()
 
@@ -592,7 +593,7 @@ struct SettingsView: View {
             } else if let error = ShodanStore.shared.error, !shodanKey.isEmpty {
                 Text(error).font(.caption).foregroundStyle(.orange)
             }
-            caption("Kept in the macOS Keychain, never in the data folder. Tools › Shodan looks hosts and domains up (free on a paid plan) and searches (one credit per page); every request is written to the Log.")
+            caption("Kept in the Keychain. Host and domain lookups are free on a paid plan, a search costs one credit per page; every request is written to the Log.")
 
             Divider()
 
@@ -600,7 +601,7 @@ struct SettingsView: View {
                 .font(.subheadline.weight(.semibold))
             Toggle("Check for a new Luik release at launch (once a day)", isOn: $checkForUpdates)
             Toggle("Check downloaded content for updates at launch (once a day)", isOn: $checkContentUpdates)
-            caption("Library sources (PayloadsAllTheThings, InternalAllTheThings, your repositories) and the knowledge-base catalogue are compared with what you have; a green “Updates (n)” badge in the top bar lists what is new. Nothing is downloaded by itself. Both checks talk to GitHub only; switch them off and Luik makes no network requests on its own.")
+            caption("Compares the library sources and the knowledge-base catalogue with what you have; a green dot on the ⋯ menu means something is new. Nothing is downloaded by itself; both checks talk to GitHub only.")
             HStack {
                 Button("Check content now") { ContentUpdates.shared.checkNow(includeApp: checkForUpdates) }
                 Spacer()
@@ -614,7 +615,6 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
             }
-            caption("Looks at the latest release of \(AppInfo.repository) on GitHub. Nothing else is sent.")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
@@ -692,26 +692,26 @@ struct SettingsView: View {
                 TextField("/bin/zsh", text: $shellPath)
                     .textFieldStyle(.roundedBorder)
             }
-            caption("The shell applies to new tabs; font size and opacity also apply to existing ones right away. The shell is started as a login shell, so your PATH and aliases are loaded.")
+            caption("The shell applies to new tabs (started as a login shell); font size applies right away.")
 
             Divider()
 
             Toggle("Log typed commands to the Log tab", isOn: $logTypedCommands)
-            caption("Every command you run in a Luik terminal tab is recorded with a timestamp — also inside ssh sessions, after tab completion and from history, because Luik reads the command from the screen when you press Enter. Anything that does not appear on screen (passwords for sudo, ssh, su, mysql -p, …) is never recorded; full-screen programs such as vim, less and htop are ignored. Commands pasted from One-liners or Searchsploit are always logged.")
+            caption("Luik reads the command from the screen when you press Enter — also inside ssh. Anything that does not appear on screen (passwords) is never recorded; full-screen programs are ignored.")
             Divider()
             shellIntegrationSection
             Divider()
 
             Toggle("“Use as $RHOST” also types export RHOST=… into the active terminal tab", isOn: $exportTargetToTerminal)
-            caption("The Mac's environment does not travel over ssh, so a shell on the attack VM learns the current target this way: one visible, logged export line, only when the shell is at an idle prompt. The target chip and a tab's right-click menu can always type it on request.")
+            caption("A shell on the attack VM learns the target this way: one visible, logged export line at an idle prompt. The target chip and a tab's right-click menu can always type it.")
             Divider()
             Toggle("Keep the output of every command", isOn: $captureOutput)
-            caption("What a logged command printed is kept next to its Log entry (per engagement, in outputs/, last 1500 commands, 1 MB each). Expand it in the Log, pin command + output as evidence to the selected finding, target or a note (⌘⇧P in the terminal for the last command), or import recognised scanner output into Targets.")
+            caption("Kept next to the Log entry (per engagement, last 1500 commands, 1 MB each). Expand it in the Log, pin it as evidence (⌘⇧P), or import scanner output into Targets.")
             Toggle("Selecting a host or port in Targets makes it the current target ($RHOST / $RPORT)", isOn: $followTargetSelection)
-            caption("The current target is shown in the top bar (red when it is outside the engagement's scope) and feeds one-liners, checklists, saved connections and terminals opened for a host. Commands that name it are tagged with the host in the Log, which is what the Activity panel on a host and the host dossier are built from.")
+            caption("The current target sits in the top bar (red when out of scope) and feeds one-liners, checklists and terminals; commands that name it are tagged with the host in the Log.")
             Toggle("Import nmap / nuclei / masscan output into Targets automatically", isOn: $autoImportScans)
                 .disabled(!captureOutput)
-            caption("When a command's output looks like a scan (nmap normal/-oG/-oX, nuclei console or JSON, masscan), the hosts, ports and findings go into Targets as soon as the prompt returns — the same import as pasting it by hand, so nothing is duplicated. Off: the Log shows an Import button instead.")
+            caption("Output that looks like nmap, nuclei or masscan goes into Targets when the prompt returns — the same merge as a manual import. Off: the Log shows an Import button.")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
@@ -794,7 +794,7 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(active ? Color.green : Color.secondary)
             }
-            caption("Prompt markers (OSC 133, the same as iTerm2 and VS Code use) tell Luik exactly where a command's output starts and ends and what its exit status was — exact with multi-line prompts and when you type ahead. One line is added to your shell's rc file that sources a script in Luik's data folder; it only does something inside Luik's terminal tabs. New tabs pick it up. Working on a VM over ssh? The markers must come from that machine: right-click the tab › Prepare this VM (or ⌘K) writes the same script there through the session.")
+            caption("Prompt markers (OSC 133) give exact output boundaries and exit codes. One source line in your rc file; new tabs pick it up. On a VM over ssh: right-click the tab › Prepare this VM.")
             HStack(spacing: 8) {
                 ForEach(ShellIntegration.Shell.allCases) { shell in
                     let installed = ShellIntegration.isInstalled(shell)

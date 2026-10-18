@@ -72,21 +72,8 @@ struct FindingsView: View {
                 Divider()
 
                 if store.findings.isEmpty {
-                    VStack(spacing: 10) {
-                        Spacer()
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.largeTitle)
-                            .foregroundStyle(.secondary)
-                        Text("No findings yet for \(engagements.current.displayName).")
-                            .font(.headline)
-                        Text("Add one with the + button, from a target node (Finding button), from a knowledge-base record (Create finding), or import Nessus/nuclei output with \"also create findings\".")
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Spacer()
-                    }
-                    .padding(24)
-                    .frame(maxWidth: .infinity)
+                    EmptyState(icon: "exclamationmark.triangle", title: "No findings yet",
+                               message: "Findings come from the + button, the Finding button on a target node, a knowledge-base record, or a Nessus/nuclei import.")
                 } else {
                     List(store.filtered, selection: $store.selectedID) { finding in
                         FindingRow(finding: finding)

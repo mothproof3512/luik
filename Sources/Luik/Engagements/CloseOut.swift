@@ -269,10 +269,12 @@ struct CloseOutView: View {
         panel.message = "Choose the folder that will hold the close-out package"
         guard panel.runModal() == .OK, let destination = panel.url else { return }
         working = true
+        ui.progress = "Close-out export…"
         let accent = theme.accentColor
         DispatchQueue.main.async {
             result = CloseOut.export(to: destination, options: options, accent: accent)
             working = false
+            ui.progress = nil
             if let result { ui.flash("Close-out: \(result.files) file(s) exported.") }
         }
     }

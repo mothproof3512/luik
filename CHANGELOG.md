@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.53.0 — polish
+- **Diagram toolbar**: the Templates button is gone (templates live in the diagram menu › New from template and in the empty state), *From Targets* moved into the Add menu, Import and Export are one menu. Zone and Connect stay as the two tools next to the quick kinds.
+- **Settings**: the Tools tab is now **Integrations** (knowledge-base catalogue, Shodan, updates); evidence screenshots moved to General; every caption is one or two lines.
+- **One empty state** (icon, title, one sentence, at most two actions) for Findings, Targets, Plan, Diagram and the check tools.
+- **Knowledge base**: *Show only my records* left the ⋯ menu and is a *Mine (n)* toggle next to the filters — ⋯ menus hold actions on the whole list, filters sit by the search field.
+- **One progress line** in the top bar for things that take a while — Shodan enrichment, crt.sh, close-out export — instead of a spinner per toolbar.
+
 ## 0.52.0 — simpler UI
 - **Top bar**: the engagement now comes first (left of the tabs — everything in the tabs lives under it); on the right only what needs attention (log paused, canary, current target) plus **one status menu** (⋯) that holds public IP and $LHOST, content updates and a new Luik release (green dot on the icon), search ⌘K, shortcuts ⌘/, Settings and Hide. Nine controls became four.
 - **Targets node toolbar**: Finding and Terminal stay as buttons; **Add ▾** (port, sub-node, missing checklist items) and **Check ▾** (version & end of life, certificate, HTTP headers, DNS & RDAP, Shodan) replace seven buttons.
