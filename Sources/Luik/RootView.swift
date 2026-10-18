@@ -199,6 +199,9 @@ struct ModuleContent: View {
         case .mailSecurity: MailSecurityView()
         case .reachability: CanaryView()
         case .playbooks: PlaybooksView()
+        case .tlsInspector: TLSInspectorView()
+        case .httpHeaders: HTTPHeadersView()
+        case .dnsLookup: DNSLookupView()
         }
     }
 }

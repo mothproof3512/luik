@@ -342,6 +342,34 @@ struct NodeDetailView: View {
                     }
                     .disabled(query.product.isEmpty && query.knowledgeTerms.isEmpty)
                     .help("Is \(query.displayQuery.isEmpty ? "this service" : query.displayQuery) current, supported or end of life? Opens Tools › Version check with the product and version from the service line")
+                    if let host = store.host(of: node), !host.address.isEmpty {
+                        let service = node.subtitle.lowercased()
+                        let web = service.contains("http") || [80, 443, 8080, 8443, 8000, 8888].contains(node.portNumber)
+                        let tls = service.contains("ssl") || service.contains("tls") || service.contains("https") || [443, 8443, 465, 993, 995, 636, 3389].contains(node.portNumber)
+                        if tls {
+                            Button {
+                                TLSInspector.shared.target = "\(host.address):\(node.portNumber)"
+                                TLSInspector.shared.starttls = "none"
+                                ui.open(.tlsInspector)
+                                TLSInspector.shared.run()
+                            } label: {
+                                Label("TLS", systemImage: "lock.shield")
+                            }
+                            .help("Certificate, protocol versions and cipher families of \(host.address):\(node.portNumber) — Tools › TLS")
+                        }
+                        if web {
+                            Button {
+                                let scheme = tls || node.portNumber == 443 || node.portNumber == 8443 ? "https" : "http"
+                                let portSuffix = [80, 443].contains(node.portNumber) ? "" : ":\(node.portNumber)"
+                                HTTPHeadersCheck.shared.url = "\(scheme)://\(host.subtitle.isEmpty ? host.address : host.subtitle)\(portSuffix)/"
+                                ui.open(.httpHeaders)
+                                HTTPHeadersCheck.shared.run()
+                            } label: {
+                                Label("Headers", systemImage: "list.bullet.rectangle")
+                            }
+                            .help("Security headers, cookies and redirects — Tools › HTTP headers")
+                        }
+                    }
                 }
                 Button {
                     findings.create(from: node, in: store)

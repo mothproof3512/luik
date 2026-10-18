@@ -195,6 +195,24 @@ struct CommandPalette: View {
                 ui.module = .plan
                 PlanStore.shared.showTemplateEditor = true
             },
+            PaletteItem(id: "tls", icon: "lock.shield", title: "TLS inspector", subtitle: "certificate, protocols, weak ciphers of host:port", group: "Actions") {
+                if let node = TargetStore.shared.selectedNode, let host = TargetStore.shared.host(of: node), !host.address.isEmpty {
+                    TLSInspector.shared.target = node.kind == .port ? "\(host.address):\(node.portNumber)" : host.address
+                }
+                ui.open(.tlsInspector)
+            },
+            PaletteItem(id: "http-headers", icon: "list.bullet.rectangle", title: "HTTP headers check", subtitle: "HSTS, CSP, cookies, CORS, redirects of a URL", group: "Actions") {
+                if let node = TargetStore.shared.selectedNode, let host = TargetStore.shared.host(of: node), !host.address.isEmpty, node.kind == .port {
+                    HTTPHeadersCheck.shared.url = "\(node.portNumber == 443 ? "https" : "http")://\(host.address)\([80, 443].contains(node.portNumber) ? "" : ":\(node.portNumber)")/"
+                }
+                ui.open(.httpHeaders)
+            },
+            PaletteItem(id: "dns", icon: "globe", title: "DNS & RDAP lookup", subtitle: "records, reverse, zone transfer, ownership", group: "Actions") {
+                if let node = TargetStore.shared.selectedNode, let host = TargetStore.shared.host(of: node), !host.address.isEmpty {
+                    DNSLookup.shared.query = host.subtitle.isEmpty ? host.address : host.subtitle
+                }
+                ui.open(.dnsLookup)
+            },
             PaletteItem(id: "prepare-vm", icon: "network", title: "Prepare this VM (shell integration)", subtitle: "put Luik's prompt markers on the machine the active terminal tab is logged in to", group: "Actions") {
                 if let session = TerminalStore.shared.selected, session.remote != nil {
                     ui.open(.terminal)

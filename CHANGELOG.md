@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.49.0
+- **Tools › TLS**: certificate chain (names, expiry, key, signature, SHA-256), chain verification, which of SSLv3/TLS 1.0–1.3 a host:port accepts, weak cipher families on TLS 1.2 (NULL/anonymous, export, RC4, 3DES, static RSA), ephemeral key, renegotiation and compression — about ten handshakes with the system's openssl; STARTTLS for smtp/imap/pop3/ftp/ldap/postgres/mysql/xmpp. Create finding, Add to Targets (port note with the summary), Copy as Markdown. A **TLS** button on https/ssl port nodes in Targets runs it for that port.
+- **Tools › HTTP headers**: one GET per redirect hop (every hop listed), then HSTS, Content-Security-Policy (weak-source detection), X-Frame-Options / frame-ancestors, nosniff, Referrer-Policy, Permissions-Policy, cookie flags (session-looking cookies without Secure/HttpOnly/SameSite fail), CORS, version disclosure and cache headers judged. Certificates are not verified here, nothing is submitted, cookies are not kept. A **Headers** button on web port nodes in Targets.
+- **Tools › DNS & RDAP**: A/AAAA/CNAME/MX/NS/TXT/SOA/CAA and the common SRV records, reverse lookup, a read-only zone-transfer attempt on every name server (a transfer becomes a finding), hints for dangling CNAMEs and third-party verification tokens, ownership through rdap.org (registrar, dates, status, DNSSEC; network, range, country for addresses) and the ASN (Team Cymru DNS). Right-click a record to look it up; Add to Targets for the resolved addresses.
+- All three in ⌘K, prefilled from the selected Targets node.
+
 ## 0.48.1
 - Tools: the sidebar collapses to an icon rail (sidebar button next to the title, or ⋯ › Collapse); names and summaries become tooltips, right-click still reorders or gives a tool its own tab. Remembered across launches.
 

@@ -19,6 +19,9 @@ enum Module: String, CaseIterable, Identifiable {
     case mailSecurity
     case reachability
     case playbooks
+    case tlsInspector
+    case httpHeaders
+    case dnsLookup
 
     var id: String { rawValue }
 
@@ -40,6 +43,9 @@ enum Module: String, CaseIterable, Identifiable {
         case .mailSecurity: return "Mail security"
         case .reachability: return "Canary"
         case .playbooks: return "Playbooks"
+        case .tlsInspector: return "TLS"
+        case .httpHeaders: return "HTTP headers"
+        case .dnsLookup: return "DNS & RDAP"
         }
     }
 
@@ -61,6 +67,9 @@ enum Module: String, CaseIterable, Identifiable {
         case .mailSecurity: return "envelope.badge.shield.half.filled"
         case .reachability: return "dot.radiowaves.left.and.right"
         case .playbooks: return "shippingbox"
+        case .tlsInspector: return "lock.shield"
+        case .httpHeaders: return "list.bullet.rectangle"
+        case .dnsLookup: return "globe"
         }
     }
 }
@@ -85,12 +94,15 @@ extension Module {
         case .mailSecurity: return "Can this domain be spoofed? MX, SPF (with lookup count), DMARC, DKIM keys, MTA-STS, TLS-RPT — judged and explained."
         case .reachability: return "Am I blocked? Probe in-scope hosts every N minutes; red badge and a Log entry when one stops answering."
         case .playbooks: return "Standard bundles per kind of engagement (plan, checklists, one-liners, diagram, reading) and your own playbook files."
+        case .tlsInspector: return "Certificate chain, expiry, protocol versions and weak cipher families of a TLS endpoint, with a finding in one click."
+        case .httpHeaders: return "Security headers, cookie flags, redirects and CORS of a URL, judged — and the version disclosure for the Version check."
+        case .dnsLookup: return "Records, reverse lookup, zone-transfer attempt and who owns the domain or address range (RDAP, ASN)."
         }
     }
 
     /// Where a module lives when nothing was changed: the top bar, or the Tools tab's sidebar.
     static let defaultTabs: [Module] = [.terminal, .notes, .snippets, .targets, .findings, .plan, .activity, .tools]
-    static let defaultTools: [Module] = [.knowledgeBase, .exploits, .chef, .diagram, .versionCheck, .mailSecurity, .reachability, .playbooks]
+    static let defaultTools: [Module] = [.knowledgeBase, .exploits, .chef, .diagram, .versionCheck, .mailSecurity, .tlsInspector, .httpHeaders, .dnsLookup, .reachability, .playbooks]
 }
 
 /// Shared UI state (which tab is open, whether settings are visible).
