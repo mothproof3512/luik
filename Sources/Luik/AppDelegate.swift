@@ -43,11 +43,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .environment(DiagramStore.shared)
             .environment(PlanStore.shared)
         let controller = DropdownController(rootView: root)
-        controller.onDidShow = {
-            // Opening effect of the "Screens and consoles" schemes (Settings › Colours).
+        // Opening effect of the "Screens and consoles" schemes (Settings › Colours): the overlay
+        // starts together with the panel's own entrance; without one, after the plain slide.
+        let startIntro = {
             if UserDefaults.standard.bool(forKey: SettingsKey.themeIntro), ThemeIntro.hasEffect(LuikTheme.current) {
                 UIState.shared.introToken += 1
                 UIState.shared.showIntro = true
+            }
+        }
+        controller.onWillShow = startIntro
+        controller.onDidShow = {
+            if ThemeEntrance.duration(for: LuikTheme.current) == nil || !UserDefaults.standard.bool(forKey: SettingsKey.themeIntro) {
+                startIntro()
             }
             if UIState.shared.module == .terminal {
                 TerminalStore.shared.focusSelected()

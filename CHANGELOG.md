@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.47.0
+- **Themed entrance of the panel itself** for the Screens and consoles schemes: instead of the plain slide from the top, the panel (terminal included) arrives the way its scheme does — Bridge sweeps in from the left; Chevron opens from a point in the centre; Rebel console jumps in stretched thin and snaps to size; WOPR and Basement switch on like a CRT, a thin line opening vertically with a flicker; Gibson swings open like a door; Digital rain fades in under the rain; Section 9 unrolls from the top edge; The Grid tilts up from the floor; Fifth of November breaks through in three hard cuts; Incubator pops in with an overshoot. The overlay effect of 0.46.0 now plays during the entrance. One toggle in Settings › Colours switches both off.
+
 ## 0.46.0
 - **Opening effects** for the Screens and consoles schemes: when the panel drops down, about a second of procedural animation in the scheme's colours — sweeping bars (Bridge), the ring of markers and a ripple (Chevron), converging grid and crosshair (Rebel console), dotted map lines and a typed status line (WOPR), rising wireframe towers (Gibson), falling glyphs (Digital rain), scan band with hex readouts (Section 9), perspective floor grid with a light trail (The Grid), broadcast static over a red wash (Fifth of November), CRT power-on with flicker (Basement), rising chart bars and a prompt (Incubator). Settings › Colours switches it off.
 

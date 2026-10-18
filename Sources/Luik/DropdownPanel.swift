@@ -33,6 +33,8 @@ final class DropdownController {
 
     /// Called once the panel is fully visible.
     var onDidShow: (() -> Void)?
+    /// Called at the start of a themed entrance, so an overlay effect can play during it.
+    var onWillShow: (() -> Void)?
 
     init<Content: View>(rootView: Content) {
         panel = DropdownPanel(contentRect: NSRect(x: 0, y: 0, width: 900, height: 500),
@@ -222,6 +224,21 @@ final class DropdownController {
             } else {
                 self.onDidShow?()
             }
+        }
+
+        // Themed entrance (Settings › Colours): the panel itself arrives the way its scheme does.
+        if UserDefaults.standard.bool(forKey: SettingsKey.themeIntro), let layer = container.layer,
+           ThemeEntrance.duration(for: LuikTheme.current) != nil {
+            panel.setFrame(endFrame, display: true)
+            panel.alphaValue = 1
+            panel.hasShadow = false   // the window shadow would stay rectangular while the content moves
+            onWillShow?()
+            let played = ThemeEntrance.play(on: layer, size: endFrame.size, theme: LuikTheme.current) {
+                self.panel.hasShadow = true
+                finish()
+            }
+            if played { return }
+            panel.hasShadow = true
         }
 
         let duration = animationDuration

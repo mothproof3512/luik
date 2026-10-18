@@ -682,8 +682,8 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     themeGroup("Luik and Sanzo Wada", caption: "Ten combinations from Sanzo Wada's A Dictionary of Color Combinations (1933): the darkest colour is the tint, the lightest the text, the most saturated the accent.", schemes: [LuikTheme.luik] + LuikTheme.wada)
                     themeGroup("Screens and consoles", caption: "Palettes in the spirit of famous screens from film and TV — the bridge console, the stone ring, the war room, the mainframe, the rain, the grid, the basement, the incubator. Colours only; no artwork or lettering.", schemes: LuikTheme.screens)
-                    Toggle("Opening effect when the panel drops down (these schemes only)", isOn: $themeIntro)
-                    caption("About a second of lines, bars or glyphs drawn over the panel in the scheme's colours, then it fades. Purely decorative; off means the panel just appears.")
+                    Toggle("Themed entrance when the panel opens (these schemes only)", isOn: $themeIntro)
+                    caption("The panel itself arrives the way its scheme does — sweeps in from the side, opens like a CRT from a thin line, jumps in stretched, swings open like a door, tilts up from the floor, flickers in, pops — with the scheme's lines, bars or glyphs drawn over it for about a second. Off means the plain slide from the top.")
                 }
                 .padding(.vertical, 2)
             }
