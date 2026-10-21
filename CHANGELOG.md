@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.54.0
+- **RDP connections** in the Connect menu: a saved connection is now either a command for a terminal tab or an **RDP target** (host[:port], optional user; $RHOST is filled in) that opens in Windows App / Microsoft Remote Desktop through an `rdp://` link, with an `.rdp` file as fallback. Luik cannot see inside RDP, so it logs that the session was opened (with the host tag, out-of-scope warning included) and reminds you to note what you do in the Log and to use ⌘⇧E for screenshots. Right-click a host (or a 3389/RDP port) in Targets › *Open RDP in Windows App*.
+
 ## 0.53.0 — polish
 - **Diagram toolbar**: the Templates button is gone (templates live in the diagram menu › New from template and in the empty state), *From Targets* moved into the Add menu, Import and Export are one menu. Zone and Connect stay as the two tools next to the quick kinds.
 - **Settings**: the Tools tab is now **Integrations** (knowledge-base catalogue, Shodan, updates); evidence screenshots moved to General; every caption is one or two lines.

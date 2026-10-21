@@ -201,6 +201,13 @@ struct NodeRow: View {
                     TerminalStore.shared.newSession(boundTo: node)
                     ui.open(.terminal)
                 }
+                if let host = store.host(of: node), !host.address.isEmpty,
+                   node.kind == .host || node.portNumber == 3389 || node.subtitle.lowercased().contains("rdp") || node.subtitle.lowercased().contains("ms-wbt") {
+                    Button("Open RDP in Windows App") {
+                        let port = node.kind == .port && node.portNumber != 3389 ? ":\(node.portNumber)" : ""
+                        ConnectionStore.shared.openRDP(Connection(name: host.address, command: "", kind: .rdp, host: host.address + port))
+                    }
+                }
             }
             if node.kind == .host {
                 Button(DiagramTargets.diagramNode(for: node) == nil ? "Add to diagram" : "Show in diagram") { DiagramTargets.showInDiagram(node) }
